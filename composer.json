@@ -1,0 +1,42 @@
+{
+  "name": "ngixsystem/cclub",
+  "type": "project",
+  "require": {
+    "php": "~8.4.0",
+    "laravel/framework": "13.33.0",
+    "laravel/horizon": "5.50.0",
+    "inertiajs/inertia-laravel": "3.4.0"
+  },
+  "require-dev": {
+    "fakerphp/faker": "^1.24",
+    "mockery/mockery": "^1.6",
+    "nunomaduro/collision": "^8.8",
+    "phpunit/phpunit": "^12.5"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "app/",
+      "Database\\Factories\\": "database/factories/",
+      "Database\\Seeders\\": "database/seeders/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "post-autoload-dump": [
+      "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
+      "@php artisan package:discover --ansi"
+    ],
+    "test": "@php artisan test"
+  },
+  "config": {
+    "optimize-autoloader": true,
+    "preferred-install": "dist",
+    "sort-packages": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
