@@ -10,4 +10,3 @@ class Equipment extends Model
     protected $table = 'equipment';
     public function club() { return $this->belongsTo(Club::class); }
 }
-

@@ -12,4 +12,3 @@ class Ticket extends Model
     public function assignee() { return $this->belongsTo(User::class, 'assignee_id'); }
     public function events() { return $this->hasMany(TicketEvent::class); }
 }
-
