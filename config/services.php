@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'telegram' => ['transport' => env('TELEGRAM_TRANSPORT', 'fake')],
 
     /*
     |--------------------------------------------------------------------------

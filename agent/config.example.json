@@ -1,0 +1,11 @@
+{
+  "server": "https://cclub.example.com",
+  "equipment_id": 1,
+  "token": "REPLACE_WITH_PER_DEVICE_TOKEN",
+  "machine_fingerprint": "BIND_ON_TARGET_DEVICE",
+  "disk_path": "C:\\",
+  "sensor_ids": {},
+  "steam_manifests": {},
+  "faceit_file": null,
+  "allow_insecure_local": false
+}

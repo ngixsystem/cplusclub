@@ -1,0 +1,10 @@
+<script setup lang="ts">
+import { Head, Link, useForm } from '@inertiajs/vue3';
+import Shell from '../Layouts/Shell.vue';
+defineProps<{visits:{data:{id:number;planned_date:string;status:string;club:{name:string};specialist:{name:string}}[];prev_page_url:string|null;next_page_url:string|null};clubs:{id:number;name:string}[];equipment:{id:number;club_id:number;name:string;next_inspection_date:string|null}[]}>();
+const form=useForm({club_id:'',planned_date:'',equipment_ids:[] as number[]});
+</script>
+<template><Head title="Осмотры и выезды"/><Shell><h1>Осмотры и выезды</h1>
+<form class="panel form-grid" @submit.prevent="form.post('/visits')"><label>Клуб<select v-model="form.club_id" required @change="form.equipment_ids=[]"><option v-for="c in clubs" :key="c.id" :value="c.id">{{c.name}}</option></select></label><label>Дата выезда<input v-model="form.planned_date" type="date" required/></label><fieldset><legend>ПК для осмотра (ближайшие 500)</legend><label v-for="e in equipment.filter(e=>e.club_id===Number(form.club_id))" :key="e.id" class="check"><input v-model="form.equipment_ids" type="checkbox" :value="e.id"/>{{e.name}} · срок {{e.next_inspection_date||'не задан'}}</label></fieldset><button :disabled="form.processing">Запланировать выезд на себя</button><p v-for="error in form.errors" :key="error" class="error">{{error}}</p></form>
+<section class="panel"><p v-if="!visits.data.length">Выезды пока не запланированы.</p><table v-else><thead><tr><th>Выезд</th><th>Клуб</th><th>Дата</th><th>Статус</th></tr></thead><tbody><tr v-for="v in visits.data" :key="v.id"><td><Link :href="'/visits/'+v.id">#{{v.id}} · {{v.specialist.name}}</Link></td><td>{{v.club.name}}</td><td>{{v.planned_date}}</td><td>{{v.status==='planned'?'Запланирован':'Завершён'}}</td></tr></tbody></table><div class="pagination"><Link v-if="visits.prev_page_url" :href="visits.prev_page_url">Назад</Link><Link v-if="visits.next_page_url" :href="visits.next_page_url">Далее</Link></div></section>
+</Shell></template>

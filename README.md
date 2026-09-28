@@ -2,10 +2,10 @@
 
 Веб-приложение для команды обслуживания компьютерных клубов с CCBoot/iCafeCloud.
 
-**Статус: разработка первого этапа; MVP НЕ завершён и НЕ проверен запуском.**
+**Статус: рабочая версия в разработке; полная приёмка MVP ещё не завершена.**
 См. [полное ТЗ](docs/requirements.md) и [состояние реализации](docs/implementation-status.md).
-Docker Desktop установлен на машине разработки, но запуск Linux Engine заблокирован отсутствием WSL.
-Ни один тест, миграция или сборка пока не объявляются успешными.
+Локальная среда Docker работает; сайт доступен на http://127.0.0.1:8080.
+Фронтенд собран и проверен TypeScript в Docker. Полный статус проверок указан в docs/implementation-status.md.
 
 ## Стек
 Laravel 13 / PHP 8.4 / PostgreSQL 17 / Redis / Horizon / Vue 3 / TypeScript / Inertia / Tailwind / Nginx.
@@ -22,14 +22,14 @@ wsl --install --no-distribution
 Может потребоваться включение виртуализации в UEFI/BIOS.
 Документация: https://docs.docker.com/desktop/setup/install/windows-install/
 
-## Первый этап: установка зависимостей (пока не проверена)
+## Установка зависимостей и локальный запуск
 Скопируйте .env.example в .env; установите случайный DB_PASSWORD. Не коммитьте .env.
 В текущем рабочем каталоге .env уже создан со случайным паролем БД.
 
 ```sh
 docker compose build app
-docker compose run --rm --no-deps app composer update --no-interaction
-docker compose run --rm --no-deps node npm install
+docker compose run --rm --no-deps app composer install --no-interaction
+docker compose run --rm --no-deps node npm ci
 docker compose run --rm --no-deps app php artisan key:generate
 docker compose up -d postgres redis
 docker compose run --rm app php artisan migrate --force
@@ -40,8 +40,8 @@ docker compose exec app php artisan cclub:admin owner@example.com --name="Анв
 ```
 
 Пароль вводится скрыто интерактивно, минимум 14 символов. Стандартных аккаунтов нет.
-Откройте http://localhost:8080. Это станет возможным после успешной сборки.
-На этом этапе Composer/npm должны создать lock-файлы; затем зафиксировать их и использовать
+Откройте http://localhost:8080. 
+Lock-файлы созданы Composer/npm в Docker. Используйте
 `composer install` / `npm ci` на последующих чистых checkout. Lock-файлы нельзя выдумывать вручную.
 
 ## Проверки
@@ -58,12 +58,13 @@ docker compose exec app php artisan horizon:status
 Начальные тесты: календарные даты, автомат статусов, запрет чужого доступа, завершение/переоткрытие,
 проверка устаревшей версии. Это ещё не вся приёмочная матрица.
 
-## Что пока отсутствует
-Полные осмотры/выезды, приватные вложения/QR, управление пользователями, аудит, агент/телеметрия,
-тревоги, обновления игр, доставка Telegram, полноценные отчёты, production Compose, CI и нагрузочный стенд.
-Dockerfile содержит production stages, но они не готовы к приёмке без lock-файлов и проверки.
+## Область реализации и ограничения
+В исходниках реализованы осмотры/выезды, приватные вложения/QR, управление пользователями, аудит, агент/телеметрия,
+тревоги, обновления игр, доставка Telegram, отчёты, production Compose и CI. Нагрузочный стенд и полная приёмка ещё не завершены.
+Production stages, восстановление резервных копий и CI требуют отдельной проверки перед эксплуатацией.
 Никакие реальные уведомления не отправлялись. Внешние сервисы не подключены.
 
 ## Git
-Рабочая ветка codex/cclub-mvp; remote отсутствует и не создавался.
+Репозиторий: https://github.com/ngixsystem/cplusclub. Ветка разработки: codex/cclub-mvp.
 Коммиты разработки могут иметь технического автора Codex <codex@localhost>, если автор Git на машине не настроен.
+

@@ -1,5 +1,6 @@
 name: cclub
 x-app: &app
+  image: cclub-app:dev
   build:
     context: .
     dockerfile: docker/php/Dockerfile

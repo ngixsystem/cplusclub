@@ -1,0 +1,35 @@
+name: Docker checks
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure isolated environment
+        run: |
+          cp .env.example .env
+          sed -i 's/^DB_PASSWORD=$/DB_PASSWORD=isolated-ci-only/' .env
+      - name: Build runtime
+        run: docker compose build app
+      - name: Install locked dependencies
+        run: |
+          docker compose run --rm --no-deps app composer install --no-interaction
+          docker compose run --rm --no-deps node npm ci
+          docker compose run --rm --no-deps app php artisan key:generate
+      - name: Frontend checks
+        run: |
+          docker compose run --rm --no-deps node npm run typecheck
+          docker compose run --rm --no-deps node npm run build
+      - name: PostgreSQL tests
+        run: |
+          docker compose up -d --wait postgres redis
+          docker compose exec -T postgres createdb -U cclub cclub_test
+          docker compose run --rm app php artisan test
+      - name: Browser E2E in separate environment
+        run: |
+          docker compose -f compose.test.yaml up -d --wait postgres redis app nginx
+          docker compose -f compose.test.yaml exec -T app php artisan migrate --force
+          docker compose -f compose.test.yaml exec -T app php artisan db:seed --class=E2ESeeder --force
+          docker compose -f compose.test.yaml run --rm browser
+      - name: Agent parser tests
+        run: docker compose -f compose.test.yaml run --rm python python -m unittest discover -s agent/tests

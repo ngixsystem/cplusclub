@@ -2,7 +2,10 @@
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import Shell from '../Layouts/Shell.vue';
 import { watch } from 'vue';
-const props = defineProps<{ticket:{id:number;version:number;description:string;status:string;club:{name:string};assignee_id:number|null;work_result:string|null;verification_result:string|null;cause:string|null;solution:string|null;events:{id:number;from_status:string;to_status:string;comment:string|null;created_at:string}[]};assignable:{id:number;name:string}[];transitions:string[];canEdit:boolean}>();
+import WorkLog from '../Components/WorkLog.vue';
+import AttachmentUpload from '../Components/AttachmentUpload.vue';
+defineOptions({inheritAttrs:false});
+const props = defineProps<{ticket:{id:number;version:number;description:string;status:string;club:{name:string};assignee_id:number|null;work_result:string|null;verification_result:string|null;cause:string|null;solution:string|null;events:{id:number;from_status:string;to_status:string;comment:string|null;created_at:string}[]};assignable:{id:number;name:string}[];transitions:string[];canEdit:boolean;attachments:{id:number;name:string}[];workLogs:{id:number;minutes:number;actions:string}[]}>();
 const page=usePage<{auth:{user:{role:string}}}>();
 const labels:Record<string,string>={new:'Новая',accepted:'Принята',working:'В работе',approval:'Ожидает согласования',parts:'Ожидает запчастей',resolved:'Решена',closed:'Закрыта'};
 const form=useForm({status:props.transitions[0],version:props.ticket.version,work_result:props.ticket.work_result??'',verification_result:props.ticket.verification_result??'',cause:props.ticket.cause??'',solution:props.ticket.solution??'',comment:''});
@@ -18,5 +21,5 @@ watch(()=>props.ticket.version, value=>{form.version=value; assignment.version=v
     <p class="error" role="alert" v-for="(error,key) in form.errors" :key="key">{{ error }}</p><button :disabled="form.processing">{{ form.processing?'Сохраняем…':'Сохранить переход' }}</button>
   </form>
   <section v-else class="panel"><h2>Результат</h2><p>{{ ticket.work_result || 'Работа ещё не завершена.' }}</p><p>{{ ticket.verification_result }}</p></section>
-  <section class="panel"><h2>История</h2><p v-if="!ticket.events.length">Изменений пока нет.</p><article v-for="event in ticket.events" :key="event.id" class="event"><strong>{{ labels[event.from_status] }} → {{ labels[event.to_status] }}</strong><p>{{ event.comment }}</p><small>{{ new Date(event.created_at).toLocaleString('ru-RU', {timeZone:'Asia/Tashkent'}) }} · Asia/Tashkent</small></article></section>
+  <WorkLog v-if="canEdit" :ticket-id="ticket.id"/><section class="panel"><h2>Вложения</h2><AttachmentUpload type="ticket" :id="ticket.id"/><p v-for="a in attachments" :key="a.id"><a :href="'/attachments/'+a.id">{{a.name}}</a></p><p v-for="w in workLogs" :key="w.id">{{w.minutes}} мин · {{w.actions}}</p></section><section class="panel"><h2>История</h2><p v-if="!ticket.events.length">Изменений пока нет.</p><article v-for="event in ticket.events" :key="event.id" class="event"><strong>{{ labels[event.from_status] }} → {{ labels[event.to_status] }}</strong><p>{{ event.comment }}</p><small>{{ new Date(event.created_at).toLocaleString('ru-RU', {timeZone:'Asia/Tashkent'}) }} · Asia/Tashkent</small></article></section>
 </Shell></template>

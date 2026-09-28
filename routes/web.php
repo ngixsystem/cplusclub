@@ -14,6 +14,38 @@ Route::get('/health/ready', function () {
 Route::get('/login', fn () => Inertia::render('Login'))->name('login');
 Route::post('/login', [ServiceController::class, 'login'])->middleware('throttle:5,1');
 Route::middleware('auth')->group(function () {
+    Route::get('/users',[\App\Http\Controllers\AdminController::class,'index']);
+    Route::post('/users',[\App\Http\Controllers\AdminController::class,'store']);
+    Route::post('/users/{user}',[\App\Http\Controllers\AdminController::class,'update']);
+    Route::get('/equipment/{equipment}',[\App\Http\Controllers\AssetController::class,'equipment']);
+    Route::post('/equipment/{equipment}',[\App\Http\Controllers\AssetController::class,'updateEquipment']);
+    Route::get('/clubs/{club}',[\App\Http\Controllers\AssetController::class,'club']);
+    Route::post('/clubs/{club}',[\App\Http\Controllers\AssetController::class,'updateClub']);
+    Route::get('/reports',[\App\Http\Controllers\ReportController::class,'index']);
+    Route::get('/reports/export',[\App\Http\Controllers\ReportController::class,'export']);
+    Route::post('/tickets/{ticket}/work',[\App\Http\Controllers\ReportController::class,'log']);
+    Route::get('/updates',[\App\Http\Controllers\UpdatesController::class,'index']);
+    Route::post('/updates/subscribe',[\App\Http\Controllers\UpdatesController::class,'subscribe']);
+    Route::post('/updates/verify',[\App\Http\Controllers\UpdatesController::class,'verify']);
+    Route::get('/integrations',[\App\Http\Controllers\IntegrationController::class,'index']);
+    Route::post('/integrations/channels',[\App\Http\Controllers\IntegrationController::class,'store']);
+    Route::post('/integrations/channels/{channel}/test',[\App\Http\Controllers\IntegrationController::class,'test']);
+    Route::post('/integrations/channels/{channel}/toggle',[\App\Http\Controllers\IntegrationController::class,'toggle']);
+    Route::post('/integrations/deliveries/{id}/retry',[\App\Http\Controllers\IntegrationController::class,'retry']);
+    Route::get('/monitoring',[\App\Http\Controllers\MonitoringController::class,'index']);
+    Route::post('/agents',[\App\Http\Controllers\MonitoringController::class,'register']);
+    Route::post('/agents/{id}/revoke',[\App\Http\Controllers\MonitoringController::class,'revoke']);
+    Route::post('/monitoring/rules',[\App\Http\Controllers\MonitoringController::class,'rule']);
+    Route::post('/monitoring/maintenance',[\App\Http\Controllers\MonitoringController::class,'maintenance']);
+    Route::get('/visits', [\App\Http\Controllers\VisitController::class,'index']);
+    Route::post('/visits', [\App\Http\Controllers\VisitController::class,'store']);
+    Route::get('/visits/{visit}', [\App\Http\Controllers\VisitController::class,'show']);
+    Route::post('/visits/{visit}/complete', [\App\Http\Controllers\VisitController::class,'complete']);
+    Route::post('/inspections/{inspection}', [\App\Http\Controllers\VisitController::class,'inspect']);
+    Route::post('/inspections/{inspection}/approve', [\App\Http\Controllers\VisitController::class,'approve']);
+    Route::post('/inspections/{inspection}/ticket', [\App\Http\Controllers\VisitController::class,'issue']);
+    Route::post('/attachments', [\App\Http\Controllers\AttachmentController::class,'store']);
+    Route::get('/attachments/{attachment}', [\App\Http\Controllers\AttachmentController::class,'download']);
     Route::post('/logout', function (Request $request) {
         Auth::logout(); $request->session()->invalidate(); $request->session()->regenerateToken();
         return redirect('/login');

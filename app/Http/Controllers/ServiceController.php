@@ -116,6 +116,8 @@ class ServiceController extends Controller
         })->get(['id','name']);
         return Inertia::render('Ticket', [
             'ticket' => $ticket, 'assignable' => Gate::allows('update', $ticket) ? $assignable : [],
+            'attachments' => \App\Models\Attachment::where('ticket_id',$ticket->id)->get(),
+            'workLogs' => DB::table('work_logs')->where('ticket_id',$ticket->id)->get(),
             'canEdit' => Gate::allows('update', $ticket),
             'transitions' => array_values(array_map(fn ($s) => $s->value,
                 array_filter(TicketStatus::cases(), fn ($s) => TicketStatus::from($ticket->status)->canMoveTo($s)))),
