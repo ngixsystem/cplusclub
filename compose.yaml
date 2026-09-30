@@ -15,6 +15,18 @@ x-app: &app
     postgres: {condition: service_healthy}
     redis: {condition: service_healthy}
 services:
+  landing:
+    image: nginx:1.30.5
+    ports: ["80:80"]
+    volumes:
+      - ./landing:/usr/share/nginx/html:ro
+      - ./docker/nginx/landing.conf:/etc/nginx/conf.d/default.conf:ro
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, curl, -fsS, http://localhost/]
+      interval: 30s
+      timeout: 5s
+      retries: 3
   app:
     <<: *app
     healthcheck:

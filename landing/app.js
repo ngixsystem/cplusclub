@@ -1,0 +1,10 @@
+const count=document.querySelector('#pc-count'),range=document.querySelector('#pc-range');
+let pcs=50,selected='standard';
+const plans={standard:{name:'Обслуживание',base:100,rate:4},priority:{name:'Приоритет',base:150,rate:6}};
+const money=n=>'$'+n.toLocaleString('en-US');
+function update(value){pcs=Math.min(1000,Math.max(1,Math.round(Number(value)||1)));count.value=pcs;range.value=Math.min(200,Math.max(10,pcs));for(const [key,p] of Object.entries(plans))document.querySelector('#'+key+'-price').textContent=money(p.base+p.rate*pcs);}
+count.addEventListener('change',()=>update(count.value));range.addEventListener('input',()=>update(range.value));
+function openDialog(id){document.querySelector(id).showModal();}
+document.querySelectorAll('dialog').forEach(d=>{d.querySelectorAll('.close,.close-action').forEach(b=>b.addEventListener('click',()=>d.close()));d.addEventListener('click',e=>{if(e.target===d){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});});
+document.querySelectorAll('[data-plan]').forEach(b=>b.addEventListener('click',()=>{update(count.value);selected=b.dataset.plan;const p=plans[selected];document.querySelector('#plan-title').textContent=p.name;document.querySelector('#plan-summary').textContent=pcs+' ПК × $'+p.rate+' + $'+p.base+' за клуб';document.querySelector('#plan-total').textContent=money(p.base+p.rate*pcs)+' / месяц';document.querySelector('#copy-status').textContent='';openDialog('#plan-dialog');}));
+document.querySelector('#copy-calculation').addEventListener('click',async()=>{const p=plans[selected];const text='C+CLUB · '+p.name+'\n'+pcs+' ПК × $'+p.rate+' + $'+p.base+' за клуб = '+money(p.base+p.rate*pcs)+'/месяц.\nПредварительный расчёт. Окончательная стоимость и состав работ согласуются в договоре.';try{await navigator.clipboard.writeText(text);document.querySelector('#copy-status').textContent='Расчёт скопирован.';}catch{document.querySelector('#copy-status').textContent='Не удалось скопировать автоматически. Вы можете выделить расчёт выше.';}});
