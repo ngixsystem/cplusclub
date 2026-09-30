@@ -49,10 +49,10 @@ class IcafeDashboardTest extends TestCase
         $this->fake();
         $this->getJson('/clubs/'.$club->id.'/dashboard')->assertOk()->assertJsonPath('online_pcs',1)->assertJsonPath('total_pcs',2)->assertJsonPath('shifts.0.end',null);
         $this->post('/clubs/'.$club->id.'/icafe',[])->assertForbidden();
-        $user->update(['role'=>'specialist']);
-        $this->getJson('/clubs/'.$club->id.'/dashboard')->assertForbidden();
-        $user->update(['role'=>'representative','active'=>false]);
-        $this->getJson('/clubs/'.$club->id.'/dashboard')->assertForbidden();
+        $user->role='specialist';$user->save();
+        $this->actingAs($user->fresh())->getJson('/clubs/'.$club->id.'/dashboard')->assertForbidden();
+        $user->role='representative';$user->active=false;$user->save();
+        $this->actingAs($user->fresh())->getJson('/clubs/'.$club->id.'/dashboard')->assertForbidden();
     }
 
     public function test_token_is_encrypted_hidden_and_connection_failure_preserves_it(): void
