@@ -14,6 +14,9 @@ Route::get('/health/ready', function () {
 Route::get('/login', fn () => Inertia::render('Login'))->name('login');
 Route::post('/login', [ServiceController::class, 'login'])->middleware('throttle:5,1');
 Route::middleware('auth')->group(function () {
+    Route::get('/clubs/{club}/dashboard', [\App\Http\Controllers\IcafeController::class, 'data'])->middleware('throttle:60,1');
+    Route::get('/clubs/{club}/dashboard/shifts/{shift}', [\App\Http\Controllers\IcafeController::class, 'shift'])->where('shift', '-?[0-9]+')->middleware('throttle:60,1');
+    Route::post('/clubs/{club}/icafe', [\App\Http\Controllers\IcafeController::class, 'save']);
     Route::get('/users',[\App\Http\Controllers\AdminController::class,'index']);
     Route::post('/users',[\App\Http\Controllers\AdminController::class,'store']);
     Route::post('/users/{user}',[\App\Http\Controllers\AdminController::class,'update']);

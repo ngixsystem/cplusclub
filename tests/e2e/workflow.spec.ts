@@ -4,7 +4,7 @@ test('club → PC → ticket → assignment → work → close → history',asyn
   await page.getByLabel('Email',{exact:true}).fill('e2e@example.test');
   await page.getByLabel('Пароль',{exact:true}).fill('Isolated-E2E-Password-2026');
   await page.getByRole('button',{name:'Войти',exact:true}).click();
-  await expect(page.getByRole('heading',{name:'Обзор',exact:true})).toBeVisible();
+  await expect(page.getByRole('heading',{name:'Дашборд клуба',exact:true})).toBeVisible();
   await page.goto('/clubs');await page.getByRole('button',{name:'+ Добавить'}).click();
   const name='E2E '+Date.now();await page.getByLabel('Название',{exact:true}).fill(name);await page.getByLabel('Адрес',{exact:true}).fill('Test Tashkent');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await expect(page.getByText('Клуб добавлен.',{exact:true})).toBeVisible();
   await page.goto('/equipment');await page.getByRole('button',{name:'+ Добавить'}).click();await page.getByLabel('Клуб',{exact:true}).selectOption({label:name});await page.getByLabel('Название',{exact:true}).fill('PC-01');await page.getByLabel('Номер места',{exact:true}).fill('01');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await expect(page.getByText('Оборудование добавлено.',{exact:true})).toBeVisible();

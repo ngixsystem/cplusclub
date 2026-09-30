@@ -1,0 +1,66 @@
+<script setup lang="ts">
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { Head, Link, usePage } from '@inertiajs/vue3';
+import Shell from '../Layouts/Shell.vue';
+import RevenueChart from '../Components/RevenueChart.vue';
+type Club={id:number;name:string;icafe_license:number|null;icafe_currency:string;timezone:string};
+type Shift={id:string;operator:string;start:string;end:string|null;total:number;cash:number;card:number;qr:number};
+type Snapshot={connected:boolean;shifts?:Shift[];computers?:{name:string;online:boolean;busy:boolean}[];total_pcs?:number;online_pcs?:number;updated_at?:string|null;stale?:boolean;error?:string;period_start?:string;period_end?:string};
+type Detail={detail?:Record<string,number|null>;chart?:{labels:string[];values:number[]};stale?:boolean;error?:string};
+const props=defineProps<{clubs:Club[]}>();
+const page=usePage<{auth:{user:{role:string}}}>();
+const clubId=ref(props.clubs[0]?.id ?? 0), selected=ref(''), expanded=ref('');
+const data=ref<Snapshot|null>(null), detail=ref<Detail|null>(null), loading=ref(false), error=ref('');
+const club=computed(()=>props.clubs.find(c=>c.id===Number(clubId.value)));
+const shifts=computed(()=>data.value?.shifts ?? []);
+const active=computed(()=>shifts.value.filter(s=>!s.end));
+const current=computed(()=>shifts.value.find(s=>s.id===selected.value));
+const total=computed(()=>active.value.reduce((n,s)=>n+s.total,0));
+const weekly=computed(()=>{const result=new Map<string,number>();if(data.value?.period_start){const d=new Date(data.value.period_start+'T00:00:00Z');for(let i=0;i<7;i++){result.set(d.toISOString().slice(0,10),0);d.setUTCDate(d.getUTCDate()+1);}}for(const s of shifts.value){const day=s.start.slice(0,10);result.set(day,(result.get(day)??0)+s.total);}return {labels:[...result.keys()].map(k=>k.slice(8,10)+'.'+k.slice(5,7)),values:[...result.values()]};});
+const money=(n:number|null|undefined)=>n==null?'Нет данных':new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(n)+' '+(club.value?.icafe_currency??'');
+const updated=computed(()=>data.value?.updated_at?new Intl.DateTimeFormat('ru-RU',{timeZone:club.value?.timezone,hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(data.value.updated_at)):'ещё не получены');
+let timer:ReturnType<typeof setTimeout>|undefined, controller:AbortController|undefined;
+async function json(url:string,signal:AbortSignal){const r=await fetch(url,{signal,headers:{Accept:'application/json'},credentials:'same-origin'});if(r.status===401||r.redirected){window.location.assign('/login');throw new Error('Сессия завершена');}if(!r.ok)throw new Error(r.status===403?'Нет доступа к этому клубу':'Не удалось получить данные');return r.json();}
+async function refresh(){
+ if(!club.value||loading.value||document.hidden)return;
+ loading.value=true;error.value='';const c=new AbortController();controller=c;
+ try{
+  const snapshot=await json('/clubs/'+clubId.value+'/dashboard',c.signal);if(c.signal.aborted)return;data.value=snapshot;
+  if(!shifts.value.some(s=>s.id===selected.value))selected.value=active.value[0]?.id ?? shifts.value[0]?.id ?? '';
+  if(selected.value){const result=await json('/clubs/'+clubId.value+'/dashboard/shifts/'+selected.value,c.signal);if(!c.signal.aborted)detail.value=result;}
+ }catch(e){if(!c.signal.aborted)error.value=e instanceof Error?e.message:'Ошибка связи';}
+ finally{if(controller===c){loading.value=false;clearTimeout(timer);timer=setTimeout(refresh,15000);}}
+}
+function reset(){controller?.abort();clearTimeout(timer);loading.value=false;data.value=null;detail.value=null;selected.value='';expanded.value='';void refresh();}
+function choose(id:string){controller?.abort();clearTimeout(timer);loading.value=false;selected.value=id;detail.value=null;void refresh();}
+function visibility(){if(!document.hidden)void refresh();}
+watch(clubId,reset);
+onMounted(()=>{void refresh();document.addEventListener('visibilitychange',visibility);});
+onUnmounted(()=>{controller?.abort();controller=undefined;clearTimeout(timer);document.removeEventListener('visibilitychange',visibility);});
+const detailLabels:Record<string,string>={cash_sales:'Поступления наличными',cash_refund:'Возвраты наличными',center_expenses:'Расходы центра',pc_cash_amount:'ПК / наличные',console_cash_amount:'Консоли / наличные',shop_cash_amount:'Товары / наличные',pc_card_amount:'ПК / карты',console_card_amount:'Консоли / карты',shop_card_amount:'Товары / карты',pc_qr_amount:'ПК / QR',console_qr_amount:'Консоли / QR',shop_qr_amount:'Товары / QR'};
+</script>
+<template>
+ <Head title="Дашборд клуба"/><Shell><div class="live-dashboard">
+ <div class="heading dashboard-heading"><div><p class="eyebrow">C+CLUB / LIVE ANALYTICS</p><h1>Дашборд клуба</h1><p class="subheading">Смены, поступления и состояние компьютеров</p></div><label v-if="clubs.length">Клуб<select v-model="clubId"><option v-for="c in clubs" :key="c.id" :value="c.id">{{c.name}}</option></select></label></div>
+ <div class="live-toolbar"><span class="live-indicator" :class="{warning:error||data?.stale}"></span><span>{{error||data?.stale?'Данные требуют обновления':'Автообновление включено'}}</span><small>Обновлено: {{updated}} · {{club?.timezone}}</small><button class="secondary" :disabled="loading||!club" @click="refresh">{{loading?'Обновляем…':'Обновить'}}</button></div>
+ <p v-if="error||data?.error" class="dashboard-warning" role="alert">{{error||data?.error}} Последние успешные данные сохранены.</p>
+ <section v-if="!clubs.length" class="panel empty"><h2>Клуб пока не назначен</h2><p>Администратор должен создать клуб и привязать его к вашему аккаунту.</p><Link v-if="['owner','lead'].includes(page.props.auth.user.role)" href="/clubs">Добавить клуб</Link></section>
+ <section v-else-if="data?.connected===false" class="panel empty"><h2>Подключите iCafeCloud</h2><p>Добавьте лицензию и API-токен в карточке клуба.</p><Link v-if="['owner','lead'].includes(page.props.auth.user.role)" :href="'/clubs/'+clubId">Настроить подключение</Link></section>
+ <div v-else-if="!data?.shifts" class="panel empty">{{loading?'Получаем данные iCafeCloud…':'Данные ещё не доступны. Попробуйте обновить.'}}</div>
+ <template v-else>
+ <section class="metric-grid"><article><span>Открытые смены / поступления</span><strong>{{money(total)}}</strong><small>{{active.length}} активных смен</small></article><article><span>Онлайн</span><strong>{{data.online_pcs}} <small>/ {{data.total_pcs}} ПК</small></strong><small>Подключены к iCafeCloud</small></article><article><span>Офлайн</span><strong>{{(data.total_pcs??0)-(data.online_pcs??0)}}</strong><small>Нет подключения</small></article><article><span>За 7 дней / по сменам</span><strong>{{money(shifts.reduce((n,s)=>n+s.total,0))}}</strong><small>{{data.period_start}} — {{data.period_end}}</small></article></section>
+ <section class="panel shift-panel"><div class="toolbar"><div><p class="eyebrow">01 / КАССОВАЯ СМЕНА</p><h2>{{current?.operator ?? 'Нет смен за период'}}</h2></div><label v-if="shifts.length">Оператор / смена<select :value="selected" @change="choose(($event.target as HTMLSelectElement).value)"><option v-for="s in shifts" :key="s.id" :value="s.id">{{s.operator}} · {{s.start}} · {{s.end?'Закрыта':'Открыта'}}</option></select></label></div>
+ <template v-if="current"><div class="shift-summary"><div><small>Итого за смену</small><strong>{{money(current.total)}}</strong></div><div><small>Начало</small><b>{{current.start}}</b></div><div><small>Закрытие</small><b>{{current.end??'Смена открыта'}}</b></div></div>
+ <p v-if="detail?.error" class="dashboard-warning" role="alert">{{detail.error}}</p>
+ <RevenueChart v-if="detail?.chart" :labels="detail.chart.labels" :values="detail.chart.values" :currency="club?.icafe_currency??''"/><p v-else class="empty">{{loading?'Загружаем график…':'График недоступен'}}</p>
+ <p class="chart-note">Поступления по интервалам iCafeCloud (Total), не накопительный итог. Границы графика округлены до минуты; точная сумма смены указана выше. Отрицательные значения обозначают корректировки/возвраты.</p>
+ <div class="payment-grid"><div><small>Наличные</small><b>{{money(current.cash)}}</b></div><div><small>Карты</small><b>{{money(current.card)}}</b></div><div><small>QR</small><b>{{money(current.qr)}}</b></div></div>
+ </template></section>
+ <section class="panel"><p class="eyebrow">02 / НЕДЕЛЯ В ЦИФРАХ</p><h2>Отчёт операторов за 7 дней</h2><RevenueChart :labels="weekly.labels" :values="weekly.values" :currency="club?.icafe_currency??''"/><p class="chart-note">Полные суммы смен сгруппированы по дате открытия. Включены открытые смены. Бонусы и начальный остаток кассы не прибавляются к поступлениям.</p>
+ <div class="table-scroll"><table><thead><tr><th>Оператор</th><th>Открытие</th><th>Закрытие</th><th>Сумма смены</th><th>Детали</th></tr></thead><tbody><template v-for="s in shifts" :key="s.id"><tr><td><b>{{s.operator}}</b><span v-if="!s.end" class="shift-open">Открыта</span></td><td>{{s.start}}</td><td>{{s.end??'—'}}</td><td class="numeric">{{money(s.total)}}</td><td><button class="secondary" :aria-expanded="expanded===s.id" @click="expanded=expanded===s.id?'':s.id; if(expanded)choose(s.id)">{{expanded===s.id?'Скрыть':'Подробнее'}}</button></td></tr><tr v-if="expanded===s.id"><td colspan="5"><div class="payment-grid"><div><small>Наличные</small><b>{{money(s.cash)}}</b></div><div><small>Карты</small><b>{{money(s.card)}}</b></div><div><small>QR</small><b>{{money(s.qr)}}</b></div></div><div v-if="selected===s.id&&detail?.detail" class="detail-grid"><div v-for="(value,key) in detail.detail" :key="key"><small>{{detailLabels[key]??key}}</small><b>{{money(value)}}</b></div></div><p v-else>{{detail?.error??'Загрузка детализации…'}}</p></td></tr></template></tbody></table></div><p v-if="!shifts.length" class="empty">За выбранный период смен нет.</p></section>
+ <section class="panel"><p class="eyebrow">03 / КОМПЬЮТЕРЫ</p><h2>Состояние зала</h2><p class="chart-note">Онлайн / офлайн — связь с iCafeCloud, не занятость игрового места.</p><div class="pc-grid"><div v-for="pc in data.computers" :key="pc.name" :class="['pc',{'pc-online':pc.online}]" :title="pc.busy?'Есть игровая сессия':'Нет игровой сессии'"><b>{{pc.name}}</b><span>{{pc.online?'Онлайн':'Офлайн'}}</span></div></div></section>
+ </template></div></Shell>
+</template>
+<style scoped>
+.live-dashboard{--dash-accent:#278b79}.dashboard-heading{gap:24px;align-items:flex-start}.dashboard-heading h1{margin-bottom:4px}.dashboard-heading label{min-width:220px}.subheading{color:var(--muted);margin:0 0 24px}.live-toolbar{display:flex;align-items:center;gap:10px;margin:0 0 22px;font-size:12px;flex-wrap:wrap}.live-toolbar button{margin-left:auto}.live-indicator{height:8px;width:8px;border-radius:50%;background:var(--dash-accent)}.live-indicator.warning{background:#c77b35}.metric-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1.5fr;gap:16px;margin-bottom:24px}.metric-grid article{background:white;border:1px solid var(--border);border-top:3px solid var(--dash-accent);padding:22px;border-radius:4px}.metric-grid span,.metric-grid small{color:var(--muted);font-size:12px}.metric-grid strong{display:block;font-size:clamp(22px,2vw,32px);font-variant-numeric:tabular-nums;letter-spacing:-1px;margin:20px 0 8px;overflow-wrap:anywhere}.live-dashboard .panel{border-radius:4px;box-shadow:none}.shift-summary{display:flex;gap:36px;flex-wrap:wrap;margin-top:26px;padding-bottom:18px;border-bottom:1px solid var(--border)}.shift-summary div,.payment-grid div,.detail-grid div{display:grid;gap:7px}.shift-summary strong{font-size:30px;letter-spacing:-1px;font-variant-numeric:tabular-nums}.shift-summary b{font-size:14px}.shift-summary small{font-size:12px}.payment-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;padding:20px 0}.payment-grid b{font-variant-numeric:tabular-nums}.chart-note{color:var(--muted);font-size:12px;margin:16px 0 0}.numeric{font-variant-numeric:tabular-nums;white-space:nowrap}.shift-open{display:block;font-size:11px;color:var(--dash-accent);margin-top:5px}.detail-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;border-top:1px solid var(--border);padding:20px 0}.dashboard-warning{background:#fff3cf;border-left:3px solid #ba7c00;color:#624900;padding:12px 18px}.pc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px;margin-top:20px}.pc{padding:12px 8px;border:1px solid var(--border);border-top:3px solid #9299a7;display:grid;gap:5px;text-align:center;border-radius:3px}.pc span{font-size:10px;color:var(--muted)}.pc-online{border-top-color:var(--dash-accent)}:global([data-theme=dark]) .live-dashboard{--dash-accent:#b6ff00}:global([data-theme=dark]) .metric-grid article{background:#2d3241}:global([data-theme=dark]) .dashboard-warning{background:#42391f;color:#ffe099}@media(max-width:1100px){.metric-grid{grid-template-columns:1fr 1fr}}@media(max-width:600px){.dashboard-heading{flex-direction:column}.dashboard-heading label{width:100%}.metric-grid{gap:10px}.metric-grid article{padding:14px}.metric-grid strong{font-size:22px}.shift-summary{gap:20px}.payment-grid,.detail-grid{grid-template-columns:1fr 1fr}.live-toolbar small{width:100%}}
+</style>

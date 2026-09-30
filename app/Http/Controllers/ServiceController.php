@@ -25,6 +25,9 @@ class ServiceController extends Controller
     public function index(Request $request, string $section = 'overview')
     {
         abort_unless($request->user()->active, 403);
+        if ($section === 'overview' && $request->user()->role !== 'specialist') {
+            return app(IcafeController::class)->index($request);
+        }
         abort_unless(in_array($section, ['overview','clubs','equipment','tickets']), 404);
         $user = $request->user();
         $search = mb_substr((string) $request->query('search', ''), 0, 100);
@@ -58,8 +61,23 @@ class ServiceController extends Controller
             'name' => 'required|string|max:255', 'address' => 'required|string|max:2000',
             'timezone' => 'required|timezone', 'contacts' => 'nullable|string|max:2000',
             'support_hours' => 'required|string|max:255', 'notes' => 'nullable|string|max:10000',
+            'icafe_license' => 'nullable|required_with:icafe_token|integer|min:1|unique:clubs,icafe_license',
+            'icafe_token' => 'nullable|required_with:icafe_license|string|min:30|max:8192',
+            'icafe_currency' => 'sometimes|required|string|regex:/^[A-Z]{3}$/',
         ]);
-        Club::create($data);
+        if (! empty($data['icafe_license'])) {
+            try { app(\App\Domain\Icafe\Client::class)->get((int) $data['icafe_license'], $data['icafe_token'], 'pcs'); }
+            catch (\Throwable) { throw \Illuminate\Validation\ValidationException::withMessages(['icafe_token' => 'Не удалось подключиться к iCafeCloud. Проверьте лицензию и токен.']); }
+        }
+        DB::transaction(function () use ($data) {
+            $club = Club::create(\Illuminate\Support\Arr::except($data, ['icafe_license','icafe_token','icafe_currency']));
+            if (! empty($data['icafe_license'])) {
+                $club->icafe_license = $data['icafe_license'];
+                $club->icafe_token = $data['icafe_token'];
+                $club->icafe_currency = $data['icafe_currency'] ?? 'UZS';
+                $club->save();
+            }
+        });
         return back()->with('success', 'Клуб добавлен.');
     }
 
