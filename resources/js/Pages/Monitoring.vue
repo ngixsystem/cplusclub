@@ -10,7 +10,7 @@ function signal(date:string|null){return !date?'Нет данных':Date.now()-
 </script>
 <template><Head title="Мониторинг"/><Shell><h1>Мониторинг</h1><p>Отсутствие heartbeat означает отсутствие свежей связи. Оно не доказывает, что ПК выключен.</p>
 <div v-if="agentSecret" class="panel"><h2>Сохраните токен — он показан один раз</h2><code class="prewrap">{{JSON.stringify(agentSecret,null,2)}}</code></div>
-<section class="panel"><h2>Активные тревоги</h2><p v-if="!alerts.length">Активных тревог нет.</p><p v-for="a in alerts" :key="a.id">ПК #{{a.equipment_id}} · {{a.metric}} · {{a.opened_at}}</p></section>
+
 <LivePcBoard :clubs="clubs" :can-manage="canManage"/>
 <form v-if="canManage" class="panel form-grid" @submit.prevent="agent.post('/agents')"><h2>Регистрация агента для одного ПК</h2><label>Клуб<select v-model="agent.club_id" required><option v-for="c in clubs" :key="c.id" :value="c.id">{{c.name}}</option></select></label><label>ID оборудования<input type="number" v-model="agent.equipment_id" required/></label><label>Имя агента<input v-model="agent.name" required/></label><button :disabled="agent.processing">Создать регистрацию</button><p class="error" v-for="error in agent.errors" :key="error">{{error}}</p></form>
 <section class="panel"><h2>Агенты</h2><p v-for="a in agents" :key="a.id">{{a.name}} · {{a.revoked_at?'Отозван':'Активен'}} <Link v-if="canManage&&!a.revoked_at" :href="'/agents/'+a.id+'/revoke'" as="button" method="post" :on-before="()=>confirm('Отозвать токен агента?')">Отозвать</Link></p></section>

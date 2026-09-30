@@ -46,7 +46,8 @@ final class LiveComputers {
                 'cpu_temp'=>$cpu,'gpu_temp'=>$gpu,'observed_at'=>$sample?->observed_at,
                 'severity'=>$online===false?'offline':self::severity($cpu,$gpu,(float)$club->monitor_warning,(float)$club->monitor_critical)];
         });
-        return ['pcs'=>$pcs,'updated_at'=>now()->toIso8601String(),'connection_updated_at'=>$connection['updated_at'],'error'=>$connection['error'],
+        return ['pcs'=>$pcs,'alerts'=>DB::table('alerts')->where('club_id',$club->id)->where('state','active')->orderByDesc('opened_at')->limit(200)->get(['id','equipment_id','metric','opened_at']),
+            'updated_at'=>now()->toIso8601String(),'connection_updated_at'=>$connection['updated_at'],'error'=>$connection['error'],
             'template'=>['warning'=>(float)$club->monitor_warning,'critical'=>(float)$club->monitor_critical,'hold_seconds'=>(int)$club->monitor_hold_seconds]];
     }
 }
