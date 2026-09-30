@@ -32,6 +32,9 @@ encrypted connections. Rotate credentials exposed in chat and reconnect.
 - reportChart income includes overlapping series; display Total only.
 - Chart range is minute-granularity. Cross-day charts can be daily rather than
   hourly. Do not label all charts as hourly or force their sum to the shift total.
+- The API can omit a final partial-hour category while returning its value.
+  The adapter restores that label only for a verified consecutive hourly axis;
+  other length mismatches are rejected, not silently truncated.
 - Weekly view is seven local calendar dates and sums whole shifts by opening
   date. It is not a transaction-date cash-flow report.
 - Filter pcs by pc_icafe_id and console_type=0; onlinePcList is connectivity,
@@ -53,3 +56,16 @@ Build frontend in Docker. Before deployment back up the production database and
 public/build. Run `php artisan migrate --force`, deploy the built assets and source,
 then verify /health/ready and both authenticated dashboards. A code rollback can
 leave the additive columns intact; do not drop encrypted credentials as rollback.
+
+## Verified on 2026-09-30
+
+- Isolated PostgreSQL backend suite: 21 tests, 119 assertions passed.
+- TypeScript and Vite production build passed in Docker on the VPS.
+- Two Playwright flows passed: dashboard polling/detail/stale state/mobile/both
+  themes and the existing club/equipment/ticket workflow.
+- Separate browser smoke with real API confirmed open and closed shift charts,
+  weekly shifts, computer connectivity and no mobile document overflow.
+- Production migration and connection verified; anonymous dashboard returns 401,
+  login and landing return 200, readiness returns ready.
+- No client account was automatically granted access. Assign representatives to
+  their clubs through the existing Users administration page.
