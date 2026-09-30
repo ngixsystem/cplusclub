@@ -21,12 +21,14 @@ final class Dashboard
             $now = now($club->timezone);
             $rows = $get('reports/shiftList', ['date_start' => $now->copy()->subDays(6)->toDateString(),
                 'date_end' => $now->toDateString(), 'time_start' => '00:00', 'time_end' => '23:59', 'shift_staff_name' => 'all']);
-            $shifts = array_map(function ($r) {
+            $shifts = array_map(function ($r) use ($club, $now) {
                 foreach (['shift_id','shift_staff_name','shift_start_time','shift_end_time','total_amount','cash','credit_card','qr'] as $field) {
                     if (! array_key_exists($field, $r)) throw new \RuntimeException('Unexpected shift schema');
                 }
                 return ['id' => (string) $r['shift_id'], 'operator' => $r['shift_staff_name'], 'start' => $r['shift_start_time'],
                     'end' => $r['shift_end_time'] === '-' ? null : $r['shift_end_time'],
+                    'duration_seconds' => max(0, (int) \Carbon\Carbon::parse($r['shift_start_time'], $club->timezone)->diffInSeconds(
+                        $r['shift_end_time'] === '-' ? $now : \Carbon\Carbon::parse($r['shift_end_time'], $club->timezone))),
                     'total' => (float) $r['total_amount'], 'cash' => (float) $r['cash'],
                     'card' => (float) $r['credit_card'], 'qr' => (float) $r['qr']];
             }, $rows);
