@@ -25,7 +25,14 @@ test('dashboard refresh, shift detail, stale data and mobile layout', async ({ p
   await page.setViewportSize({width:390,height:844});
   await expect(page.getByRole('heading',{name:'Дашборд клуба'})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+  await page.evaluate(()=>window.scrollTo(0,0));
   await page.screenshot({path:'test-results/dashboard-mobile.png',fullPage:true});
   await page.setViewportSize({width:1440,height:1000});
+  await page.evaluate(()=>window.scrollTo(0,0));
+  await page.evaluate(()=>document.documentElement.setAttribute('data-theme','dark'));
+  await expect(page.locator('.metric-grid article').first()).toHaveCSS('background-color','rgb(45, 50, 65)');
   await page.screenshot({path:'test-results/dashboard-desktop.png',fullPage:true});
+  await page.evaluate(()=>document.documentElement.setAttribute('data-theme','light'));
+  await expect(page.locator('.metric-grid article').first()).toHaveCSS('background-color','rgb(255, 255, 255)');
+  await page.screenshot({path:'test-results/dashboard-light.png',fullPage:true});
 });
