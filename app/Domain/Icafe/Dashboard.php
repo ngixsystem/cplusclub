@@ -57,10 +57,17 @@ final class Dashboard
             ]);
             // Total is the upstream aggregate, not the sum of overlapping Balance/Profit/Cash series.
             $total = collect($chart['series'] ?? [])->firstWhere('name', 'Total');
-            if (! isset($chart['categories'], $total['data']) || count($chart['categories']) !== count($total['data'])) {
+            $labels = $chart['categories'] ?? [];
+            // API omits the axis label for a partial final hour, but returns its value.
+            if (isset($total['data']) && substr($shift['start'], 0, 10) === substr($end, 0, 10)
+                && count($total['data']) === count($labels) + 1
+                && (count($labels) === 0 || (preg_match('/^\d{2}$/', (string) end($labels)) && (int) end($labels) + 1 === (int) substr($end, 11, 2)))) {
+                $labels[] = substr($end, 11, 2);
+            }
+            if (! isset($total['data']) || count($labels) !== count($total['data'])) {
                 throw new \RuntimeException('Unexpected chart schema');
             }
-            return ['detail' => $detail, 'chart' => ['labels' => $chart['categories'], 'values' => $total['data']]];
+            return ['detail' => $detail, 'chart' => ['labels' => $labels, 'values' => $total['data']]];
         });
     }
 

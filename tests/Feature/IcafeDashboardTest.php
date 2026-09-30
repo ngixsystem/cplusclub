@@ -94,4 +94,17 @@ class IcafeDashboardTest extends TestCase
         $payload['icafe_license']=456;unset($payload['name']);
         $this->post('/clubs',$payload)->assertSessionHasErrors('name')->assertSessionMissing('_old_input.icafe_token');
     }
+
+    public function test_partial_hour_missing_label_is_restored_without_changing_values(): void
+    {
+        $club=$this->club();
+        Http::fake([
+            '*/shiftDetail/*'=>Http::response(['code'=>200,'data'=>[]]),
+            '*/reportChart*'=>Http::response(['code'=>200,'data'=>['categories'=>['07','08'], 'series'=>[['name'=>'Total','data'=>[10,20,30]]]]]),
+        ]);
+        $result=app(Dashboard::class)->detail($club,['id'=>'1','operator'=>'Test','start'=>'2026-09-30 07:25:19','end'=>'2026-09-30 09:10:15']);
+        $this->assertFalse($result['stale']);
+        $this->assertSame(['07','08','09'],$result['chart']['labels']);
+        $this->assertSame([10,20,30],$result['chart']['values']);
+    }
 }
