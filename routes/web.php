@@ -37,6 +37,9 @@ Route::middleware('auth')->group(function () {
     Route::post('/integrations/channels/{channel}/toggle',[\App\Http\Controllers\IntegrationController::class,'toggle']);
     Route::post('/integrations/deliveries/{id}/retry',[\App\Http\Controllers\IntegrationController::class,'retry']);
     Route::get('/monitoring',[\App\Http\Controllers\MonitoringController::class,'index']);
+    Route::get('/monitoring/clubs/{club}',[\App\Http\Controllers\MonitoringController::class,'live'])->middleware('throttle:60,1');
+    Route::post('/monitoring/clubs/{club}/import',[\App\Http\Controllers\MonitoringController::class,'import']);
+    Route::post('/monitoring/clubs/{club}/template',[\App\Http\Controllers\MonitoringController::class,'template']);
     Route::post('/agents',[\App\Http\Controllers\MonitoringController::class,'register']);
     Route::post('/agents/{id}/revoke',[\App\Http\Controllers\MonitoringController::class,'revoke']);
     Route::post('/monitoring/rules',[\App\Http\Controllers\MonitoringController::class,'rule']);

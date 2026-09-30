@@ -15,7 +15,7 @@ final class EvaluateSample {
             $update=['last_sample_at'=>$when];
             if($maintenance || $value===null){$update['breach_since']=null;DB::table('alerts')->where('id',$alert->id)->update($update);continue;}
             $low=$rule->metric==='disk_free_percent';
-            $breach=$low?$value<=$rule->trigger_value:$value>=$rule->trigger_value;
+            $breach=$low?$value<=$rule->trigger_value:($rule->exclusive?$value>$rule->trigger_value:$value>=$rule->trigger_value);
             $recover=$low?$value>=$rule->recovery_value:$value<=$rule->recovery_value;
             $gap=$alert->last_sample_at && CarbonImmutable::parse($alert->last_sample_at)->diffInSeconds($when)>180;
             if($breach && $alert->state!=='active'){

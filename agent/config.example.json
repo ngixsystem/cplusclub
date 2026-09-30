@@ -5,6 +5,7 @@
   "machine_fingerprint": "BIND_ON_TARGET_DEVICE",
   "disk_path": "C:\\",
   "sensor_ids": {},
+  "interval_seconds": 15,
   "steam_manifests": {},
   "faceit_file": null,
   "allow_insecure_local": false

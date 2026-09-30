@@ -3,6 +3,7 @@ import argparse
 import datetime as dt
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import random
@@ -15,6 +16,19 @@ import urllib.request
 import uuid
 
 METRICS = ('cpu_temp', 'gpu_temp', 'cpu_load', 'gpu_load', 'ram_used_percent', 'disk_free_percent')
+
+def temperature_values(sensors, configured):
+    values = {}
+    for metric, family in (('cpu_temp', 'cpu'), ('gpu_temp', 'gpu')):
+        explicit = configured.get(metric)
+        candidates = [s.get('Value') for s in sensors if
+                      (s.get('Identifier') == explicit if explicit else
+                       s.get('SensorType') == 'Temperature' and
+                       family in str(s.get('Identifier', '')).strip('/').split('/')[0].lower())]
+        valid = [float(v) for v in candidates if isinstance(v, (int, float))
+                 and not isinstance(v, bool) and math.isfinite(v) and 0 <= v <= 150]
+        values[metric] = max(valid) if valid else None
+    return values
 
 def powershell(script):
     result = subprocess.run(['powershell.exe', '-NoProfile', '-NonInteractive', '-Command', script], capture_output=True, text=True, timeout=15, check=True)
@@ -44,9 +58,10 @@ def sample(config, simulate=False):
         except OSError:
             pass
         try:
-            sensors = powershell('@(Get-CimInstance -Namespace root/LibreHardwareMonitor -ClassName Sensor -ErrorAction Stop | Select-Object Identifier,Value) | ConvertTo-Json -Compress')
+            sensors = powershell('@(Get-CimInstance -Namespace root/LibreHardwareMonitor -ClassName Sensor -ErrorAction Stop | Select-Object Identifier,Value,SensorType) | ConvertTo-Json -Compress')
+            data.update(temperature_values(sensors, config.get('sensor_ids', {})))
             values = {s['Identifier']: s['Value'] for s in sensors}
-            for metric in ('cpu_temp', 'gpu_temp', 'gpu_load'):
+            for metric in ('gpu_load',):
                 data[metric] = values.get(config.get('sensor_ids', {}).get(metric))
         except (subprocess.SubprocessError, ValueError, KeyError, TypeError):
             pass
@@ -131,7 +146,8 @@ def main():
                 print('Local version delivery unavailable')
         if args.once:
             return
-        time.sleep(random.uniform(50, 70))
+        interval = min(300, max(10, float(config.get('interval_seconds', 15))))
+        time.sleep(interval + random.uniform(0, 2))
 
 if __name__ == '__main__':
     main()
