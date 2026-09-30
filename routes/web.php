@@ -20,6 +20,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/users',[\App\Http\Controllers\AdminController::class,'index']);
     Route::post('/users',[\App\Http\Controllers\AdminController::class,'store']);
     Route::post('/users/{user}',[\App\Http\Controllers\AdminController::class,'update']);
+    Route::delete('/users/{user}',[\App\Http\Controllers\AdminController::class,'destroy']);
     Route::get('/equipment/{equipment}',[\App\Http\Controllers\AssetController::class,'equipment']);
     Route::post('/equipment/{equipment}',[\App\Http\Controllers\AssetController::class,'updateEquipment']);
     Route::get('/clubs/{club}',[\App\Http\Controllers\AssetController::class,'club']);

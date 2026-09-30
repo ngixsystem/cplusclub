@@ -5,9 +5,9 @@ use Illuminate\Support\Facades\{Cache, Schedule, Hash, Validator};
 use App\Models\User;
 
 Artisan::command('cclub:admin {email} {--name=Владелец}', function () {
-    $password = $this->secret('Пароль (не менее 14 символов)');
+    $password = $this->secret('Пароль (не менее 6 символов)');
     $data = ['email' => $this->argument('email'), 'password' => $password];
-    $validation = Validator::make($data, ['email' => 'required|email|unique:users,email', 'password' => 'required|string|min:14']);
+    $validation = Validator::make($data, ['email' => 'required|email|unique:users,email', 'password' => 'required|string|min:6']);
     if ($validation->fails()) { $this->error($validation->errors()->first()); return 1; }
     $user = new User();
     $user->name = $this->option('name'); $user->email = $data['email'];

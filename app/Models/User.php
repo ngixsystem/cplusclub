@@ -14,6 +14,7 @@ use Illuminate\Notifications\Notifiable;
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
+    use \Illuminate\Database\Eloquent\SoftDeletes;
     protected $attributes = ['role' => 'representative', 'active' => true];
     public function clubs()
     {
