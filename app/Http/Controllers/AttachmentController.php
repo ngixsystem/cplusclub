@@ -19,4 +19,16 @@ class AttachmentController extends Controller {
         return back()->with('success','Вложение сохранено в приватном хранилище.');
     }
     public function download(Attachment $attachment) { Gate::authorize('view',$attachment);return Storage::disk('local')->download($attachment->path,$attachment->name,['X-Content-Type-Options'=>'nosniff']); }
+    public function preview(Attachment $attachment) {
+        Gate::authorize('view', $attachment);
+        $disk = Storage::disk('local');
+        abort_unless($disk->exists($attachment->path), 404);
+        $mime = $disk->mimeType($attachment->path);
+        abort_unless(in_array($mime, ['image/jpeg','image/png','image/webp'], true), 415);
+        return $disk->response($attachment->path, null, [
+            'Content-Type' => $mime,
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, no-store',
+        ], 'inline');
+    }
 }

@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/inspections/{inspection}/ticket', [\App\Http\Controllers\VisitController::class,'issue']);
     Route::post('/attachments', [\App\Http\Controllers\AttachmentController::class,'store']);
     Route::get('/attachments/{attachment}', [\App\Http\Controllers\AttachmentController::class,'download']);
+    Route::get('/attachments/{attachment}/preview', [\App\Http\Controllers\AttachmentController::class,'preview']);
     Route::post('/logout', function (Request $request) {
         Auth::logout(); $request->session()->invalidate(); $request->session()->regenerateToken();
         return redirect('/login');
