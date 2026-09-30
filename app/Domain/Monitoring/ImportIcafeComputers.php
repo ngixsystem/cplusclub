@@ -12,7 +12,7 @@ final class ImportIcafeComputers {
         $names=array_column($rows,'pc_name');
         if(count($names)!==count($rows)||count(array_unique($names))!==count($rows))throw new \RuntimeException('API вернул неоднозначный список ПК. Импорт отменён.');
         return DB::transaction(function()use($club,$rows){
-            $club=Club::lockForUpdate()->findOrFail($club->id);$created=0;$linked=0;
+            $club=Club::lockForUpdate()->findOrFail($club->id);$created=0;$linked=0;$used=[];
             $existing=Equipment::where('club_id',$club->id)->where('type','pc')->lockForUpdate()->get();
             $mac=fn($s)=>strtolower(preg_replace('/[^a-fA-F0-9]/','',(string)$s));
             foreach($rows as $r){
@@ -29,7 +29,8 @@ final class ImportIcafeComputers {
                         'mac'=>strlen($mac($r['pc_mac']??''))===12?implode(':',str_split($mac($r['pc_mac']),2)):null]);
                     $existing->push($target);$created++;
                 }elseif($target->icafe_pc_name===null){$linked++;}
-                $target->icafe_pc_name=$name;$target->save();
+                if(isset($used[$target->id]))throw new \RuntimeException('Несколько ПК API соответствуют одному устройству. Импорт отменён.');
+                $used[$target->id]=true;$target->icafe_pc_name=$name;$target->save();
             }
             app(ClubTemplate::class)->save($club,(float)$club->monitor_warning,(float)$club->monitor_critical,(int)$club->monitor_hold_seconds);
             return ['found'=>count($rows),'created'=>$created,'linked'=>$linked];

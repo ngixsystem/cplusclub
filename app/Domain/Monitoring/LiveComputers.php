@@ -32,6 +32,7 @@ final class LiveComputers {
         $connection=$this->connectivity($club);
         $equipment=Equipment::where('club_id',$club->id)->where('type','pc')->orderBy('name')->get();
         $latest=DB::table('telemetry_samples')->whereIn('equipment_id',$equipment->pluck('id'))
+            ->where('observed_at','>=',now()->subSeconds(180))->where('observed_at','<=',now()->addMinute())
             ->selectRaw('DISTINCT ON (equipment_id) equipment_id, cpu_temp, gpu_temp, observed_at, sensor_status')
             ->orderBy('equipment_id')->orderByDesc('observed_at')->orderByDesc('id')->get()->keyBy('equipment_id');
         $pcs=$equipment->map(function($e)use($connection,$latest,$club){
