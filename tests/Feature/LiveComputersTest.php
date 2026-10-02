@@ -28,6 +28,19 @@ class LiveComputersTest extends TestCase {
         foreach([[49,49,'normal'],[50,40,'warning'],[79,50,'warning'],[79.01,40,'critical'],[null,null,'unknown'],[40,null,'unknown'],[null,80,'critical'],[0,0,'normal']] as [$cpu,$gpu,$expected])
             $this->assertSame($expected,LiveComputers::severity($cpu,$gpu));
     }
+    public function test_online_names_ignore_casing_and_whitespace_without_matching_other_pcs():void {
+        $c=$this->club();
+        foreach(['PC040','pc041','PC042'] as $name){$e=Equipment::create(['club_id'=>$c->id,'name'=>$name,'type'=>'pc']);$e->icafe_pc_name=$name;$e->save();}
+        Http::fake(['*'=>Http::response(['code'=>200,'data'=>[
+            ['pc_name'=>' pc040 ','is_connected'=>1],['pc_name'=>'PC041','is_connected'=>1],
+            ['pc_name'=>'pc042','is_connected'=>0],['pc_name'=>'pc0400','is_connected'=>1],
+        ]])]);
+        $pcs=collect(app(LiveComputers::class)->snapshot($c)['pcs'])->keyBy('name');
+        $this->assertTrue($pcs['PC040']['online']);$this->assertTrue($pcs['pc041']['online']);
+        $this->assertFalse($pcs['PC042']['online']);
+        $this->assertNull($pcs['PC040']['cpu_temp']);$this->assertSame('unknown',$pcs['PC040']['severity']);
+        $this->assertSame('offline',$pcs['PC042']['severity']);
+    }
     public function test_live_endpoint_scopes_access_and_hides_old_or_offline_temperatures():void {
         $c=$this->club();$user=User::factory()->create(['role'=>'representative']);
         $url='/monitoring/clubs/'.$c->id;$this->getJson($url)->assertUnauthorized();$this->actingAs($user)->getJson($url)->assertForbidden();$user->clubs()->attach($c);

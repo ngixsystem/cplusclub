@@ -30,13 +30,15 @@ final class LiveComputers {
     }
     public function snapshot(Club $club):array {
         $connection=$this->connectivity($club);
+        // Inventory and connection endpoints can use different casing for the same PC.
+        $onlineNames=array_fill_keys(array_map(fn($name)=>mb_strtolower(trim($name)),$connection['online']),true);
         $equipment=Equipment::where('club_id',$club->id)->where('type','pc')->orderBy('name')->get();
         $latest=DB::table('telemetry_samples')->whereIn('equipment_id',$equipment->pluck('id'))
             ->where('observed_at','>=',now()->subSeconds(180))->where('observed_at','<=',now()->addMinute())
             ->selectRaw('DISTINCT ON (equipment_id) equipment_id, cpu_temp, gpu_temp, observed_at, sensor_status')
             ->orderBy('equipment_id')->orderByDesc('observed_at')->orderByDesc('id')->get()->keyBy('equipment_id');
-        $pcs=$equipment->map(function($e)use($connection,$latest,$club){
-            $online=$e->icafe_pc_name!==null&&!$connection['stale']?in_array($e->icafe_pc_name,$connection['online'],true):null;
+        $pcs=$equipment->map(function($e)use($connection,$onlineNames,$latest,$club){
+            $online=$e->icafe_pc_name!==null&&!$connection['stale']?isset($onlineNames[mb_strtolower(trim($e->icafe_pc_name))]):null;
             $sample=$latest->get($e->id);$when=$sample?CarbonImmutable::parse($sample->observed_at):null;
             $fresh=$when && $when->gte(now()->subSeconds(180)) && $when->lte(now()->addMinute());
             $status=$sample?json_decode($sample->sensor_status,true):[];
