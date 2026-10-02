@@ -1,5 +1,20 @@
 # Club PC monitoring
 
+## Deployment verification: 2026-10-02
+
+- Monitoring code through commit `79a12b3` deployed to the VPS after a database
+  and frontend backup; additive migration completed successfully.
+- SPOT Gaming: 139 PCs imported, existing manual equipment retained. A second
+  import created zero duplicates. At verification: 37 online, 102 offline.
+- Shared thresholds: warning 50, critical above 79, hold 0 seconds.
+- Readiness returned HTTP 200; anonymous club monitoring returned HTTP 401.
+- All four Playwright scenarios passed on this revision in isolated VPS Docker,
+  including thermal colors, polling, filtering and mobile layout. Earlier checks
+  on this revision passed 29 backend tests (200 assertions), TypeScript and build;
+  agent unit tests passed 4 tests. UI temperature fixtures are not real readings.
+- No physical-PC temperature readings yet: Windows agent installation, real WMI
+  verification and HTTPS or a secure tunnel remain required (see below).
+
 ## Sources and limits
 
 iCafeCloud `pcs` supplies inventory; `onlinePcList` supplies connection state.
