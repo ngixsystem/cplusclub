@@ -24,7 +24,7 @@ const section = computed(() => links.value.find(item => active(item[0]))?.[1] ||
  <div class="shell">
   <a class="skip-link" href="#main-content">Перейти к содержимому</a>
   <header class="topbar">
-   <Link href="/" class="brand">C<span>+</span>CLub<span class="brand-tag">PANEL</span></Link>
+   <Link href="/" class="brand">C<span>+</span>CLub</Link>
    <span class="topbar-caption">Управление клубами</span>
    <div class="topbar-account"><span class="avatar">{{page.props.auth.user.name.slice(0,1).toUpperCase()}}</span><span>{{page.props.auth.user.name}}<small>{{roles[page.props.auth.user.role] || page.props.auth.user.role}}</small></span></div>
    <button class="menu-toggle secondary" :aria-expanded="menuOpen" aria-controls="sidebar" @click="menuOpen=!menuOpen">{{menuOpen?'Закрыть':'Меню'}}</button>
@@ -35,7 +35,7 @@ const section = computed(() => links.value.find(item => active(item[0]))?.[1] ||
     <p v-if="group" class="nav-group">{{group}}</p>
     <Link :href="href" :class="{selected:active(href)}" :aria-current="active(href)?'page':undefined" @click="menuOpen=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="icon"/></svg>{{title}}</Link>
    </template></nav>
-   <div class="account"><small>Рабочее пространство C+CLub</small><Link href="/logout" method="post" as="button" class="secondary">Выйти из аккаунта</Link></div>
+   <div class="account"><Link href="/logout" method="post" as="button" class="secondary">Выйти</Link></div>
   </aside>
   <main id="main-content"><div class="breadcrumb"><Link href="/">Рабочее пространство</Link><span>/</span><span>{{section}}</span></div><div v-if="page.props.flash.success" role="status" class="success">{{page.props.flash.success}}</div><slot/></main>
  </div>
