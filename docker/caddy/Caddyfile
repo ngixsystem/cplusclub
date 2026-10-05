@@ -1,0 +1,11 @@
+{
+    acme_ca https://acme-v02.api.letsencrypt.org/directory
+}
+cplusclub.tech {
+    encode zstd gzip
+    reverse_proxy landing:80
+}
+admin.cplusclub.tech {
+    encode zstd gzip
+    reverse_proxy nginx:80
+}

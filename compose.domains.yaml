@@ -1,0 +1,26 @@
+# Use with compose.yaml on the VDS; installed as compose.override.yaml.
+services:
+  landing:
+    ports: !reset []
+  nginx:
+    ports: !override
+      - "127.0.0.1:8080:80"
+    volumes:
+      - ./docker/nginx/https-upstream.conf:/etc/nginx/conf.d/default.conf:ro
+  caddy:
+    image: caddy:2-alpine@sha256:d44355d3c2149dc580ce2cac735955d1c08d3d00882c30489c241aa51a5c10d9
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    restart: unless-stopped
+    depends_on:
+      landing: {condition: service_healthy}
+      nginx: {condition: service_healthy}
+volumes:
+  caddy-data:
+  caddy-config:
