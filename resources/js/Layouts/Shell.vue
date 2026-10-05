@@ -31,7 +31,6 @@ const section = computed(() => links.value.find(item => active(item[0]))?.[1] ||
    <ThemeToggle />
   </header>
   <aside id="sidebar" :class="{'is-open':menuOpen}">
-   <div class="workspace-label"><span class="workspace-icon">C+</span><div><strong>C+CLub</strong><small>Сервисная платформа</small></div></div>
    <nav aria-label="Основная навигация"><template v-for="[href,title,icon,group] in links" :key="href">
     <p v-if="group" class="nav-group">{{group}}</p>
     <Link :href="href" :class="{selected:active(href)}" :aria-current="active(href)?'page':undefined" @click="menuOpen=false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path :d="icon"/></svg>{{title}}</Link>
