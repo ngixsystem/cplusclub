@@ -15,6 +15,12 @@ final class TransitionTicket
             Gate::forUser($actor)->authorize('update', $ticket);
             abort_if($ticket->version !== $expectedVersion, 409, 'Заявка изменена другим пользователем. Обновите страницу.');
             $previous = TicketStatus::from($ticket->status);
+            if ($next === TicketStatus::Approval || $previous === TicketStatus::Approval) {
+                throw ValidationException::withMessages(['status' => 'Используйте предложение работ и решение владельца клуба.']);
+            }
+            if ($next === TicketStatus::Closed && DB::table('ticket_proposals')->where('ticket_id', $id)->exists()) {
+                throw ValidationException::withMessages(['status' => 'Результат согласованных работ должен подтвердить владелец клуба.']);
+            }
             if (! $previous->canMoveTo($next)) {
                 throw ValidationException::withMessages(['status' => 'Этот переход статуса не разрешён.']);
             }

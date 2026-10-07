@@ -61,6 +61,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [ServiceController::class, 'index']);
     Route::get('/tickets/{ticket}', [ServiceController::class, 'show'])->whereNumber('ticket');
     Route::post('/tickets/{ticket}/transition', [ServiceController::class, 'transition']);
+    Route::post('/tickets/{ticket}/proposal', [\App\Http\Controllers\TicketApprovalController::class, 'propose']);
+    Route::post('/tickets/{ticket}/decision', [\App\Http\Controllers\TicketApprovalController::class, 'decide']);
+    Route::post('/tickets/{ticket}/completion', [\App\Http\Controllers\TicketApprovalController::class, 'complete']);
     Route::post('/tickets/{ticket}/assign', [ServiceController::class, 'assign']);
     Route::post('/clubs', [ServiceController::class, 'club']);
     Route::post('/equipment', [ServiceController::class, 'equipment']);

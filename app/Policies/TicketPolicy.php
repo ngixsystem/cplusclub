@@ -17,4 +17,10 @@ class TicketPolicy
     {
         return $this->view($user, $ticket) && $user->role !== 'representative';
     }
+
+    public function decide(User $user, Ticket $ticket): bool
+    {
+        return $user->active && $user->role === 'representative'
+            && ClubAccess::allows($user, $ticket->club_id);
+    }
 }

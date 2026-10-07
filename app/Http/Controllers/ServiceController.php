@@ -137,8 +137,14 @@ class ServiceController extends Controller
             'attachments' => \App\Models\Attachment::where('ticket_id',$ticket->id)->get(),
             'workLogs' => DB::table('work_logs')->where('ticket_id',$ticket->id)->get(),
             'canEdit' => Gate::allows('update', $ticket),
+            'canDecide' => Gate::allows('decide', $ticket),
+            'proposals' => DB::table('ticket_proposals as p')->join('users as a', 'a.id', '=', 'p.author_id')
+                ->leftJoin('users as d', 'd.id', '=', 'p.decided_by')->where('p.ticket_id', $ticket->id)
+                ->orderByDesc('p.id')->get(['p.*', 'a.name as author_name', 'd.name as decision_name']),
             'transitions' => array_values(array_map(fn ($s) => $s->value,
-                array_filter(TicketStatus::cases(), fn ($s) => TicketStatus::from($ticket->status)->canMoveTo($s)))),
+                array_filter(TicketStatus::cases(), fn ($s) => $s !== TicketStatus::Approval && $ticket->status !== 'approval'
+                    && !($s === TicketStatus::Closed && DB::table('ticket_proposals')->where('ticket_id', $ticket->id)->exists())
+                    && TicketStatus::from($ticket->status)->canMoveTo($s)))),
         ]);
     }
 
