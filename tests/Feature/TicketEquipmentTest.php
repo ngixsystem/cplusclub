@@ -15,11 +15,14 @@ class TicketEquipmentTest extends TestCase
         $u=User::factory()->create(['role'=>'specialist']);
         $a=Club::create(['name'=>'A','address'=>'Test']);$b=Club::create(['name'=>'B','address'=>'Test']);$u->clubs()->attach($a);
         $pc=Equipment::create(['club_id'=>$a->id,'name'=>'PC127','type'=>'pc']);
-        Equipment::create(['club_id'=>$a->id,'name'=>'Server','type'=>'server']);
+        $server=Equipment::create(['club_id'=>$a->id,'name'=>'Server','type'=>'server']);
+        Equipment::create(['club_id'=>$a->id,'name'=>'Router','type'=>'router']);
+        $foreignServer=Equipment::create(['club_id'=>$b->id,'name'=>'Foreign server','type'=>'server']);
         $foreign=Equipment::create(['club_id'=>$b->id,'name'=>'PC127','type'=>'pc']);
-        $this->actingAs($u)->get('/tickets')->assertInertia(fn(Assert $p)=>$p->component('Workspace',false)->has('ticketComputers',1)->where('ticketComputers.0.id',$pc->id));
+        $this->actingAs($u)->get('/tickets')->assertInertia(fn(Assert $p)=>$p->component('Workspace',false)->has('ticketComputers',2)->where('ticketComputers.0.id',$pc->id)->where('ticketComputers.1.id',$server->id)->where('ticketComputers.1.type','server'));
         $payload=['club_id'=>$a->id,'equipment_id'=>$foreign->id,'category'=>'Test','description'=>'Broken','priority'=>'normal'];
         $this->postJson('/tickets',$payload)->assertUnprocessable();
+        $this->postJson('/tickets',[...$payload,'equipment_id'=>$foreignServer->id])->assertUnprocessable();
         $this->postJson('/tickets',[...$payload,'equipment_id'=>0])->assertUnprocessable();
         $this->postJson('/tickets',[...$payload,'club_id'=>$b->id])->assertForbidden();
         $this->post('/tickets',[...$payload,'equipment_id'=>$pc->id])->assertRedirect();
@@ -27,6 +30,10 @@ class TicketEquipmentTest extends TestCase
         $this->get('/equipment/'.$pc->id)->assertInertia(fn(Assert $p)=>$p->has('tickets.data',1)->where('tickets.data.0.id',$t->id));
         $this->get('/tickets/'.$t->id)->assertInertia(fn(Assert $p)=>$p->where('ticket.equipment.id',$pc->id));
         $this->get('/equipment/'.$foreign->id)->assertForbidden();
+        $this->post('/tickets',[...$payload,'equipment_id'=>$server->id])->assertRedirect();
+        $serverTicket=Ticket::where('equipment_id',$server->id)->sole();
+        $this->get('/equipment/'.$server->id)->assertInertia(fn(Assert $p)=>$p->has('tickets.data',1)->where('tickets.data.0.id',$serverTicket->id));
+        $this->get('/tickets/'.$serverTicket->id)->assertInertia(fn(Assert $p)=>$p->where('ticket.equipment.id',$server->id));
     }
 
     public function test_equipment_history_retains_closed_tickets_across_pages_and_renames(): void

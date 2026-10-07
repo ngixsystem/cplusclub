@@ -52,7 +52,7 @@ class ServiceController extends Controller
             'rows' => $query->orderByDesc('id')->paginate(20)->withQueryString(),
             'clubs' => ClubAccess::filter(Club::query(), $user, 'id')->orderBy('name')->get(['id', 'name']),
             'ticketComputers' => $section === 'tickets' ? ClubAccess::filter(Equipment::query(), $user)
-                ->where('type', 'pc')->orderBy('name')->get(['id','club_id','name','workstation_number','zone']) : [],
+                ->whereIn('type', ['pc', 'server'])->orderBy('name')->get(['id','club_id','name','type','workstation_number','zone']) : [],
         ]);
     }
 
