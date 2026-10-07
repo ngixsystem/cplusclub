@@ -28,10 +28,10 @@ class ReportAccessTest extends TestCase
             $user = User::factory()->create(['role' => $role]);
             $user->clubs()->attach($club);
             $global = in_array($role, ['owner', 'lead'], true);
-            $this->actingAs($user)->get('/reports')->assertOk()->assertInertia(fn (Assert $page) =>
+            $this->actingAs($user)->get('/reports?view=work')->assertOk()->assertInertia(fn (Assert $page) =>
                 $page->component('Reports', false)->has('rows.data', $global ? 2 : 1)
                     ->where('totals.0.minutes', fn ($minutes) => (int) $minutes === ($global ? 60 : 30)));
-            $csv = $this->get('/reports/export')->assertOk()->streamedContent();
+            $csv = $this->get('/reports/export?view=work')->assertOk()->streamedContent();
             $this->assertStringContainsString('Allowed club', $csv);
             if ($global) $this->assertStringContainsString('Other club', $csv);
             else $this->assertStringNotContainsString('Other club', $csv);

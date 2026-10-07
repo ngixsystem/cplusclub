@@ -38,6 +38,20 @@ test('club owner approves a quote and accepts completed work',async({page,browse
  await client.screenshot({path:'test-results/approval-mobile.png',fullPage:true});
  await client.getByRole('button',{name:'Принять результат и закрыть',exact:true}).click();
  await expect(client.getByText('Решена → Закрыта',{exact:true})).toBeVisible();
+ await client.goto('/reports');
+ await expect(client.locator(`.report-table a[href="${new URL(url).pathname}"]`)).toBeVisible();
+ await expect(client.getByText('Расходы не внесены',{exact:true}).first()).toBeVisible();
+ await client.getByRole('combobox',{name:'Клуб отчёта',exact:true}).selectOption({label:'E2E approval'});
+ await client.getByRole('button',{name:'Применить фильтры',exact:true}).click();
+ await expect(client).toHaveURL(/club_id=/);
+ const csvUrl=await client.getByRole('link',{name:'Скачать CSV',exact:true}).getAttribute('href');
+ expect(csvUrl).toContain('club_id=');
+ const csv=await client.request.get(csvUrl!);expect(csv.ok()).toBeTruthy();expect(await csv.text()).toContain('Approval E2E');
+ expect(await client.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+ await client.screenshot({path:'test-results/reports-mobile.png',fullPage:true});
+ await client.setViewportSize({width:1440,height:1000});await client.screenshot({path:'test-results/reports-desktop.png',fullPage:true});
+ await client.getByRole('button',{name:'Трудозатраты и расходы',exact:true}).click();
+ await expect(client.getByText('По выбранным условиям записей нет.',{exact:true})).toBeVisible();
  await context.close();
  // Two logins in this scenario share the real 5/minute IP limit with the other specs.
  // Keep the production limiter enabled and let its window expire before continuing.
