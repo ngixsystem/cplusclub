@@ -51,6 +51,8 @@ class ServiceController extends Controller
             'section' => $section, 'stats' => $stats, 'search' => $search,
             'rows' => $query->orderByDesc('id')->paginate(20)->withQueryString(),
             'clubs' => ClubAccess::filter(Club::query(), $user, 'id')->orderBy('name')->get(['id', 'name']),
+            'ticketComputers' => $section === 'tickets' ? ClubAccess::filter(Equipment::query(), $user)
+                ->where('type', 'pc')->orderBy('name')->get(['id','club_id','name','workstation_number','zone']) : [],
         ]);
     }
 
@@ -98,7 +100,7 @@ class ServiceController extends Controller
     public function ticket(Request $request)
     {
         $data = $request->validate([
-            'club_id' => 'required|integer|exists:clubs,id', 'equipment_id' => 'nullable|integer',
+            'club_id' => 'required|integer|exists:clubs,id', 'equipment_id' => 'nullable|integer|min:1',
             'category' => 'required|string|max:80', 'description' => 'required|string|max:10000',
             'priority' => ['required', Rule::in(['low','normal','high','critical'])],
         ]);
