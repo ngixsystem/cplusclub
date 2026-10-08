@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import ThemeToggle from '../Components/ThemeToggle.vue';
+import BrandLogo from '../Components/BrandLogo.vue';
 const page = usePage<{ auth: { user: { name: string; role: string; avatar_url?:string|null } }; flash: { success?: string } }>();
 const menuOpen = ref(false);
 const roles: Record<string,string> = {owner:'Владелец',lead:'Руководитель',specialist:'Специалист',representative:'Представитель клуба'};
@@ -25,7 +26,7 @@ const section = computed(() => links.value.find(item => active(item[0]))?.[1] ||
  <div class="shell">
   <a class="skip-link" href="#main-content">Перейти к содержимому</a>
   <header class="topbar">
-   <Link href="/" class="brand">C<span>+</span>CLub</Link>
+   <Link href="/" class="brand"><BrandLogo /></Link>
    <span class="topbar-caption">Управление клубами</span>
    <div class="topbar-account"><Link href="/profile" class="avatar" aria-label="Настройки профиля"><img v-if="page.props.auth.user.avatar_url" :src="page.props.auth.user.avatar_url" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/><span v-else>{{page.props.auth.user.name.slice(0,1).toUpperCase()}}</span></Link><span>{{page.props.auth.user.name}}<small>{{roles[page.props.auth.user.role] || page.props.auth.user.role}}</small></span></div>
    <button class="menu-toggle secondary" :aria-expanded="menuOpen" aria-controls="sidebar" @click="menuOpen=!menuOpen">{{menuOpen?'Закрыть':'Меню'}}</button>
