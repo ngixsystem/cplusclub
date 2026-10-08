@@ -1,4 +1,7 @@
 <script setup lang="ts">
-import {useForm} from '@inertiajs/vue3';const p=defineProps<{ticketId:number}>();const form=useForm({minutes:30,cost_minor:0,currency:'UZS',actions:'',consumables:''});
+import {ref} from 'vue';
+import {useForm} from '@inertiajs/vue3';const p=defineProps<{ticketId:number}>();const form=useForm({minutes:30,cost_minor:0,currency:'USD',actions:'',consumables:''});
+const dollars=ref('0.00');
+function submit(){form.cost_minor=Math.round(Number(dollars.value)*100);form.post('/tickets/'+p.ticketId+'/work');}
 </script>
-<template><form class="panel form-grid" @submit.prevent="form.post('/tickets/'+ticketId+'/work')"><h2>Трудозатраты и расходы</h2><label>Минуты<input v-model="form.minutes" type="number" min="1" max="1440" required/></label><label>Стоимость в минимальных единицах (100 = 1 UZS)<input v-model="form.cost_minor" type="number" min="0" required/></label><label>Валюта<input v-model="form.currency" pattern="[A-Z]{3}" required/></label><label>Выполненные действия<textarea v-model="form.actions" required/></label><label>Расходники<textarea v-model="form.consumables"/></label><button :disabled="form.processing">Добавить запись</button><p v-for="e in form.errors" :key="e" class="error">{{e}}</p></form></template>
+<template><form class="panel form-grid" @submit.prevent="submit()"><h2>Трудозатраты и расходы</h2><label>Минуты<input v-model="form.minutes" type="number" min="1" max="1440" required/></label><label>Стоимость, USD<input v-model="dollars" type="number" min="0" max="1000000000" step="0.01" inputmode="decimal" required/></label><label>Валюта<input v-model="form.currency" readonly/></label><label>Выполненные действия<textarea v-model="form.actions" required/></label><label>Расходники<textarea v-model="form.consumables"/></label><button :disabled="form.processing">Добавить запись</button><p v-for="e in form.errors" :key="e" class="error">{{e}}</p></form></template>

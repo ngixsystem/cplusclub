@@ -12,6 +12,13 @@ test('club → PC → ticket → assignment → work → close → history',asyn
   await page.getByRole('combobox',{name:'Клуб',exact:true}).selectOption({label:'E2E dashboard'});await expect(page.getByRole('combobox',{name:'Оборудование клуба',exact:true})).toHaveValue('');await expect(page.getByRole('combobox',{name:'Оборудование клуба',exact:true}).locator('option')).toHaveCount(1);
   await page.getByRole('combobox',{name:'Клуб',exact:true}).selectOption({label:name});await page.getByRole('combobox',{name:'Оборудование клуба',exact:true}).selectOption({label:'PC-01 · место 01'});
   await page.getByLabel('Описание',{exact:true}).fill('E2E: PC does not boot');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await expect(page.getByRole('heading',{name:/Заявка #/})).toBeVisible();
+  await expect(page.getByLabel('Валюта',{exact:true})).toHaveValue('USD');
+  await page.getByLabel('Стоимость, USD',{exact:true}).fill('12.50');
+  await page.getByLabel('Выполненные действия',{exact:true}).fill('USD expense test');
+  const workRequest=page.waitForRequest(r=>r.method()==='POST' && r.url().endsWith('/work'));
+  await page.getByRole('button',{name:'Добавить запись',exact:true}).click();
+  expect((await workRequest).postDataJSON()).toMatchObject({currency:'USD',cost_minor:1250});
+  await expect(page.getByText('Время и стоимость записаны.',{exact:true})).toBeVisible();
   await page.locator('input[type="file"]').setInputFiles({name:'ticket-photo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j4XcAAAAASUVORK5CYII=','base64')});
   await page.getByRole('button',{name:'Прикрепить',exact:true}).click();
   const photo=page.getByRole('img',{name:'ticket-photo.png',exact:true});
@@ -25,5 +32,12 @@ test('club → PC → ticket → assignment → work → close → history',asyn
   await page.setViewportSize({width:390,height:844});await expect(page.getByRole('heading',{name:'История',exact:true})).toBeVisible();
   await page.goto('/equipment');await page.getByRole('button',{name:'+ Добавить'}).click();await page.getByRole('combobox',{name:'Клуб',exact:true}).selectOption({label:name});await page.getByLabel('Название',{exact:true}).fill('Boot server');await page.getByRole('combobox',{name:'Тип',exact:true}).selectOption('server');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await expect(page.getByText('Оборудование добавлено.',{exact:true})).toBeVisible();
   await page.goto('/tickets');await page.getByRole('button',{name:'+ Добавить'}).click();await page.getByRole('combobox',{name:'Клуб',exact:true}).selectOption({label:name});await page.getByRole('combobox',{name:'Оборудование клуба',exact:true}).selectOption({label:'Boot server · Сервер'});await page.getByLabel('Описание',{exact:true}).fill('E2E: server issue');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await expect(page.getByRole('heading',{name:/Заявка #/})).toBeVisible();
+  await page.goto('/equipment');
+  await expect(page.locator('.equipment-card').first()).toBeVisible();
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+  await page.screenshot({path:'test-results/equipment-mobile.png',fullPage:true});
+  await page.setViewportSize({width:1440,height:1000});
+  await page.screenshot({path:'test-results/equipment-desktop.png',fullPage:true});
+  await page.goBack();
   const serverTicketUrl=page.url();await page.getByRole('link',{name:'Boot server',exact:true}).click();await expect(page.locator(`a[href="${new URL(serverTicketUrl).pathname}"]`)).toBeVisible();
 });
