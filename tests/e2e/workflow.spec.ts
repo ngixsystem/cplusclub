@@ -40,4 +40,12 @@ test('club → PC → ticket → assignment → work → close → history',asyn
   await page.screenshot({path:'test-results/equipment-desktop.png',fullPage:true});
   await page.goBack();
   const serverTicketUrl=page.url();await page.getByRole('link',{name:'Boot server',exact:true}).click();await expect(page.locator(`a[href="${new URL(serverTicketUrl).pathname}"]`)).toBeVisible();
-});
+  await page.goto('/tickets');
+  await expect(page.locator('.ticket-card').first()).toContainText('Boot server');
+  await expect(page.locator('.ticket-card').first()).toContainText('Не назначен');
+  await page.screenshot({path:'test-results/tickets-desktop.png',fullPage:true});
+  await page.setViewportSize({width:390,height:844});
+  await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+  await page.screenshot({path:'test-results/tickets-mobile.png',fullPage:true});
+  await page.locator('.ticket-card').first().getByRole('link',{name:/Открыть заявку/}).click();
+  await expect(page.getByRole('heading',{name:/Заявка #/})).toBeVisible();});

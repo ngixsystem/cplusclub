@@ -45,7 +45,7 @@ class ServiceController extends Controller
         $query = match ($section) {
             'clubs' => $clubs->when($search, fn ($q) => $q->where('name', 'ilike', '%'.$search.'%')),
             'equipment' => $equipment->with('club')->when($search, fn ($q) => $q->where('name', 'ilike', '%'.$search.'%')),
-            default => $tickets->with(['club', 'assignee'])->when($search, fn ($q) => $q->where('description', 'ilike', '%'.$search.'%')),
+            default => $tickets->with(['club', 'assignee', 'equipment'])->when($search, fn ($q) => $q->where('description', 'ilike', '%'.$search.'%')),
         };
         return Inertia::render('Workspace', [
             'section' => $section, 'stats' => $stats, 'search' => $search,

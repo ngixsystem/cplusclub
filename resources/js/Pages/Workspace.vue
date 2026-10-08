@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import Shell from '../Layouts/Shell.vue';
 import EquipmentCards from '../Components/EquipmentCards.vue';
+import TicketCards from '../Components/TicketCards.vue';
 type Row = { id: number; name?: string; address?: string; description?: string; status: string; priority?: string; workstation_number?: string; next_inspection_date?: string; club?: { name: string }; assignee?: { name: string } };
 const props = defineProps<{ ticketComputers:{id:number;club_id:number;name:string;type:string;workstation_number:string|null;zone:string|null}[]; section: string; search: string; stats: Record<string, number>; clubs: {id:number;name:string}[]; rows: {data:Row[];total:number;prev_page_url:string|null;next_page_url:string|null} }>();
 const page = usePage<{auth:{user:{role:string}}}>();
@@ -31,6 +32,7 @@ function save() { form.post('/'+props.section, {onSuccess:()=>{adding.value=fals
       <div class="toolbar"><h2>{{ section==='overview'?'Последние заявки':section==='equipment'?'Реестр оборудования':section==='clubs'?'Все клубы':'Все заявки' }} <small>{{ rows.total }}</small></h2><form @submit.prevent="router.get(section==='overview'?'/':'/'+section,{search:search},{preserveState:true})"><input v-model="search" placeholder="Поиск" aria-label="Поиск" /><button class="secondary">Найти</button></form></div>
       <div v-if="!rows.data.length" class="empty"><h3>Пока нет записей</h3><p>Добавьте клуб, затем оборудование и первую заявку. Демонстрационные данные не загружены.</p></div>
       <EquipmentCards v-else-if="section==='equipment'" :items="rows.data" />
+      <TicketCards v-else-if="section==='tickets'" :items="rows.data" />
       <div v-else class="table-scroll"><table><thead><tr><th>№ / Название</th><th>{{ section==='clubs'?'Адрес':'Клуб' }}</th><th>Статус</th><th>{{ section==='equipment'?'Следующий осмотр':'Детали' }}</th></tr></thead><tbody><tr v-for="row in rows.data" :key="row.id"><td><Link v-if="['tickets','overview'].includes(section)" :href="'/tickets/'+row.id">#{{ row.id }} · {{ row.description }}</Link><Link v-else :href="'/'+section+'/'+row.id">{{ row.name }}</Link></td><td>{{ row.club?.name || row.address || '—' }}</td><td><span class="badge" :data-status="row.status">{{ status[row.status] || row.status }}</span></td><td>{{ row.next_inspection_date || row.assignee?.name || (row.priority==='critical'?'Критическая':'—') }}</td></tr></tbody></table></div>
       <div class="pagination"><Link v-if="rows.prev_page_url" :href="rows.prev_page_url">← Назад</Link><Link v-if="rows.next_page_url" :href="rows.next_page_url">Далее →</Link></div>
     </section>
