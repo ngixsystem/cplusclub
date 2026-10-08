@@ -14,6 +14,11 @@ Route::get('/health/ready', function () {
 Route::get('/login', fn () => Inertia::render('Login'))->name('login');
 Route::post('/login', [ServiceController::class, 'login'])->middleware('throttle:5,1');
 Route::middleware('auth')->group(function () {
+    Route::get('/profile', [\App\Http\Controllers\ProfileController::class,'index']);
+    Route::get('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'image']);
+    Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'avatar'])->middleware('throttle:10,1');
+    Route::delete('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'removeAvatar']);
+    Route::post('/profile/password', [\App\Http\Controllers\ProfileController::class,'password'])->middleware('throttle:5,1');
     Route::get('/clubs/{club}/dashboard', [\App\Http\Controllers\IcafeController::class, 'data'])->middleware('throttle:60,1');
     Route::get('/clubs/{club}/dashboard/shifts/{shift}', [\App\Http\Controllers\IcafeController::class, 'shift'])->where('shift', '-?[0-9]+')->middleware('throttle:60,1');
     Route::post('/clubs/{club}/icafe', [\App\Http\Controllers\IcafeController::class, 'save']);

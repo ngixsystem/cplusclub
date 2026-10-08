@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import ThemeToggle from '../Components/ThemeToggle.vue';
-const page = usePage<{ auth: { user: { name: string; role: string } }; flash: { success?: string } }>();
+const page = usePage<{ auth: { user: { name: string; role: string; avatar_url?:string|null } }; flash: { success?: string } }>();
 const menuOpen = ref(false);
 const roles: Record<string,string> = {owner:'Владелец',lead:'Руководитель',specialist:'Специалист',representative:'Представитель клуба'};
 const links = computed(() => [
@@ -13,6 +13,7 @@ const links = computed(() => [
  ['/visits','Осмотры и выезды','M4 5h16v16H4Z M8 2v6m8-6v6M4 11h16',''],
  ['/monitoring','Мониторинг','M2 12h5l3-8 4 16 3-8h5','Контроль и аналитика'],
  ['/updates','Обновления','M20 10a8 8 0 0 0-14-5L3 8m0-5v5h5m-4 6a8 8 0 0 0 14 5l3-3m0 5v-5h-5',''],
+ ['/profile','Настройки профиля','M12 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8M4 21v-3a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v3',''],
  ['/reports','Отчёты','M4 3v18h17M8 16v-5m5 5V6m5 10V9',''],
  ...(page.props.auth.user.role==='owner' ? [['/users','Пользователи и доступ','M16 21v-3a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v3M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8m8 0a4 4 0 0 1 0 8','Управление']] : []),
  ...(['owner','lead'].includes(page.props.auth.user.role) ? [['/integrations','Интеграции','M8 3h8v5h5v8h-5v5H8v-5H3V8h5Z','']] : []),
@@ -26,7 +27,7 @@ const section = computed(() => links.value.find(item => active(item[0]))?.[1] ||
   <header class="topbar">
    <Link href="/" class="brand">C<span>+</span>CLub</Link>
    <span class="topbar-caption">Управление клубами</span>
-   <div class="topbar-account"><span class="avatar">{{page.props.auth.user.name.slice(0,1).toUpperCase()}}</span><span>{{page.props.auth.user.name}}<small>{{roles[page.props.auth.user.role] || page.props.auth.user.role}}</small></span></div>
+   <div class="topbar-account"><Link href="/profile" class="avatar" aria-label="Настройки профиля"><img v-if="page.props.auth.user.avatar_url" :src="page.props.auth.user.avatar_url" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%"/><span v-else>{{page.props.auth.user.name.slice(0,1).toUpperCase()}}</span></Link><span>{{page.props.auth.user.name}}<small>{{roles[page.props.auth.user.role] || page.props.auth.user.role}}</small></span></div>
    <button class="menu-toggle secondary" :aria-expanded="menuOpen" aria-controls="sidebar" @click="menuOpen=!menuOpen">{{menuOpen?'Закрыть':'Меню'}}</button>
    <ThemeToggle />
   </header>
