@@ -14,6 +14,8 @@ Route::get('/health/ready', function () {
 Route::get('/login', fn () => Inertia::render('Login'))->name('login');
 Route::post('/login', [ServiceController::class, 'login'])->middleware('throttle:5,1');
 Route::middleware('auth')->group(function () {
+    Route::get('/knowledge', [\App\Http\Controllers\KnowledgeController::class, 'index'])->name('knowledge.index');
+    Route::get('/knowledge/{article}', [\App\Http\Controllers\KnowledgeController::class, 'show'])->where('article', '[a-z0-9-]+')->name('knowledge.show');
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class,'index']);
     Route::get('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'image']);
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'avatar'])->middleware('throttle:10,1');
