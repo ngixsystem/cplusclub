@@ -10,6 +10,32 @@ ROOT = Path('/work')
 DIR = ROOT / 'resources/knowledge'
 audit = json.loads((DIR / 'ccboot-audit.json').read_text())
 guides = json.loads((DIR / 'guides.json').read_text())
+guides += [dict(g, updated_at='2026-10-12') for g in json.loads((DIR / 'handbook.json').read_text())]
+reading_order = ['first-start','server-planning','hardware-baseline','x520-compatibility','network-plan','disk-layout','external-dhcp','uefi-readiness','create-image','driver-rollout','client-card','server-controls','settings-baseline','cache-tuning','super-client','windows-maintenance','restore-image','backup-rehearsal','hybrid-pilot','games-update','gamefix-diagnostics','faceit','applications','dhcp-pxe','tftp-timeout','windows-logo','bsod-triage','performance','writeback','daily-operations','support-package','license','ccproxy']
+assert set(reading_order) == {g['id'] for g in guides}, 'Update the handbook reading order'
+guides.sort(key=lambda g: reading_order.index(g['id']))
+# Explicit editorial matches only. A citation alone does not mean a guide covers its topic.
+local_guides = {
+ 'quick-start':'first-start','preparation':'first-start',
+ 'check-disks-health':'hardware-baseline','client-requirements':'hardware-baseline',
+ 'create-boot-image':'create-image','create-boot-image-for-client':'create-image','add-boot-image':'create-image',
+ 'file-menu':'server-controls','client-properties':'client-card','edit-multiple-pcs':'client-card',
+ 'super-client':'super-client','restore-point-management':'restore-image',
+ 'boot-settings':'settings-baseline','enable-client-stats':'settings-baseline','run-batch-command-at-client':'settings-baseline',
+ 'configure-dhcp':'dhcp-pxe','dhcp-settings':'dhcp-pxe','scan-dhcp':'dhcp-pxe',
+ 'tftp-open-timeout-error':'tftp-timeout','ccboot-hybrid-setup':'hybrid-pilot',
+ 'client-stops-booting-at-the-windows-logo':'windows-logo',
+ 'client-bsod-solutions':'bsod-triage','server-bsod-solutions':'bsod-triage',
+ 'ccboot-read-write-performance':'performance','low-download-speed-and-high-ping-issues':'performance',
+ 'write-back-disk-optimization':'writeback','client-local-writeback-cache':'writeback',
+ 'install-faceit':'faceit','faceit-tpm-issue-on-amd':'faceit',
+ 'renew-your-license':'license','check-license-expiration-date':'license',
+ 'manual-registration-process-for-ccproxy':'ccproxy','ccbootclient-logs':'support-package',
+}
+for guide in guides:
+ for slug in guide.get('covers',[]):
+  assert slug not in local_guides, f'Duplicate editorial match: {slug}'
+  local_guides[slug]=guide['id']
 definitions = [
  ('System requirements','requirements','Требования и оборудование','Подбор сервера, накопителей, сетевого оборудования и совместимость клиентских ПК.'),
  ('Installation','installation','Установка и запуск','Первичная настройка сервера, сети и загрузки клиентов CCBoot.'),
@@ -34,6 +60,7 @@ category_map={en:ident for en,ident,title,description in definitions}
 categories=[dict(id=ident,title=title,description=description) for en,ident,title,description in definitions]
 cat_by_id={c['id']:c for c in categories}
 source_by_slug={unquote(a['url'].split('/wikis-')[-1].removesuffix('.htm')):a for a in audit['articles']}
+assert all(slug in source_by_slug for slug in local_guides), 'Unknown editorial source mapping'
 synonyms={
  'image':'образ образы', 'nic':'сетевая карта адаптер драйвер', 'driver':'драйвер',
  'boot':'загрузка запуск', 'disk':'диск накопитель', 'writeback':'write back запись',
@@ -62,8 +89,8 @@ for guide in guides:
   assert source, f'Missing source: {slug}'
   assert source['status']==200 and not source.get('soft_error'), f'Unreadable guide source: {slug}'
   sources.append(dict(title=source['title'],url=source['url']))
- body=' '.join(' '.join(s.get('paragraphs',[])+s.get('steps',[])+[s.get('note','')]) for s in guide['sections'])
- articles.append(dict(guide,kind='guide',sources=sources,search=body+' '+search_terms(guide['title'],guide['category']),status='ok',updated_at=audit['checked_at'],minutes=max(2,math.ceil(len(body.split())/160))))
+ body=' '.join(' '.join(s.get('paragraphs',[])+s.get('steps',[])+[s.get('note','')]+[' '.join(r.values()) for r in s.get('diagnostics',[])]+[' '.join(r.values()) for r in s.get('commands',[])]) for s in guide['sections'])
+ articles.append(dict(guide,kind='guide',sources=sources,search=body+' '+search_terms(guide['title'],guide['category']),status='ok',updated_at=guide.get('updated_at',audit['checked_at']),minutes=max(2,math.ceil(len(body.split())/160))))
 
 for source in audit['articles']:
  if source.get('is_category'):continue
@@ -75,7 +102,7 @@ for source in audit['articles']:
  status='broken' if source['status'] in (404,410) else 'ok' if 200<=source['status']<300 and not source.get('soft_error') else 'unverified'
  articles.append(dict(id=source['id'],title=title,original_title=source['title'],kind='source',category=category,
   summary=cat_by_id[category]['description'],tags=[],search=search_terms(source['title'],category),
-  updated_at=audit['checked_at'],source_date=source.get('source_date'),status=status,url=source['url']))
+  updated_at=audit['checked_at'],source_date=source.get('source_date'),status=status,url=source['url'],local_guide_id=local_guides.get(unquote(source['url'].split('/wikis-')[-1].removesuffix('.htm')))))
 for category in categories:category['count']=sum(a['category']==category['id'] for a in articles)
 categories=[c for c in categories if c['count']]
 assert len({a['id'] for a in articles})==len(articles)
