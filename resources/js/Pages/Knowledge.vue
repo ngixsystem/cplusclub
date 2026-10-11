@@ -5,7 +5,7 @@ import Shell from '../Layouts/Shell.vue';
 import { type KnowledgeItem, type KnowledgeCategory, useKnowledgeNotes, normalizeSearch } from '../Components/knowledge';
 import '../../css/knowledge.css';
 const props = defineProps<{ articles: KnowledgeItem[]; categories: KnowledgeCategory[]; audit: { checked_at: string; pages: number; links: number; broken: number; unverified: number; guides: number } }>();
-const filters = reactive(unref(useRemember({ q: '', category: '', kind: '', saved: false }, 'knowledge-filters')));
+const filters = reactive(unref(useRemember({ q: '', category: '', kind: 'guide', saved: false }, 'knowledge-handbook-filters')));
 const limit = ref(12);
 const { saved, toggleSaved, storageAvailable } = useKnowledgeNotes();
 const tokens = computed(() => normalizeSearch(filters.q).split(' ').filter(Boolean));
@@ -16,12 +16,13 @@ const results = computed(() => indexed.value.filter(({ article: a, text }) =>
 watch(filters, () => { limit.value = 12; }, { deep: true });
 const reset = () => { filters.q = ''; filters.category = ''; filters.kind = ''; filters.saved = false; };
 const categoryNames = computed(() => Object.fromEntries(props.categories.map(c => [c.id, c.title])));
+const categoryCount = (id: string) => props.articles.filter(a => (!id || a.category===id) && (!filters.kind || a.kind===filters.kind)).length;
 const date = (value: string) => new Date(value + 'T12:00:00').toLocaleDateString('ru-RU');
 </script>
 <template>
  <Head title="База знаний" />
  <Shell>
-  <div class="kb-heading"><div><h1>База знаний</h1><p>Инструкции для работы с CCBoot и обслуживания клубов.</p></div><span class="kb-edition">C+Club / Руководство</span></div>
+  <div class="kb-heading"><div><h1>База знаний</h1><p>Руководство C+Club: {{audit.guides}} главы о настройке, диагностике и обслуживании клуба. Читайте целиком здесь.</p></div><Link href="/knowledge/first-start" class="kb-source-button">Читать с начала →</Link></div>
   <section class="kb-search-panel" aria-label="Поиск по базе знаний">
    <label for="knowledge-search">Что нужно настроить или исправить?</label>
    <div class="kb-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input id="knowledge-search" v-model="filters.q" type="search" maxlength="200" placeholder="Например: PXE, синий экран, образ, FACEIT…" autocomplete="off"/><button v-if="filters.q" class="secondary" @click="filters.q=''">Очистить</button></div>
@@ -30,8 +31,8 @@ const date = (value: string) => new Date(value + 'T12:00:00').toLocaleDateString
   <div class="kb-layout">
    <nav class="kb-categories" aria-label="Разделы базы знаний">
     <span class="kb-label">Разделы</span>
-    <button :class="{active:!filters.category}" :aria-pressed="!filters.category" @click="filters.category=''">Все материалы <span>{{articles.length}}</span></button>
-    <button v-for="category in categories" :key="category.id" :class="{active:filters.category===category.id}" :aria-pressed="filters.category===category.id" @click="filters.category=category.id">{{category.title}}<span>{{category.count}}</span></button>
+    <button :class="{active:!filters.category}" :aria-pressed="!filters.category" @click="filters.category=''">Все разделы <span>{{categoryCount('')}}</span></button>
+    <button v-for="category in categories" :key="category.id" :class="{active:filters.category===category.id}" :aria-pressed="filters.category===category.id" @click="filters.category=category.id">{{category.title}}<span>{{categoryCount(category.id)}}</span></button>
    </nav>
    <section class="kb-results" aria-label="Материалы">
     <div class="kb-toolbar"><div class="kb-tabs" aria-label="Тип материала"><button v-for="tab in [{id:'',title:'Все'},{id:'guide',title:'Инструкции'},{id:'source',title:'Каталог CCBoot'}]" :key="tab.id" :class="{active:filters.kind===tab.id}" :aria-pressed="filters.kind===tab.id" @click="filters.kind=tab.id">{{tab.title}}</button></div><button class="secondary kb-saved-filter" :aria-pressed="filters.saved" @click="filters.saved=!filters.saved">{{filters.saved?'★':'☆'}} Избранное · {{saved.length}}</button></div>

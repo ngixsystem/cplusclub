@@ -53,6 +53,19 @@ class KnowledgeTest extends TestCase
         $this->get('/knowledge/.env')->assertNotFound();
     }
 
+    public function test_existing_source_bookmarks_open_editorial_chapters_and_keep_navigation(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'specialist']));
+        $this->get('/knowledge/bbe25c9da15bc348')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->component('KnowledgeArticle')->where('article.id', 'server-planning')->where('article.kind', 'guide')
+            ->where('reference.title', 'Server requirements')->has('article.sections.2.diagnostics', 3)
+            ->where('previous.id', 'first-start')->where('next.id', 'hardware-baseline'));
+        $this->get('/knowledge/6791303eaa620381')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('article.id', 'x520-compatibility')->has('article.sections.1.commands', 2));
+        $this->get('/knowledge/first-start')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('previous', null)->where('next.id', 'server-planning')->where('reference', null));
+    }
+
     public function test_catalogue_is_complete_and_guides_have_valid_sources(): void
     {
         $library = new Library;
@@ -66,6 +79,9 @@ class KnowledgeTest extends TestCase
         $categoryIds = array_column($content['categories'], 'id');
         foreach ($library->articles() as $article) {
             $this->assertContains($article['category'], $categoryIds);
+            if (!empty($article['local_guide_id'])) {
+                $this->assertSame('guide', $library->find($article['local_guide_id'])?->data['kind']);
+            }
             if ($article['kind'] === 'guide') {
                 $this->assertNotEmpty($article['sections']);
                 $this->assertNotEmpty($article['checklist']);

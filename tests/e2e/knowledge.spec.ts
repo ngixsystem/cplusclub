@@ -22,8 +22,33 @@ test('search, catalogue filters, empty state and source details', async ({ page 
  await page.getByRole('button', { name: 'Каталог CCBoot', exact: true }).click();
  await search.fill('TFTP');
  await page.getByRole('link', { name: /TFTP Open Timeout Error/ }).click();
- await expect(page.getByRole('link', { name: 'Открыть материал CCBoot ↗' })).toHaveAttribute('href', 'https://www.ccboot.com/wikis-tftp-open-timeout-error.htm');
- await expect(page.getByRole('link', { name: 'Открыть материал CCBoot ↗' })).toHaveAttribute('rel', 'noopener noreferrer');
+ await expect(page.getByRole('heading', { name: 'PXE-E32 / TFTP open timeout', exact: true })).toBeVisible();
+ await expect(page.getByRole('heading', { name: 'Диагностика', exact: true })).toBeVisible();
+ await expect(page.getByRole('link', { name: 'Открыть материал CCBoot ↗' })).toHaveCount(0);
+ await page.getByText('Источники и дополнительные материалы', { exact: true }).click();
+ await expect(page.locator('#sources a').filter({hasText:'TFTP Open Timeout Error'})).toHaveAttribute('href', 'https://www.ccboot.com/wikis-tftp-open-timeout-error.htm');
+});
+
+test('handbook is default and existing source URLs have local chapters', async ({ page }) => {
+ await expect(page.getByRole('button', { name: 'Инструкции', exact: true })).toHaveAttribute('aria-pressed', 'true');
+ await expect(page.locator('.kb-kind').filter({ hasText: 'CCBoot Wiki' })).toHaveCount(0);
+ await page.goto('/knowledge/bbe25c9da15bc348');
+ await expect(page.getByRole('heading', { name: 'Сервер клуба: расчёт ресурсов и приёмка конфигурации', exact: true })).toBeVisible();
+ await expect(page.locator('.kb-diagnostics')).toBeVisible();
+ await page.goto('/knowledge/6791303eaa620381');
+ await expect(page.getByRole('heading', { name: 'Intel X520: проверить совместимость ОС, драйвера и сети', exact: true })).toBeVisible();
+ await expect(page.locator('pre').filter({ hasText: 'Get-NetAdapterStatistics' })).toBeVisible();
+ const next = page.getByRole('navigation', { name: 'Главы руководства' }).getByRole('link', { name: /Следующая глава/ });
+ await expect(next).toHaveAttribute('href', '/knowledge/network-plan');
+ await page.setViewportSize({ width: 390, height: 844 });
+ await page.evaluate(() => window.scrollTo(0, 0));
+ await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
+ await page.screenshot({ path: 'test-results/handbook-x520-mobile.png', fullPage: true });
+ await next.click();
+ await expect(page.getByRole('heading', { name: 'Схема сети клуба: адреса, VLAN и загрузочный путь', exact: true })).toBeVisible();
+ await page.goto('/knowledge');
+ await page.getByRole('searchbox').fill('Get-NetAdapterStatistics');
+ await expect(page.getByRole('link', { name: /Intel X520: проверить/ })).toBeVisible();
 });
 
 test('bookmarks and checklist persist; mobile and both themes fit', async ({ page }) => {

@@ -4,8 +4,10 @@ import { usePage } from '@inertiajs/vue3';
 export type KnowledgeItem = {
  id: string; title: string; original_title?: string; category: string; kind: 'guide' | 'source';
  summary: string; tags: string[]; search: string; updated_at: string; source_date?: string;
- status: 'ok' | 'broken' | 'unverified'; url?: string; minutes?: number;
- sections?: { title: string; paragraphs?: string[]; steps?: string[]; note?: string }[];
+ status: 'ok' | 'broken' | 'unverified'; url?: string; minutes?: number; local_guide_id?: string | null;
+ sections?: { title: string; paragraphs?: string[]; steps?: string[]; note?: string;
+  commands?: { label: string; code: string }[];
+  diagnostics?: { symptom: string; check: string; next: string }[] }[];
  checklist?: string[]; sources?: { title: string; url: string }[];
 };
 export type KnowledgeCategory = { id: string; title: string; description: string; count: number };
