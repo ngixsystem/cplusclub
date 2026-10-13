@@ -30,9 +30,13 @@ final class TransitionTicket
                 }
             }
             if (in_array($next, [TicketStatus::Resolved, TicketStatus::Closed], true)) {
+                if ($ticket->isCleaning()) {
+                    if (!filled($ticket->cause)) $ticket->cause = 'Плановая чистка';
+                    if (!filled($ticket->solution)) $ticket->solution = $ticket->work_result;
+                }
                 foreach (['work_result', 'verification_result', 'cause', 'solution'] as $field) {
                     if (! filled($ticket->$field)) {
-                        throw ValidationException::withMessages([$field => 'Укажите результат, проверку, причину и решение.']);
+                        throw ValidationException::withMessages([$field => $ticket->isCleaning() ? 'Укажите выполненные работы и результат проверки.' : 'Укажите результат, проверку, причину и решение.']);
                     }
                 }
             }

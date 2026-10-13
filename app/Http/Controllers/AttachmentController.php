@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\{Gate, Storage};
 use Illuminate\Validation\Rule;
 class AttachmentController extends Controller {
     public function store(Request $r) {
+        abort_unless($r->user()->active,403);
+        if ($r->filled('stage')) $r->validate(['file'=>'required|image|mimes:jpg,jpeg,png,webp|max:10240']);
         $d=$r->validate(['type'=>['required',Rule::in(['ticket','equipment','inspection'])],'id'=>'required|integer','stage'=>['nullable',Rule::in(['before','after'])],'file'=>'required|file|mimes:jpg,jpeg,png,webp,pdf|max:10240']);
         $class=match($d['type']){'ticket'=>Ticket::class,'equipment'=>Equipment::class,'inspection'=>Inspection::class};
         $parent=$class::findOrFail($d['id']); Gate::authorize('view',$parent);
