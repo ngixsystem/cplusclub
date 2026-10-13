@@ -15,12 +15,19 @@ class TicketPolicy
 
     public function update(User $user, Ticket $ticket): bool
     {
-        return $this->view($user, $ticket) && $user->role !== 'representative';
+        return $this->view($user, $ticket) && $user->role !== 'representative'
+            && !($ticket->status === 'closed' && $user->role === 'owner');
+    }
+
+    public function attach(User $user, Ticket $ticket): bool
+    {
+        return $this->view($user, $ticket)
+            && !($ticket->status === 'closed' && in_array($user->role, ['owner','representative'], true));
     }
 
     public function decide(User $user, Ticket $ticket): bool
     {
-        return $user->active && $user->role === 'representative'
+        return $user->active && $ticket->status !== 'closed' && $user->role === 'representative'
             && ClubAccess::allows($user, $ticket->club_id);
     }
 }

@@ -11,6 +11,7 @@ class AttachmentController extends Controller {
         $d=$r->validate(['type'=>['required',Rule::in(['ticket','equipment','inspection'])],'id'=>'required|integer','stage'=>['nullable',Rule::in(['before','after'])],'file'=>'required|file|mimes:jpg,jpeg,png,webp,pdf|max:10240']);
         $class=match($d['type']){'ticket'=>Ticket::class,'equipment'=>Equipment::class,'inspection'=>Inspection::class};
         $parent=$class::findOrFail($d['id']); Gate::authorize('view',$parent);
+        if ($parent instanceof Ticket) Gate::authorize('attach', $parent);
         abort_if($r->user()->role==='representative' && $d['type']!=='ticket',403);
         $file=$r->file('file');$path=$file->store('attachments','local');
         try {

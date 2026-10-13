@@ -40,7 +40,9 @@ class TicketWorkflowTest extends TestCase
         $service->execute($owner, $ticket->id, TicketStatus::Closed, 4, []);
         $this->assertSame('closed', $ticket->fresh()->status);
         $this->assertCount(4, $ticket->fresh()->events);
-        $service->execute($owner, $ticket->id, TicketStatus::Accepted, 5, []);
+        $this->actingAs($owner)->post('/tickets/'.$ticket->id.'/transition', ['status'=>'accepted','version'=>5])->assertForbidden();
+        $lead = User::factory()->create(['role'=>'lead']);
+        $service->execute($lead, $ticket->id, TicketStatus::Accepted, 5, []);
         $this->assertNull($ticket->fresh()->closed_at);
     }
 }

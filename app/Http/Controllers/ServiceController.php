@@ -139,6 +139,7 @@ class ServiceController extends Controller
             'attachments' => \App\Models\Attachment::where('ticket_id',$ticket->id)->get(),
             'workLogs' => DB::table('work_logs')->where('ticket_id',$ticket->id)->get(),
             'canEdit' => Gate::allows('update', $ticket),
+            'canAttach' => Gate::allows('attach', $ticket),
             'canDecide' => Gate::allows('decide', $ticket),
             'proposals' => DB::table('ticket_proposals as p')->join('users as a', 'a.id', '=', 'p.author_id')
                 ->leftJoin('users as d', 'd.id', '=', 'p.decided_by')->where('p.ticket_id', $ticket->id)
