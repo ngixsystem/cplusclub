@@ -17,6 +17,10 @@ test('cleaning checklist and before/after multiple photo uploads',async({page})=
   await expect(viewer).toBeVisible();await expect(viewer).toContainText('Фото 1 из 2');
   await viewer.getByRole('button',{name:'Следующее фото',exact:true}).click();await expect(viewer).toContainText('Фото 2 из 2');
   await viewer.getByRole('button',{name:'Увеличить масштаб',exact:true}).click();await expect(viewer.getByRole('button',{name:'150%',exact:true})).toBeVisible();
+  const area=viewer.locator('.photo-viewer');const bounds=await area.boundingBox();
+  await page.mouse.move(bounds!.x+bounds!.width*.7,bounds!.y+bounds!.height*.5);await page.mouse.down();await page.mouse.move(bounds!.x+bounds!.width*.3,bounds!.y+bounds!.height*.3,{steps:5});await page.mouse.up();
+  await expect.poll(()=>area.evaluate(el=>el.scrollLeft)).toBeGreaterThan(0);
+  await expect(area).not.toHaveClass(/dragging/);
   await page.keyboard.press('ArrowLeft');await expect(viewer).toContainText('Фото 1 из 2');
   await page.keyboard.press('Escape');await expect(viewer).not.toBeVisible();await expect(before.getByRole('button',{name:'Увеличить before-1.png',exact:true})).toBeFocused();
   await page.setViewportSize({width:390,height:844});await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy();await page.screenshot({path:'test-results/cleaning-mobile.png',fullPage:true});
