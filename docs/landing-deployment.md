@@ -1,5 +1,10 @@
 # Landing and connection requests
 
+Design rollback (2026-10-15): the classic landing is restored, including its
+calculator and login links. It does not show the connection form or motion demo.
+The request API, admin inbox and saved data remain intact. The request-flow
+description below documents that retained backend, not the current landing UI.
+
 The static `landing/` site is served by the independent nginx `landing` service.
 Production uses Caddy and the private Compose override based on
 `compose.domains.yaml`: https://cplusclub.tech and https://admin.cplusclub.tech.
