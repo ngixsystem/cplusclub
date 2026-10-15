@@ -1,5 +1,11 @@
 name: cclub-test
 services:
+  landing:
+    image: nginx:1.30.5
+    volumes:
+      - ./landing:/usr/share/nginx/html:ro
+      - ./docker/nginx/landing.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [nginx]
   postgres:
     image: postgres:17.11
     environment: {POSTGRES_DB: cclub_test, POSTGRES_USER: cclub, POSTGRES_PASSWORD: isolated-test-only}
@@ -37,7 +43,7 @@ services:
     environment: {BASE_URL: "http://nginx"}
     command: [npx, playwright, test]
     profiles: [tools]
-    depends_on: [nginx]
+    depends_on: [nginx, landing]
   python:
     image: python:3.13.7-slim-bookworm
     working_dir: /work

@@ -27,7 +27,7 @@ jobs:
           docker compose run --rm app php artisan test
       - name: Browser E2E in separate environment
         run: |
-          docker compose -f compose.test.yaml up -d --wait postgres redis app nginx
+          docker compose -f compose.test.yaml up -d --wait postgres redis app nginx landing
           docker compose -f compose.test.yaml exec -T app php artisan migrate --force
           docker compose -f compose.test.yaml exec -T app php artisan db:seed --class=E2ESeeder --force
           docker compose -f compose.test.yaml run --rm browser

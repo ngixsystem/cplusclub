@@ -17,6 +17,8 @@ x-app: &app
 services:
   landing:
     image: nginx:1.30.5
+    depends_on:
+      nginx: {condition: service_healthy}
     ports: ["80:80"]
     volumes:
       - ./landing:/usr/share/nginx/html:ro
