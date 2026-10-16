@@ -1,0 +1,10 @@
+{
+  "reference": "AdminCN dashboard template (dark)",
+  "typography": { "family": "Geist Variable", "source": "@fontsource-variable/geist" },
+  "icons": "lucide-vue-next",
+  "tokens": "resources/css/app.css (:root light, :root[data-theme=dark] dark)",
+  "decisions": [
+    { "date": "2026-10-16", "decision": "Dark-first admin with bordered cards, neutral primary buttons, colour reserved for data and status." },
+    { "date": "2026-10-16", "decision": "Chart palette green / blue / magenta (validated for colour-vision deficiency) instead of the reference's blue / violet pair, which fails protanopia separation." }
+  ]
+}
