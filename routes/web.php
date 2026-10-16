@@ -16,6 +16,8 @@ Route::post('/login', [ServiceController::class, 'login'])->middleware('throttle
 Route::middleware('auth')->group(function () {
     Route::get('/connection-requests',[\App\Http\Controllers\ConnectionRequestController::class,'index']);
     Route::post('/connection-requests/{lead}',[\App\Http\Controllers\ConnectionRequestController::class,'update']);
+    Route::get('/club-map', [\App\Http\Controllers\ClubMapController::class, 'index']);
+    Route::get('/clubs/{club}/map/status', [\App\Http\Controllers\ClubMapController::class, 'status'])->middleware('throttle:60,1');
     Route::get('/knowledge', [\App\Http\Controllers\KnowledgeController::class, 'index'])->name('knowledge.index');
     Route::get('/knowledge/{article}', [\App\Http\Controllers\KnowledgeController::class, 'show'])->where('article', '[a-z0-9-]+')->name('knowledge.show');
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class,'index']);
