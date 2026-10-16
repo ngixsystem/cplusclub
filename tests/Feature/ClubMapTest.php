@@ -27,10 +27,10 @@ class ClubMapTest extends TestCase
             'furniture' => [['kind' => 'sofa', 'pos' => [8, 8], 'size' => [2, 0.8]], ['kind' => 'rocket', 'pos' => [1, 1], 'size' => [1, 1]]]];
     }
 
-    private function club(string $name, bool $icafe = true, bool $map = true): Club
+    private function club(string $name, bool $icafe = true, bool $map = true, int $license = 123): Club
     {
         $club = Club::create(['name' => $name, 'address' => 'Test']);
-        if ($icafe) { $club->icafe_license = 123; $club->icafe_token = str_repeat('secret-', 8); }
+        if ($icafe) { $club->icafe_license = $license; $club->icafe_token = str_repeat('secret-', 8); }
         if ($map) $club->map_layout = MapLayout::normalise($this->layout(), [171 => 71]);
         $club->save();
         return $club;
@@ -49,7 +49,7 @@ class ClubMapTest extends TestCase
 
     public function test_representative_sees_only_own_club_map_and_layout_is_never_serialised_with_the_club(): void
     {
-        $own = $this->club('Own'); $other = $this->club('Other'); $this->club('No map', map: false);
+        $own = $this->club('Own'); $other = $this->club('Other', license: 456); $this->club('No map', map: false, license: 789);
         $rep = User::factory()->create(['role' => 'representative']);
         $rep->clubs()->attach($own);
 
@@ -73,7 +73,7 @@ class ClubMapTest extends TestCase
             ]]),
             '*/onlinePcList' => Http::response(['code' => 200, 'data' => [['pc_name' => '001', 'is_connected' => 1], ['pc_name' => '071', 'is_connected' => 0]]]),
         ]);
-        $own = $this->club('Own'); $other = $this->club('Other');
+        $own = $this->club('Own'); $other = $this->club('Other', license: 456);
         $rep = User::factory()->create(['role' => 'representative']);
         $rep->clubs()->attach($own);
 
