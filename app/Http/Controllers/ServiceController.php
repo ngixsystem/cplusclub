@@ -25,10 +25,10 @@ class ServiceController extends Controller
     public function index(Request $request, string $section = 'overview')
     {
         abort_unless($request->user()->active, 403);
-        if ($section === 'overview' && $request->user()->role !== 'specialist') {
-            return app(IcafeController::class)->index($request);
+        if ($section === 'overview') {
+            return app(OverviewController::class)->index($request);
         }
-        abort_unless(in_array($section, ['overview','clubs','equipment','tickets']), 404);
+        abort_unless(in_array($section, ['clubs','equipment','tickets']), 404);
         $user = $request->user();
         $search = mb_substr((string) $request->query('search', ''), 0, 100);
         $clubs = ClubAccess::filter(Club::query(), $user, 'id');

@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\Access\ClubAccess;
 use App\Domain\Icafe\{Client, Dashboard};
 use App\Models\Club;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\{Rule, ValidationException};
-use Inertia\Inertia;
 
 final class IcafeController extends Controller
 {
@@ -16,13 +14,6 @@ final class IcafeController extends Controller
     {
         abort_unless($request->user()->active && in_array($request->user()->role, ['owner','lead','representative'], true), 403);
         if ($club) Gate::authorize('view', $club);
-    }
-
-    public function index(Request $request)
-    {
-        $this->authorizeFinance($request);
-        return Inertia::render('Dashboard', ['clubs' => ClubAccess::filter(Club::query(), $request->user(), 'id')
-            ->orderBy('name')->get(['id','name','icafe_license','icafe_currency','timezone'])]);
     }
 
     public function data(Request $request, Club $club, Dashboard $dashboard)
