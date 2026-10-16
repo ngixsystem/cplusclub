@@ -45,7 +45,7 @@ jobs:
           docker compose -f compose.test.yaml up -d --wait postgres redis app nginx landing
           docker compose -f compose.test.yaml exec -T app php artisan migrate --force
           docker compose -f compose.test.yaml exec -T app php artisan db:seed --class=E2ESeeder --force
-          docker compose -f compose.test.yaml run --rm browser
+          docker compose -f compose.test.yaml run --rm -e GITHUB_ACTIONS=true browser
       - name: Agent parser tests
         run: docker compose -f compose.test.yaml run --rm python python -m unittest discover -s agent/tests
       - name: Upload browser report on failure
