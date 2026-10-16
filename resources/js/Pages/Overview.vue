@@ -10,6 +10,8 @@ import StackedBars from '../Components/Charts/StackedBars.vue';
 import MiniBars from '../Components/Charts/MiniBars.vue';
 import Sparkline from '../Components/Charts/Sparkline.vue';
 import IcafeDashboard from '../Components/IcafeDashboard.vue';
+import AnimatedNumber from '../Components/Charts/AnimatedNumber.vue';
+import { useEntered } from '../Components/Charts/motion';
 
 type Urgent = { id: number; description: string; status: string; priority: string; club: string | null; equipment: string | null; created_at: string | null };
 type Alert = { id: number; equipment_id: number; metric: string; opened_at: string; equipment: string; club: string };
@@ -62,6 +64,7 @@ const ago = (iso: string | null) => {
     const m = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60000));
     return m < 60 ? `${m} мин назад` : m < 1440 ? `${Math.round(m / 60)} ч назад` : `${Math.round(m / 1440)} дн назад`;
 };
+const entered = useEntered();
 const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', normal: 'blue', low: '' };
 </script>
 
@@ -78,7 +81,7 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
 
     <section class="overview-grid" aria-label="Ключевые показатели">
       <!-- Tickets by month + work summary -->
-      <article class="card hero-card">
+      <article class="card hero-card" style="--i:0">
         <div class="hero-chart">
           <div class="card-head"><div><h2>Заявки</h2><p>По месяцам создания и текущему статусу · {{ fmt(monthlyTotal) }} за 7 месяцев</p></div>
             <Link href="/reports" class="button card-menu" aria-label="Отчёты по заявкам"><EllipsisVertical aria-hidden="true" /></Link></div>
@@ -87,7 +90,7 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
         <div class="hero-report">
           <div class="card-head"><div><h2>Работы</h2><p>За последние 30 дней</p></div></div>
           <ul class="report-list">
-            <li><span class="icon-tile green"><Wrench aria-hidden="true" /></span><div><b>Трудозатраты</b><span>{{ fmt(o.work.hours_30) }} ч</span></div></li>
+            <li><span class="icon-tile green"><Wrench aria-hidden="true" /></span><div><b>Трудозатраты</b><span><AnimatedNumber :value="o.work.hours_30" :decimals="1" /> ч</span></div></li>
             <li><span class="icon-tile blue"><Wallet aria-hidden="true" /></span><div><b>Расходы</b>
               <span v-if="o.work.costs.length">{{ o.work.costs.map(c => money(c.cost_minor, c.currency)).join(' · ') }}</span><span v-else>Не внесены</span></div></li>
             <li><span class="icon-tile violet"><Clock aria-hidden="true" /></span><div><b>Первый ответ</b><span>{{ duration(o.work.first_response_minutes) }} в среднем</span></div></li>
@@ -96,51 +99,51 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
         </div>
       </article>
 
-      <article class="card kpi">
+      <article class="card kpi lift" style="--i:1">
         <div class="kpi-top"><span class="icon-tile green"><Ticket aria-hidden="true" /></span>
           <span v-if="o.kpis.created_change !== null" class="trend" :title="'Новые заявки за 30 дней к предыдущим 30'">
             {{ o.kpis.created_change > 0 ? '+' : '' }}{{ o.kpis.created_change }}%<ChevronUp v-if="o.kpis.created_change >= 0" aria-hidden="true" /><ChevronDown v-else aria-hidden="true" /></span></div>
-        <strong class="kpi-value">{{ fmt(o.kpis.open) }}</strong><span class="kpi-label">Открытых заявок</span>
+        <strong class="kpi-value"><AnimatedNumber :value="o.kpis.open" /></strong><span class="kpi-label">Открытых заявок</span>
         <span class="chip">{{ fmt(o.kpis.created_30) }} новых за 30 дней</span>
       </article>
 
-      <article class="card kpi">
+      <article class="card kpi lift" style="--i:2">
         <div class="kpi-top"><span class="icon-tile amber"><CircleCheck aria-hidden="true" /></span>
           <span v-if="o.kpis.closed_change !== null" class="trend" title="Закрытые за 30 дней к предыдущим 30">
             {{ o.kpis.closed_change > 0 ? '+' : '' }}{{ o.kpis.closed_change }}%<ChevronUp v-if="o.kpis.closed_change >= 0" aria-hidden="true" /><ChevronDown v-else aria-hidden="true" /></span></div>
-        <strong class="kpi-value">{{ fmt(o.kpis.closed_30) }}</strong><span class="kpi-label">Закрыто</span>
+        <strong class="kpi-value"><AnimatedNumber :value="o.kpis.closed_30" /></strong><span class="kpi-label">Закрыто</span>
         <span class="chip">Последние 30 дней</span>
       </article>
 
-      <article class="card kpi chart-kpi">
-        <div><strong class="kpi-inline">{{ fmt(o.closed_14) }}</strong><span class="kpi-label">Закрыто за 14 дней</span></div>
+      <article class="card kpi chart-kpi lift" style="--i:3">
+        <div><strong class="kpi-inline"><AnimatedNumber :value="o.closed_14" /></strong><span class="kpi-label">Закрыто за 14 дней</span></div>
         <MiniBars :values="o.closed_daily" :days="days" label="Закрытые заявки по дням" />
       </article>
 
-      <article class="card kpi chart-kpi">
+      <article class="card kpi chart-kpi lift" style="--i:4">
         <div><h2 class="kpi-title">Новые заявки</h2><span class="kpi-label">По дням, 14 дней</span></div>
         <Sparkline :values="o.created_daily" :days="days" label="Новые заявки по дням" />
-        <div class="kpi-foot"><strong>{{ fmt(o.created_14) }}</strong>
+        <div class="kpi-foot"><strong><AnimatedNumber :value="o.created_14" /></strong>
           <span v-if="o.created_14_change !== null" class="trend">{{ o.created_14_change > 0 ? '+' : '' }}{{ o.created_14_change }}%</span></div>
       </article>
     </section>
 
     <section class="overview-row">
-      <article class="card inspections">
+      <article class="card inspections" style="--i:5">
         <div class="card-head"><div class="title-with-tile"><span class="icon-tile"><Cpu aria-hidden="true" /></span><h2>Осмотры ПК</h2></div>
           <Link href="/visits" class="button secondary small-button">Выезды</Link></div>
-        <div class="big-number"><strong>{{ fmt(inspectionTotal) }}</strong>
+        <div class="big-number"><strong><AnimatedNumber :value="inspectionTotal" /></strong>
           <span v-if="o.inspections.overdue" class="chip">{{ share(o.inspections.overdue) }}% просрочено</span></div>
         <div class="inspection-cols">
           <div v-for="c in columns" :key="c.key" class="inspection-col">
-            <span class="muted">{{ c.label }}</span><b>{{ share(c.value) }}%</b><small>{{ fmt(c.value) }} ПК</small>
-            <div class="col-bar"><i :style="{ height: Math.max(c.value ? 6 : 0, share(c.value)) + '%', background: c.tone }"></i></div>
+            <span class="muted">{{ c.label }}</span><b><AnimatedNumber :value="share(c.value)" />%</b><small>{{ fmt(c.value) }} ПК</small>
+            <div class="col-bar"><i :style="{ height: (entered ? Math.max(c.value ? 6 : 0, share(c.value)) : 0) + '%', background: c.tone, transitionDelay: (300 + columns.indexOf(c) * 120) + 'ms' }"></i></div>
           </div>
         </div>
         <p v-if="o.inspections.unscheduled" class="muted footnote">Без даты осмотра: {{ fmt(o.inspections.unscheduled) }} ПК</p>
       </article>
 
-      <article class="card lists">
+      <article class="card lists" style="--i:6">
         <section>
           <div class="card-head"><h2>Срочные заявки</h2><Link href="/tickets" class="button card-menu" aria-label="Все заявки"><EllipsisVertical aria-hidden="true" /></Link></div>
           <p v-if="!o.urgent.length" class="list-empty">Открытых заявок нет.</p>
@@ -194,7 +197,7 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
 .report-list { list-style:none; margin:8px 0 24px; padding:0; display:grid; gap:30px; flex:1; align-content:start }
 .report-list li { display:flex; gap:14px; align-items:center }
 .report-list b { display:block; font-weight:500; font-size:15px }
-.report-list span:not(.icon-tile) { display:block; color:var(--muted); margin-top:3px; font-variant-numeric:tabular-nums; font-size:13.5px }
+.report-list li>div>span { display:block; color:var(--muted); margin-top:3px; font-variant-numeric:tabular-nums; font-size:13.5px }
 .report-button { width:100%; margin-top:auto; min-height:40px }
 
 .kpi { display:flex; flex-direction:column; gap:6px; min-height:212px }
@@ -221,9 +224,9 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
 .inspection-col { display:flex; flex-direction:column; gap:6px; padding:16px 10px 0; border-right:1px dashed var(--border) }
 .inspection-col:last-child { border-right:0 }
 .inspection-col b { font-size:22px; font-weight:600; font-variant-numeric:tabular-nums }
-.inspection-col span { font-size:13px }
+.inspection-col>span { font-size:13px }
 .col-bar { flex:1; display:flex; align-items:flex-end; margin-top:12px; min-height:90px }
-.col-bar i { display:block; width:100%; border-radius:10px 10px 4px 4px; opacity:.9 }
+.col-bar i { display:block; width:100%; border-radius:10px 10px 4px 4px; opacity:.9; transition:height 1.1s cubic-bezier(.16,1,.3,1) }
 .footnote { font-size:12.5px; margin:14px 0 0 }
 
 .lists { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); padding:0 }
@@ -231,7 +234,14 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
 .lists>section+section { border-left:1px solid var(--border) }
 .rows { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:minmax(0,1fr); gap:4px }
 .rows>li { min-width:0 }
-.row { display:flex; align-items:center; gap:12px; padding:9px 8px; margin:0 -8px; border-radius:12px; transition:background-color .12s }
+.row { display:flex; align-items:center; gap:12px; padding:9px 8px; margin:0 -8px; border-radius:12px; transition:background-color .15s,transform .25s cubic-bezier(.16,1,.3,1) }
+.row:hover { transform:translateX(3px) }
+.row .icon-tile { transition:transform .25s cubic-bezier(.16,1,.3,1) }
+.row:hover .icon-tile { transform:scale(1.06) }
+.rows>li { animation:rise-in .5s cubic-bezier(.16,1,.3,1) both }
+.rows>li:nth-child(2){animation-delay:.05s}.rows>li:nth-child(3){animation-delay:.1s}.rows>li:nth-child(4){animation-delay:.15s}.rows>li:nth-child(5){animation-delay:.2s}.rows>li:nth-child(n+6){animation-delay:.25s}
+.report-list li { animation:rise-in .5s cubic-bezier(.16,1,.3,1) both }
+.report-list li:nth-child(2){animation-delay:.08s}.report-list li:nth-child(3){animation-delay:.16s}
 .row:hover { background:var(--hover) }
 .row-main { flex:1; min-width:0 }
 .row-main b { display:block; font-weight:500; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }

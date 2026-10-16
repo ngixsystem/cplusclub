@@ -23,8 +23,10 @@ const statuses:Record<string,string>={active:'Активно',maintenance:'Об�
 </template>
 <style scoped>
 .equipment-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;padding:24px}
-.equipment-card{min-width:0;display:block;border:1px solid var(--border);border-radius:12px;padding:18px;background:var(--surface);color:var(--text);text-decoration:none;transition:border-color .18s,background .18s}
-.equipment-card:hover{border-color:var(--accent-text);background:var(--hover)}
+.equipment-card{min-width:0;display:block;border:1px solid var(--border);border-radius:14px;padding:18px;background:var(--surface);color:var(--text);text-decoration:none;transition:border-color .2s,background .2s,transform .25s cubic-bezier(.16,1,.3,1),box-shadow .25s;animation:rise-in .5s cubic-bezier(.16,1,.3,1) both}
+.equipment-card:nth-child(2){animation-delay:40ms}.equipment-card:nth-child(3){animation-delay:80ms}.equipment-card:nth-child(4){animation-delay:120ms}.equipment-card:nth-child(5){animation-delay:160ms}.equipment-card:nth-child(6){animation-delay:200ms}.equipment-card:nth-child(7){animation-delay:240ms}.equipment-card:nth-child(8){animation-delay:280ms}.equipment-card:nth-child(9){animation-delay:320ms}.equipment-card:nth-child(10){animation-delay:360ms}.equipment-card:nth-child(11){animation-delay:400ms}.equipment-card:nth-child(12){animation-delay:440ms}.equipment-card:nth-child(n+13){animation-delay:480ms}
+.equipment-card:hover{border-color:var(--border-strong);background:var(--hover);transform:translateY(-3px);box-shadow:0 12px 30px -14px rgba(0,0,0,.4)}
+.equipment-card .device-art svg{transition:transform .35s cubic-bezier(.16,1,.3,1)}.equipment-card:hover .device-art svg{transform:scale(1.04)}
 .equipment-card:focus-visible{outline:3px solid var(--accent-text);outline-offset:3px}
 .card-top,.device-meta,.card-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .card-top,.club-name,.device-meta,.card-bottom{font-size:12px;color:var(--muted)}

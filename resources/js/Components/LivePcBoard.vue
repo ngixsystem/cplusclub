@@ -52,7 +52,9 @@ onMounted(()=>{void refresh();document.addEventListener('visibilitychange',visib
 .monitor-summary b{color:var(--text)}
 .monitor-filters{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px}
 .pc-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
-.pc-tile{position:relative;display:block;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;transition:border-color .15s,background-color .15s}
+.pc-tile{position:relative;display:block;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;transition:border-color .2s,background-color .2s,transform .25s cubic-bezier(.16,1,.3,1);animation:rise-in .5s cubic-bezier(.16,1,.3,1) both}
+.pc-tile:hover{transform:translateY(-2px)}
+.pc-tile:nth-child(2){animation-delay:40ms}.pc-tile:nth-child(3){animation-delay:80ms}.pc-tile:nth-child(4){animation-delay:120ms}.pc-tile:nth-child(5){animation-delay:160ms}.pc-tile:nth-child(6){animation-delay:200ms}.pc-tile:nth-child(7){animation-delay:240ms}.pc-tile:nth-child(8){animation-delay:280ms}.pc-tile:nth-child(9){animation-delay:320ms}.pc-tile:nth-child(10){animation-delay:360ms}.pc-tile:nth-child(11){animation-delay:400ms}.pc-tile:nth-child(12){animation-delay:440ms}.pc-tile:nth-child(n+13){animation-delay:480ms}
 .pc-tile:hover{border-color:color-mix(in srgb,var(--tone) 55%,var(--border));background:var(--hover)}
 .pc-tile.critical{border-color:color-mix(in srgb,var(--pc-red) 45%,var(--border))}
 .pc-top{display:flex;gap:8px;justify-content:space-between;align-items:center}
@@ -62,7 +64,7 @@ onMounted(()=>{void refresh();document.addEventListener('visibilitychange',visib
 .temp-readings{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .temp-readings div{display:grid;gap:3px}
 .temp-readings small{font-size:11px;color:var(--muted)}
-.temp-readings b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.temp-readings b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;transition:color .4s}
 .pc-tile.warning .temp-readings b,.pc-tile.critical .temp-readings b{color:var(--tone)}
 .pc-bottom{border-top:1px solid var(--border);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px}
 .pc-bottom span{display:inline-flex;align-items:center;gap:6px;color:var(--tone);font-weight:500}
