@@ -9,3 +9,9 @@ admin.cplusclub.tech {
     encode zstd gzip
     reverse_proxy nginx:80
 }
+# Isolated staging stack (compose.staging.yaml), reached over the cclub-edge network.
+staging.cplusclub.tech {
+    encode zstd gzip
+    header X-Robots-Tag "noindex, nofollow"
+    reverse_proxy cclub-staging-web:80
+}

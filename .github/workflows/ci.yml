@@ -1,14 +1,29 @@
 name: Docker checks
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-24.04
+    timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: Configure isolated environment
         run: |
           cp .env.example .env
           sed -i 's/^DB_PASSWORD=$/DB_PASSWORD=isolated-ci-only/' .env
+          # The PHP image runs as www-data (uid 33); the runner checkout is owned by uid 1001.
+          # Without this, composer cannot create vendor/ and every run fails at installation.
+          sudo chown -R 33:33 "$GITHUB_WORKSPACE"
       - name: Build runtime
         run: docker compose build app
       - name: Install locked dependencies
@@ -33,3 +48,68 @@ jobs:
           docker compose -f compose.test.yaml run --rm browser
       - name: Agent parser tests
         run: docker compose -f compose.test.yaml run --rm python python -m unittest discover -s agent/tests
+      - name: Upload browser report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Every non-main branch that passes the checks is deployed to the isolated staging stack.
+  deploy-staging:
+    needs: test
+    if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: staging
+      url: https://staging.cplusclub.tech
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure SSH
+        env:
+          VDS_SSH_KEY: ${{ secrets.VDS_SSH_KEY }}
+          VDS_KNOWN_HOSTS: ${{ secrets.VDS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VDS_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$VDS_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+      - name: Deploy to staging
+        env:
+          VDS_HOST: ${{ secrets.VDS_HOST }}
+        run: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes "root@$VDS_HOST" "bash -s -- staging $GITHUB_SHA" < scripts/deploy.sh
+
+  # main is deployed to production only after the checks pass and the
+  # "production" environment rules (e.g. required reviewers) are satisfied.
+  deploy-production:
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://admin.cplusclub.tech
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+      - name: Configure SSH
+        env:
+          VDS_SSH_KEY: ${{ secrets.VDS_SSH_KEY }}
+          VDS_KNOWN_HOSTS: ${{ secrets.VDS_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VDS_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$VDS_KNOWN_HOSTS" > ~/.ssh/known_hosts && chmod 600 ~/.ssh/known_hosts
+      - name: Deploy to production
+        env:
+          VDS_HOST: ${{ secrets.VDS_HOST }}
+        run: ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes "root@$VDS_HOST" "bash -s -- production $GITHUB_SHA" < scripts/deploy.sh
