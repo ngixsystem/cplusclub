@@ -281,9 +281,9 @@ td a:hover { text-decoration:underline; text-underline-offset:4px }
 .badge:before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; opacity:.9 }
 .badge[data-status=active],.badge[data-status=resolved],.badge[data-status=closed],.badge[data-tone=success] { color:var(--success); background:var(--success-bg); border-color:transparent }
 .badge[data-status=working],.badge[data-status=accepted],.badge[data-tone=info] { color:var(--info); background:var(--info-bg); border-color:transparent }
-.badge[data-status=approval],.badge[data-status=parts],.badge[data-status=maintenance],.badge[data-tone=warning] { color:var(--warning); background:var(--warning-bg); border-color:transparent }
+.badge[data-status=approval],.badge[data-status=parts],.badge[data-status=maintenance],.badge[data-status=paused],.badge[data-tone=warning] { color:var(--warning); background:var(--warning-bg); border-color:transparent }
 .badge[data-status=new],.badge[data-tone=violet] { color:var(--violet); background:var(--violet-bg); border-color:transparent }
-.badge[data-status=retired],.badge[data-tone=danger] { color:var(--error); background:var(--error-bg); border-color:transparent }
+.badge[data-status=retired],.badge[data-status=ended],.badge[data-tone=danger] { color:var(--error); background:var(--error-bg); border-color:transparent }
 .badge[data-status=closed] { color:var(--muted); background:var(--surface-2); border-color:var(--border) }
 
 .empty { padding:44px 24px; text-align:center; color:var(--muted) }

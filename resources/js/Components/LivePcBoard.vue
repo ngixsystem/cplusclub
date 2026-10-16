@@ -23,13 +23,13 @@ onMounted(()=>{void refresh();document.addEventListener('visibilitychange',visib
 </script>
 <template>
  <section class="panel pc-board">
-  <div class="toolbar"><div><p class="eyebrow">LIVE / СОСТОЯНИЕ КЛУБА</p><h2>Температуры компьютеров</h2></div><label>Клуб мониторинга<select v-model="club"><option v-for="c in clubs" :key="c.id" :value="c.id">{{c.name}}</option></select></label></div>
+  <div class="toolbar"><div><h2>Температуры компьютеров</h2><p class="monitor-note" style="margin:4px 0 0">Живое состояние клуба</p></div><label>Клуб мониторинга<select v-model="club"><option v-for="c in clubs" :key="c.id" :value="c.id">{{c.name}}</option></select></label></div>
   <p class="monitor-note">CPU / GPU · автообновление каждые 15 секунд · онлайн-статусы: {{updated}}. Температуры поступают от Windows-агента, не из iCafeCloud.</p>
   <div class="monitor-tools"><button v-if="canManage" :disabled="!club||importing.processing" @click="importing.post('/monitoring/clubs/'+club+'/import',{preserveScroll:true,onSuccess:()=>refresh()})">{{importing.processing?'Импортируем…':'Импортировать ПК из iCafeCloud'}}</button><button class="secondary" :disabled="busy||!club" @click="refresh">{{busy?'Обновляем…':'Обновить'}}</button></div>
   <p v-for="e in importing.errors" :key="e" class="error" role="alert">{{e}}</p><p v-if="error||data?.error" class="monitor-warning" role="alert">{{error||data?.error}}</p>
   <div class="pc-legend"><span class="normal">Норма &lt; {{data?.template.warning??50}} °C</span><span class="warning">{{data?.template.warning??50}}–{{data?.template.critical??79}} °C</span><span class="critical">Перегрев &gt; {{data?.template.critical??79}} °C</span><span>Серый: офлайн / нет датчиков</span></div>
   <p class="monitor-note">Цвет по худшему показателю CPU/GPU. Если один датчик отсутствует, безопасный статус не подтверждается. Показания старше 3 минут скрываются.</p>
-  <div v-if="data" class="monitor-summary"><b>Всего {{data.pcs.length}}</b><span>Онлайн {{data.pcs.filter(p=>p.online===true).length}}</span><span>Офлайн {{count('offline')}}</span><span>Перегрев {{count('critical')}}</span><span>Повышенная {{count('warning')}}</span><span>Нет данных {{count('unknown')}}</span></div>
+  <div v-if="data" class="monitor-summary"><span>Всего <b>{{data.pcs.length}}</b></span><span>Онлайн {{data.pcs.filter(p=>p.online===true).length}}</span><span>Офлайн {{count('offline')}}</span><span>Перегрев {{count('critical')}}</span><span>Повышенная {{count('warning')}}</span><span>Нет данных {{count('unknown')}}</span></div>
   <details v-if="data?.alerts?.length" class="live-alerts"><summary>Активные тревоги: {{data.alerts.length}}</summary><p v-for="a in data.alerts" :key="a.id"><Link :href="'/equipment/'+a.equipment_id">ПК #{{a.equipment_id}}</Link> · {{a.metric}} · {{a.opened_at}}</p></details><div class="monitor-filters"><label>Поиск ПК / зоны<input v-model="search" placeholder="Например, 001"/></label><label>Показать<select v-model="filter"><option value="all">Все компьютеры</option><option v-for="(label,key) in labels" :key="key" :value="key">{{label}}</option></select></label></div>
   <div v-if="!shown.length" class="empty">{{busy?'Получаем данные…':data?.pcs.length?'По фильтру компьютеров нет.':'ПК ещё не импортированы. Администратор может импортировать список из iCafeCloud.'}}</div>
   <div class="pc-tiles"><Link v-for="pc in shown" :key="pc.id" :href="'/equipment/'+pc.id" :class="['pc-tile',error?'unknown':pc.severity]" :aria-label="pc.name+': '+(error?'Нет свежих данных':labels[pc.severity])">
@@ -42,5 +42,36 @@ onMounted(()=>{void refresh();document.addEventListener('visibilitychange',visib
  </section>
 </template>
 <style scoped>
-.pc-board{--pc-green:#16805c;--pc-yellow:#946100;--pc-red:#c33445;--pc-gray:#697586}.monitor-tools,.monitor-summary,.pc-legend{display:flex;gap:12px;flex-wrap:wrap;margin:18px 0}.monitor-note{font-size:12px;color:var(--muted);max-width:900px}.pc-legend span{font-size:12px;padding:7px 10px;border:1px solid currentColor;border-radius:4px}.normal{color:var(--pc-green)}.warning{color:var(--pc-yellow)}.critical{color:var(--pc-red)}.unknown,.offline{color:var(--pc-gray)}.monitor-summary{border-block:1px solid var(--border);padding:14px 0;font-variant-numeric:tabular-nums}.monitor-filters{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:22px}.pc-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}.pc-tile{display:block;border:1px solid var(--border);border-top:3px solid currentColor;border-radius:8px;padding:16px;transition:background .15s}.pc-tile:hover{background:rgba(127,127,127,.07)}.pc-tile.normal:hover{color:var(--pc-green)}.pc-tile.warning:hover{color:var(--pc-yellow)}.pc-tile.critical:hover{color:var(--pc-red)}.pc-tile.unknown:hover,.pc-tile.offline:hover{color:var(--pc-gray)}.pc-top{display:flex;gap:8px;justify-content:space-between;align-items:center}.pc-top strong{font-size:20px;overflow-wrap:anywhere}.pc-top span{font-size:10px;text-align:right}.pc-symbol{width:100%;height:100px;margin:12px 0}.temp-readings{display:grid;grid-template-columns:1fr 1fr;gap:12px}.temp-readings div{display:grid;gap:4px}.temp-readings small{font-size:10px;letter-spacing:1px}.temp-readings b{font-size:16px;font-variant-numeric:tabular-nums}.pc-bottom{border-top:1px solid var(--border);margin-top:14px;padding-top:10px;display:grid;gap:5px;font-size:12px}.pc-bottom small{color:var(--muted)}.template-settings{border-top:1px solid var(--border);padding-top:20px;margin-top:28px}.template-settings summary{cursor:pointer;font-weight:600;padding:10px 0}.template-settings form{margin-top:18px}.monitor-warning{border-left:3px solid #b78500;padding:10px 16px;background:rgba(200,150,0,.1)}:global([data-theme=dark] .pc-board){--pc-green:#76dba6;--pc-yellow:#ffcf66;--pc-red:#ff8790;--pc-gray:#acb4c4}@media(max-width:600px){.monitor-filters{grid-template-columns:1fr}.pc-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pc-tile{padding:10px}.pc-top{flex-direction:column;align-items:flex-start}.pc-symbol{height:80px}.temp-readings{grid-template-columns:1fr}.pc-top strong{font-size:18px}}
+.pc-board{--pc-green:var(--success);--pc-yellow:var(--warning);--pc-red:var(--error);--pc-gray:var(--subtle)}
+.monitor-tools,.monitor-summary,.pc-legend{display:flex;gap:10px;flex-wrap:wrap;margin:16px 0}
+.monitor-note{font-size:12.5px;color:var(--muted);max-width:900px}
+.pc-legend span{display:inline-flex;align-items:center;gap:7px;font-size:12px;padding:4px 10px;border-radius:999px;background:var(--surface-2);border:1px solid var(--border);color:var(--muted)}
+.pc-legend span:before{content:"";width:8px;height:8px;border-radius:50%;background:var(--tone,var(--pc-gray))}
+.normal{--tone:var(--pc-green)}.warning{--tone:var(--pc-yellow)}.critical{--tone:var(--pc-red)}.unknown,.offline{--tone:var(--pc-gray)}
+.monitor-summary{border-block:1px solid var(--border);padding:12px 0;font-variant-numeric:tabular-nums;color:var(--muted)}
+.monitor-summary b{color:var(--text)}
+.monitor-filters{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:20px}
+.pc-tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.pc-tile{position:relative;display:block;color:var(--text);background:var(--surface-2);border:1px solid var(--border);border-radius:14px;padding:14px 16px;transition:border-color .15s,background-color .15s}
+.pc-tile:hover{border-color:color-mix(in srgb,var(--tone) 55%,var(--border));background:var(--hover)}
+.pc-tile.critical{border-color:color-mix(in srgb,var(--pc-red) 45%,var(--border))}
+.pc-top{display:flex;gap:8px;justify-content:space-between;align-items:center}
+.pc-top strong{font-size:16px;font-weight:600;overflow-wrap:anywhere}
+.pc-top span{font-size:11.5px;color:var(--muted);text-align:right}
+.pc-symbol{width:100%;height:72px;margin:10px 0;color:var(--tone);opacity:.9}
+.temp-readings{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.temp-readings div{display:grid;gap:3px}
+.temp-readings small{font-size:11px;color:var(--muted)}
+.temp-readings b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums}
+.pc-tile.warning .temp-readings b,.pc-tile.critical .temp-readings b{color:var(--tone)}
+.pc-bottom{border-top:1px solid var(--border);margin-top:12px;padding-top:10px;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px}
+.pc-bottom span{display:inline-flex;align-items:center;gap:6px;color:var(--tone);font-weight:500}
+.pc-bottom span:before{content:"";width:7px;height:7px;border-radius:50%;background:var(--tone)}
+.pc-bottom small{color:var(--muted)}
+.template-settings{border-top:1px solid var(--border);padding-top:18px;margin-top:24px}
+.template-settings summary{cursor:pointer;font-weight:500;padding:8px 0}
+.template-settings form{margin-top:16px}
+.monitor-warning{background:var(--warning-bg);color:var(--warning);border-radius:var(--radius-control);padding:11px 14px}
+.live-alerts summary{cursor:pointer;font-weight:500;padding:8px 0}
+@media(max-width:600px){.monitor-filters{grid-template-columns:1fr}.pc-tiles{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.pc-tile{padding:10px}.pc-top{flex-direction:column;align-items:flex-start}.pc-symbol{height:56px}.temp-readings{grid-template-columns:1fr}.pc-bottom{flex-direction:column;align-items:flex-start}}
 </style>

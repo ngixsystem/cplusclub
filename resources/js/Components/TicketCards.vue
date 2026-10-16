@@ -18,7 +18,7 @@ function date(value?:string|null){if(!value)return 'Не указана';const d
 </template>
 <style scoped>
 .ticket-list{padding:20px;display:grid;gap:14px}.ticket-card{min-width:0;border:1px solid var(--border);border-left:3px solid var(--border);border-radius:10px;padding:20px;background:var(--surface)}
-.ticket-card[data-priority=critical]{border-left-color:var(--error)}.ticket-card[data-priority=high]{border-left-color:var(--accent-text)}
+.ticket-card[data-priority=critical]{border-left-color:var(--error)}.ticket-card[data-priority=high]{border-left-color:var(--warning)}
 .ticket-top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.ticket-number,.priority{font-size:12px;color:var(--muted)}.priority{margin-left:auto}.ticket-card[data-priority=critical] .priority{color:var(--error)}
 h3{font-size:18px;line-height:1.5;margin:14px 0 20px;overflow-wrap:anywhere}h3 a{color:var(--text);text-decoration:none}h3 a:hover{text-decoration:underline}
 .ticket-meta{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px}.ticket-meta div{display:grid;gap:5px;overflow-wrap:anywhere}.ticket-meta span{font-size:12px;color:var(--muted)}.ticket-meta strong{font-size:14px;font-weight:500}
