@@ -57,7 +57,7 @@ const columns = computed(() => [
     { key: 'planned', label: 'В графике', value: o.value.inspections.planned, tone: 'var(--chart-1)' },
 ]);
 const statuses: Record<string, string> = { new: 'Новая', accepted: 'Принята', working: 'В работе', approval: 'Согласование', parts: 'Ждёт запчасти' };
-const metrics: Record<string, string> = { cpu_temp: 'CPU °C', gpu_temp: 'GPU °C', cpu_load: 'CPU %', gpu_load: 'GPU %', ram_used_percent: 'RAM %', disk_free_percent: 'Диск' };
+const metrics: Record<string, string> = { cpu_temp: 'CPU °C', gpu_temp: 'GPU °C', cpu_load: 'CPU %', gpu_load: 'GPU %', ram_used_percent: 'RAM %', disk_free_percent: 'Диск', link_speed: 'Линк' };
 const games: Record<number, string> = { 730: 'Counter-Strike 2', 570: 'Dota 2' };
 const ago = (iso: string | null) => {
     if (!iso) return '';

@@ -88,4 +88,56 @@ class IcafeBootTelemetryTest extends TestCase
         $this->assertSame(100.0, $s['cpu_load']); $this->assertNull($s['ram_used_percent']);
         $this->assertSame('unsupported', $s['sensor_status']['gpu_load']);
     }
+
+    public function test_link_drop_from_gigabit_triggers_after_two_polls_and_recovers(): void
+    {
+        $c = $this->club();
+        $a = $this->pc($c, 'PC017');
+        $speed = '1000M';
+        Http::preventStrayRequests();
+        Http::fake(function ($request) use (&$speed) {
+            if (str_ends_with($request->url(), '/bootPcs')) return Http::response(['code' => 200, 'data' => [['bpc_id' => 10, 'bpc_icafe_id' => 123, 'bpc_name' => 'PC017', 'bpc_mac' => '']]]);
+            if (str_ends_with($request->url(), '/onlinePcList')) return Http::response(['code' => 200, 'data' => [['pc_name' => 'PC017', 'is_connected' => 1]]]);
+            return Http::response(['code' => 200, 'data' => ['result' => 1, 'message' => ['data' => ['pcs' => [['id' => 10, 'cpu_temp' => '50', 'gpu_temp' => '50', 'linkspeed' => $speed]]]]]]);
+        });
+        $boot = app(IcafeBootTelemetry::class);
+        $state = fn () => DB::table('alerts')->where('equipment_id', $a->id)->where('metric', 'link_speed')->value('state');
+
+        $boot->collect($c);
+        $this->assertSame(1000, (int) $a->fresh()->link_expected_mbps);
+        $this->assertSame('normal', $state());
+
+        $speed = '100M';
+        $this->travel(60)->seconds(); $boot->collect($c);
+        $this->assertSame('normal', $state(), 'one degraded poll is not enough');
+        $live = collect(app(LiveComputers::class)->snapshot($c)['pcs'])->first();
+        $this->assertSame(100, $live['link_mbps']); $this->assertSame(1000, $live['link_expected_mbps']);
+
+        $this->travel(60)->seconds(); $boot->collect($c);
+        $this->assertSame('active', $state());
+        $event = DB::table('outbox_events')->where('kind', 'monitor_problem')->first();
+        $this->assertStringContainsString('PC017: сетевой линк упал до 100', json_decode($event->payload, true)['message']);
+        $this->assertTrue(collect(app(LiveComputers::class)->snapshot($c)['pcs'])->first()['link_alert']);
+
+        $speed = '1000M';
+        $this->travel(60)->seconds(); $boot->collect($c);
+        $this->assertSame('normal', $state());
+        $this->assertDatabaseHas('outbox_events', ['kind' => 'monitor_recovered']);
+    }
+
+    public function test_pc_that_starts_at_100_is_flagged_and_link_parsing(): void
+    {
+        $this->assertSame(1000, IcafeBootTelemetry::linkMbps('1000M'));
+        $this->assertSame(100, IcafeBootTelemetry::linkMbps('100M'));
+        $this->assertSame(2500, IcafeBootTelemetry::linkMbps('2.5G'));
+        $this->assertNull(IcafeBootTelemetry::linkMbps(''));
+        $this->assertNull(IcafeBootTelemetry::linkMbps('unknown'));
+
+        $c = $this->club();
+        $a = $this->pc($c, 'PC017');
+        $this->fake([['id' => 10, 'cpu_temp' => '50', 'gpu_temp' => '50', 'linkspeed' => '100M']]);
+        $boot = app(IcafeBootTelemetry::class);
+        $boot->collect($c); $this->travel(60)->seconds(); $boot->collect($c);
+        $this->assertSame('active', DB::table('alerts')->where('equipment_id', $a->id)->where('metric', 'link_speed')->value('state'));
+    }
 }

@@ -33,11 +33,12 @@ final class LiveComputers {
         // Inventory and connection endpoints can use different casing for the same PC.
         $onlineNames=array_fill_keys(array_map(fn($name)=>mb_strtolower(trim($name)),$connection['online']),true);
         $equipment=Equipment::where('club_id',$club->id)->where('type','pc')->orderBy('name')->get();
+        $linkAlerts=DB::table('alerts')->where('club_id',$club->id)->where('metric','link_speed')->where('state','active')->pluck('equipment_id')->flip();
         $latest=DB::table('telemetry_samples')->whereIn('equipment_id',$equipment->pluck('id'))
             ->where('observed_at','>=',now()->subSeconds(180))->where('observed_at','<=',now()->addMinute())
-            ->selectRaw('DISTINCT ON (equipment_id) equipment_id, cpu_temp, gpu_temp, observed_at, sensor_status')
+            ->selectRaw('DISTINCT ON (equipment_id) equipment_id, cpu_temp, gpu_temp, link_mbps, observed_at, sensor_status')
             ->orderBy('equipment_id')->orderByDesc('observed_at')->orderByDesc('id')->get()->keyBy('equipment_id');
-        $pcs=$equipment->map(function($e)use($connection,$onlineNames,$latest,$club){
+        $pcs=$equipment->map(function($e)use($connection,$onlineNames,$latest,$club,$linkAlerts){
             $online=$e->icafe_pc_name!==null&&!$connection['stale']?isset($onlineNames[mb_strtolower(trim($e->icafe_pc_name))]):null;
             $sample=$latest->get($e->id);$when=$sample?CarbonImmutable::parse($sample->observed_at):null;
             $fresh=$when && $when->gte(now()->subSeconds(180)) && $when->lte(now()->addMinute());
@@ -46,6 +47,8 @@ final class LiveComputers {
             $gpu=$fresh && ($status['gpu_temp']??null)==='ok' && $sample->gpu_temp!==null && $online!==false?(float)$sample->gpu_temp:null;
             return ['id'=>$e->id,'name'=>$e->name,'zone'=>$e->zone,'imported'=>$e->icafe_pc_name!==null,'online'=>$online,
                 'cpu_temp'=>$cpu,'gpu_temp'=>$gpu,'observed_at'=>$sample?->observed_at,
+                'link_mbps'=>$fresh&&$online!==false&&$sample->link_mbps!==null?(int)$sample->link_mbps:null,'link_expected_mbps'=>$e->link_expected_mbps!==null?(int)$e->link_expected_mbps:null,
+                'link_alert'=>isset($linkAlerts[$e->id]),
                 'severity'=>$online===false?'offline':self::severity($cpu,$gpu,(float)$club->monitor_warning,(float)$club->monitor_critical)];
         });
         return ['pcs'=>$pcs,'alerts'=>DB::table('alerts')->where('club_id',$club->id)->where('state','active')->orderByDesc('opened_at')->limit(200)->get(['id','equipment_id','metric','opened_at']),

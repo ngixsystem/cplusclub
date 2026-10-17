@@ -37,6 +37,7 @@ final class IcafeBootTelemetry
 
         $boot = $this->bootComputers($club);
         $equipment = DB::table('equipment')->where('club_id', $club->id)->where('type', 'pc')->get(['id', 'name', 'icafe_pc_name', 'mac']);
+        $names = $equipment->pluck('name', 'id');
         $byName = []; $byMac = [];
         foreach ($equipment as $e) {
             foreach ([$e->icafe_pc_name, $e->name] as $n) if ($n !== null && $n !== '') $byName[mb_strtolower(trim($n))] ??= $e->id;
@@ -49,12 +50,17 @@ final class IcafeBootTelemetry
             $id = $meta ? ($byName[mb_strtolower(trim($meta['name']))] ?? ($meta['mac'] !== '' ? ($byMac[$meta['mac']] ?? null) : null)) : null;
             if (! $id) { $unmatched++; continue; }
             $sample = self::sample($pc) + ['observed_at' => $now->toIso8601String()];
-            DB::transaction(function () use ($club, $id, $sample, $now) {
-                DB::table('equipment')->where('id', $id)->lockForUpdate()->update(['last_seen_at' => now()]);
-                $row = ['equipment_id' => $id, 'observed_at' => $now, 'received_at' => now(), 'sensor_status' => json_encode($sample['sensor_status'], JSON_THROW_ON_ERROR)];
+            $link = self::linkMbps($pc['linkspeed'] ?? null);
+            DB::transaction(function () use ($club, $id, $sample, $now, $link, $names) {
+                $eq = DB::table('equipment')->where('id', $id)->lockForUpdate()->first(['id', 'link_expected_mbps']);
+                $expected = $link ? max(1000, (int) $eq->link_expected_mbps, $link) : $eq->link_expected_mbps;
+                DB::table('equipment')->where('id', $id)->update(['last_seen_at' => now(), 'link_expected_mbps' => $expected]);
+                $row = ['equipment_id' => $id, 'observed_at' => $now, 'received_at' => now(), 'link_mbps' => $link,
+                    'sensor_status' => json_encode($sample['sensor_status'], JSON_THROW_ON_ERROR)];
                 foreach (self::METRICS as $m) $row[$m] = $sample[$m];
                 DB::table('telemetry_samples')->insert($row);
                 $this->evaluator->execute($club->id, $id, $sample);
+                if ($link) $this->evaluateLink($club->id, $id, (string) ($names[$id] ?? '#'.$id), $link, (int) $expected, $now);
             });
             $matched++;
         }
@@ -94,6 +100,50 @@ final class IcafeBootTelemetry
         $status = [];
         foreach (self::METRICS as $m) $status[$m] = in_array($m, ['gpu_load', 'disk_free_percent'], true) ? 'unsupported' : ($s[$m] === null ? 'unavailable' : 'ok');
         return $s + ['sensor_status' => $status];
+    }
+
+    /** "1000M" => 1000, "100M" => 100, "2.5G" => 2500; null when unknown. */
+    public static function linkMbps($raw): ?int
+    {
+        if (! is_string($raw) && ! is_numeric($raw)) return null;
+        if (! preg_match('/^\s*(\d+(?:\.\d+)?)\s*([MG])?/i', (string) $raw, $m)) return null;
+        $mbps = (int) round((float) $m[1] * (strtoupper($m[2] ?? 'M') === 'G' ? 1000 : 1));
+        return $mbps >= 10 && $mbps <= 100000 ? $mbps : null;
+    }
+
+    /**
+     * Link-speed alert: opens when the negotiated speed stays below the expected one
+     * (1000 Mbit/s, or the highest seen) for two polls in a row, recovers when it is back.
+     */
+    private function evaluateLink(int $clubId, int $equipmentId, string $name, int $link, int $expected, \DateTimeInterface $now): void
+    {
+        $when = \Carbon\CarbonImmutable::instance($now);
+        DB::table('alerts')->insertOrIgnore(['club_id' => $clubId, 'equipment_id' => $equipmentId, 'metric' => 'link_speed']);
+        $alert = DB::table('alerts')->where('equipment_id', $equipmentId)->where('metric', 'link_speed')->lockForUpdate()->first();
+        if ($alert->last_sample_at && $when->lessThanOrEqualTo(\Carbon\CarbonImmutable::parse($alert->last_sample_at))) return;
+        $maintenance = DB::table('maintenance_windows')->where('club_id', $clubId)->where('starts_at', '<=', $when)->where('ends_at', '>=', $when)->exists();
+        $gap = $alert->last_sample_at && \Carbon\CarbonImmutable::parse($alert->last_sample_at)->diffInSeconds($when) > 180;
+        $update = ['last_sample_at' => $when];
+        $payload = ['equipment_id' => $equipmentId, 'metric' => 'link_speed', 'value' => $link, 'expected' => $expected];
+        if ($link < $expected && ! $maintenance) {
+            if ($alert->state !== 'active') {
+                $since = (! $alert->breach_since || $gap) ? $when : \Carbon\CarbonImmutable::parse($alert->breach_since);
+                $update['breach_since'] = $since;
+                if ($since->diffInSeconds($when) >= 50) {
+                    $update += ['state' => 'active', 'episode' => $alert->episode + 1, 'opened_at' => $when, 'recovered_at' => null];
+                    $this->evaluator->event($clubId, 'monitor_problem', 'alert:'.$alert->id.':'.($alert->episode + 1).':open',
+                        $payload + ['message' => "{$name}: сетевой линк упал до {$link} Мбит/с (норма {$expected} Мбит/с)"]);
+                }
+            }
+        } else {
+            $update['breach_since'] = null;
+            if ($alert->state === 'active' && $link >= $expected) {
+                $update += ['state' => 'normal', 'recovered_at' => $when];
+                $this->evaluator->event($clubId, 'monitor_recovered', 'alert:'.$alert->id.':'.$alert->episode.':recovered',
+                    $payload + ['message' => "{$name}: сетевой линк восстановлен, {$link} Мбит/с"]);
+            }
+        }
+        DB::table('alerts')->where('id', $alert->id)->update($update);
     }
 
     private static function mac(string $mac): string

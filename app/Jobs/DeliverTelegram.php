@@ -24,7 +24,8 @@ class DeliverTelegram implements ShouldQueue {
             }
             $number=$delivery->attempts+1;
             DB::table('deliveries')->where('id',$delivery->id)->update(['attempts'=>$number,'status'=>'sending','next_attempt_at'=>now()->addSeconds(60)]);
-            $result=$transport->send($channel,'C+CLub · '.$event->kind.' · событие #'.$event->id."\n".$event->payload);
+            $human=json_decode($event->payload,true)['message']??null;
+            $result=$transport->send($channel,'C+CLub · '.$event->kind.' · событие #'.$event->id."\n".(is_string($human)?$human."\n":'').$event->payload);
             $success=$result['ok'];$delay=$result['retry_after']??min(1800,10*(2**min($number,7)));
             DB::transaction(function()use($delivery,$result,$success,$number,$delay){
                 DB::table('delivery_attempts')->insert(['delivery_id'=>$delivery->id,'number'=>$number,'outcome'=>$success?(config('services.telegram.transport')==='fake'?'fake_sent':'sent'):(!empty($result['ambiguous'])?'unknown_acceptance':'rejected'),'http_status'=>$result['status'],'created_at'=>now()]);
