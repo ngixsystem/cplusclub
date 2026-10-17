@@ -25,3 +25,11 @@ Schedule::call(function(){
 })->name('inspection-reminders')->daily()->withoutOverlapping();
 Schedule::call(fn()=>app(\App\Domain\Notifications\DispatchOutbox::class)->execute())->name('outbox')->everyMinute()->withoutOverlapping();
 Schedule::call(function(){foreach(\Illuminate\Support\Facades\DB::table('game_subscriptions')->distinct()->pluck('app_id') as $id)\App\Jobs\CheckGameVersion::dispatch($id);})->name('published-builds')->everyFiveMinutes()->withoutOverlapping();
+Schedule::call(function(){
+    foreach(\App\Models\Club::whereNotNull('icafe_license')->whereNotNull('icafe_token')->pluck('id') as $id)\App\Jobs\CollectIcafeBootTelemetry::dispatch($id);
+})->name('icafe-boot-telemetry')->everyMinute()->withoutOverlapping();
+Artisan::command('cclub:icafe-boot {club}', function () {
+    $club = \App\Models\Club::findOrFail($this->argument('club'));
+    $r = app(\App\Domain\Monitoring\IcafeBootTelemetry::class)->collect($club);
+    $this->info(sprintf('%s: Boot %s, matched %d PCs, unmatched %d.', $club->name, $r['supported'] ? 'on' : 'off', $r['matched'], $r['unmatched']));
+})->purpose('Pull CPU/GPU temperatures for a club from iCafeCloud Boot once');

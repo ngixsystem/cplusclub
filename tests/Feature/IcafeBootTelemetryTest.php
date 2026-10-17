@@ -1,0 +1,91 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Domain\Monitoring\{ClubTemplate, IcafeBootTelemetry, LiveComputers};
+use App\Models\{Club, Equipment};
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\{DB, Http};
+use Tests\TestCase;
+
+class IcafeBootTelemetryTest extends TestCase
+{
+    use RefreshDatabase;
+
+    private function club(): Club
+    {
+        $c = Club::create(['name' => 'TeamPro', 'address' => 'Test']);
+        $c->icafe_license = 123; $c->icafe_token = 'private-token'; $c->save();
+        app(ClubTemplate::class)->save($c, 50, 79, 0);
+        return $c->fresh();
+    }
+
+    private function pc(Club $c, string $name, ?string $mac = null): Equipment
+    {
+        $e = Equipment::create(['club_id' => $c->id, 'name' => $name, 'type' => 'pc', 'mac' => $mac]);
+        $e->icafe_pc_name = $name; $e->save();
+        return $e;
+    }
+
+    private function fake(array $pcs, int $result = 1): void
+    {
+        Http::preventStrayRequests();
+        Http::fake([
+            '*/pcSessions/sendWssCommand' => Http::response(['code' => 200, 'data' => ['result' => $result, 'message' => ['action' => 'pcs_status', 'data' => ['pcs' => $pcs]]]]),
+            '*/bootPcs' => Http::response(['code' => 200, 'data' => [
+                ['bpc_id' => 10, 'bpc_icafe_id' => 123, 'bpc_name' => 'PC017', 'bpc_mac' => '04:D9:F5:7F:F5:C5', 'bpc_password' => ''],
+                ['bpc_id' => 11, 'bpc_icafe_id' => 123, 'bpc_name' => 'Renamed', 'bpc_mac' => '04:D9:F5:00:00:11'],
+                ['bpc_id' => 12, 'bpc_icafe_id' => 123, 'bpc_name' => 'PC099', 'bpc_mac' => ''],
+            ]]),
+            '*/onlinePcList' => Http::response(['code' => 200, 'data' => [['pc_name' => 'PC017', 'is_connected' => 1], ['pc_name' => 'PC018', 'is_connected' => 1]]]),
+        ]);
+    }
+
+    public function test_boot_readings_become_samples_matched_by_name_or_mac_and_raise_alerts(): void
+    {
+        $c = $this->club();
+        $a = $this->pc($c, 'PC017');
+        $b = $this->pc($c, 'PC018', '04:d9:f5:00:00:11');
+        $this->fake([
+            ['id' => 10, 'cpu_temp' => '62', 'gpu_temp' => '52', 'cpu_usage' => '39%%', 'ram_usage' => '56%%', 'activeprocess' => 'dota2.exe'],
+            ['id' => 11, 'cpu_temp' => '85', 'gpu_temp' => '0', 'cpu_usage' => '0%%', 'ram_usage' => '40%%'],
+            ['id' => 12, 'cpu_temp' => '40', 'gpu_temp' => '40'],
+        ]);
+
+        $r = app(IcafeBootTelemetry::class)->collect($c);
+        $this->assertSame(['matched' => 2, 'unmatched' => 1, 'supported' => true], $r);
+
+        $sa = DB::table('telemetry_samples')->where('equipment_id', $a->id)->first();
+        $this->assertEquals(62, $sa->cpu_temp); $this->assertEquals(52, $sa->gpu_temp);
+        $this->assertEquals(39, $sa->cpu_load); $this->assertEquals(56, $sa->ram_used_percent);
+        $sb = DB::table('telemetry_samples')->where('equipment_id', $b->id)->first();
+        $this->assertNull($sb->gpu_temp); $this->assertEquals(0, $sb->cpu_load);
+        $this->assertSame('unavailable', json_decode($sb->sensor_status, true)['gpu_temp']);
+
+        $this->assertSame('active', DB::table('alerts')->where('equipment_id', $b->id)->where('metric', 'cpu_temp')->value('state'));
+        $this->assertSame('normal', DB::table('alerts')->where('equipment_id', $a->id)->where('metric', 'cpu_temp')->value('state'));
+
+        $live = collect(app(LiveComputers::class)->snapshot($c)['pcs'])->keyBy('name');
+        $this->assertSame(62.0, $live['PC017']['cpu_temp']);
+        $this->assertSame('critical', $live['PC018']['severity']);
+    }
+
+    public function test_club_without_boot_backs_off(): void
+    {
+        $c = $this->club();
+        $this->pc($c, 'PC017');
+        $this->fake([], 0);
+        $this->assertFalse(app(IcafeBootTelemetry::class)->collect($c)['supported']);
+        $this->assertFalse(app(IcafeBootTelemetry::class)->collect($c)['supported']);
+        Http::assertSentCount(1);
+        $this->assertDatabaseCount('telemetry_samples', 0);
+    }
+
+    public function test_sample_parsing(): void
+    {
+        $s = IcafeBootTelemetry::sample(['cpu_temp' => '200', 'gpu_temp' => 'n/a', 'cpu_usage' => '100%%', 'ram_usage' => '']);
+        $this->assertNull($s['cpu_temp']); $this->assertNull($s['gpu_temp']);
+        $this->assertSame(100.0, $s['cpu_load']); $this->assertNull($s['ram_used_percent']);
+        $this->assertSame('unsupported', $s['sensor_status']['gpu_load']);
+    }
+}
