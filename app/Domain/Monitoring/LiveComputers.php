@@ -47,7 +47,8 @@ final class LiveComputers {
             $gpu=$fresh && ($status['gpu_temp']??null)==='ok' && $sample->gpu_temp!==null && $online!==false?(float)$sample->gpu_temp:null;
             return ['id'=>$e->id,'name'=>$e->name,'zone'=>$e->zone,'imported'=>$e->icafe_pc_name!==null,'online'=>$online,
                 'cpu_temp'=>$cpu,'gpu_temp'=>$gpu,'observed_at'=>$sample?->observed_at,
-                'link_mbps'=>$fresh&&$online!==false&&$sample->link_mbps!==null?(int)$sample->link_mbps:null,'link_expected_mbps'=>$e->link_expected_mbps!==null?(int)$e->link_expected_mbps:null,
+                // A fresh Boot reading proves the PC is running even when the iCafe client is not connected.
+                'link_mbps'=>$fresh&&$sample->link_mbps!==null?(int)$sample->link_mbps:null,'link_expected_mbps'=>$e->link_expected_mbps!==null?(int)$e->link_expected_mbps:null,
                 'link_alert'=>isset($linkAlerts[$e->id]),
                 'severity'=>$online===false?'offline':self::severity($cpu,$gpu,(float)$club->monitor_warning,(float)$club->monitor_critical)];
         });
