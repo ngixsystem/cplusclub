@@ -11,22 +11,22 @@ Route::get('/health/ready', function () {
     catch (Throwable) { return response()->json(['status' => 'unavailable'], 503); }
     return response()->json(['status' => 'ready']);
 });
-Route::get('/login', fn () => Inertia::render('Login'))->name('login');
-Route::post('/login', [ServiceController::class, 'login'])->middleware('throttle:5,1');
+Route::get('/login', fn () => Inertia::render('Login'))->middleware('guest')->name('login');
+Route::post('/login', [ServiceController::class, 'login'])->middleware('throttle:login');
 Route::middleware('auth')->group(function () {
     Route::get('/connection-requests',[\App\Http\Controllers\ConnectionRequestController::class,'index']);
     Route::post('/connection-requests/{lead}',[\App\Http\Controllers\ConnectionRequestController::class,'update']);
     Route::get('/club-map', [\App\Http\Controllers\ClubMapController::class, 'index']);
-    Route::get('/clubs/{club}/map/status', [\App\Http\Controllers\ClubMapController::class, 'status'])->middleware('throttle:60,1');
+    Route::get('/clubs/{club}/map/status', [\App\Http\Controllers\ClubMapController::class, 'status'])->middleware('throttle:live');
     Route::get('/knowledge', [\App\Http\Controllers\KnowledgeController::class, 'index'])->name('knowledge.index');
     Route::get('/knowledge/{article}', [\App\Http\Controllers\KnowledgeController::class, 'show'])->where('article', '[a-z0-9-]+')->name('knowledge.show');
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class,'index']);
     Route::get('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'image']);
-    Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'avatar'])->middleware('throttle:10,1');
+    Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'avatar'])->middleware('throttle:avatar');
     Route::delete('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'removeAvatar']);
-    Route::post('/profile/password', [\App\Http\Controllers\ProfileController::class,'password'])->middleware('throttle:5,1');
-    Route::get('/clubs/{club}/dashboard', [\App\Http\Controllers\IcafeController::class, 'data'])->middleware('throttle:60,1');
-    Route::get('/clubs/{club}/dashboard/shifts/{shift}', [\App\Http\Controllers\IcafeController::class, 'shift'])->where('shift', '-?[0-9]+')->middleware('throttle:60,1');
+    Route::post('/profile/password', [\App\Http\Controllers\ProfileController::class,'password'])->middleware('throttle:password');
+    Route::get('/clubs/{club}/dashboard', [\App\Http\Controllers\IcafeController::class, 'data'])->middleware('throttle:live');
+    Route::get('/clubs/{club}/dashboard/shifts/{shift}', [\App\Http\Controllers\IcafeController::class, 'shift'])->where('shift', '-?[0-9]+')->middleware('throttle:live');
     Route::post('/clubs/{club}/icafe', [\App\Http\Controllers\IcafeController::class, 'save']);
     Route::get('/users',[\App\Http\Controllers\AdminController::class,'index']);
     Route::post('/users',[\App\Http\Controllers\AdminController::class,'store']);
@@ -48,7 +48,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/integrations/channels/{channel}/toggle',[\App\Http\Controllers\IntegrationController::class,'toggle']);
     Route::post('/integrations/deliveries/{id}/retry',[\App\Http\Controllers\IntegrationController::class,'retry']);
     Route::get('/monitoring',[\App\Http\Controllers\MonitoringController::class,'index']);
-    Route::get('/monitoring/clubs/{club}',[\App\Http\Controllers\MonitoringController::class,'live'])->middleware('throttle:60,1');
+    Route::get('/monitoring/clubs/{club}',[\App\Http\Controllers\MonitoringController::class,'live'])->middleware('throttle:live');
     Route::post('/monitoring/clubs/{club}/import',[\App\Http\Controllers\MonitoringController::class,'import']);
     Route::post('/monitoring/clubs/{club}/template',[\App\Http\Controllers\MonitoringController::class,'template']);
     Route::post('/agents',[\App\Http\Controllers\MonitoringController::class,'register']);
