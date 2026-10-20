@@ -78,6 +78,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/{ticket}/assign', [ServiceController::class, 'assign']);
     Route::post('/clubs', [ServiceController::class, 'club']);
     Route::post('/equipment', [ServiceController::class, 'equipment']);
+    Route::get('/tickets/stats', [ServiceController::class, 'ticketStats'])->middleware('throttle:live');
     Route::post('/tickets', [ServiceController::class, 'ticket']);
     Route::get('/{section}', [ServiceController::class, 'index'])->whereIn('section', ['clubs','equipment','tickets']);
 });

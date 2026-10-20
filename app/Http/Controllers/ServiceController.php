@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Access\ClubAccess;
-use App\Domain\Tickets\{TicketFilters, TicketStatus, TransitionTicket};
+use App\Domain\Tickets\{TicketFilters, TicketStats, TicketStatus, TransitionTicket};
 use App\Models\{Club, Equipment, Ticket, User};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, DB, Gate};
@@ -33,10 +33,7 @@ class ServiceController extends Controller
         $search = mb_substr((string) $request->query('search', ''), 0, 100);
         $clubs = ClubAccess::filter(Club::query(), $user, 'id');
         $equipment = ClubAccess::filter(Equipment::query(), $user);
-        $tickets = Ticket::query()->where(function ($q) use ($user) {
-            ClubAccess::filter($q, $user);
-            if ($user->role === 'specialist') $q->orWhere('assignee_id', $user->id);
-        });
+        $tickets = $this->visibleTickets($user);
         $stats = [
             'clubs' => (clone $clubs)->count(), 'equipment' => (clone $equipment)->count(),
             'tickets' => (clone $tickets)->whereNotIn('status', ['closed', 'resolved'])->count(),
@@ -72,6 +69,26 @@ class ServiceController extends Controller
             'ticketComputers' => $section === 'tickets' ? ClubAccess::filter(Equipment::query(), $user)
                 ->whereIn('type', ['pc', 'server'])->orderBy('name')->get(['id','club_id','name','type','workstation_number','zone']) : [],
         ]);
+    }
+
+    /** Tickets the user may see: their clubs, plus (for specialists) tickets assigned to them. */
+    private function visibleTickets(User $user)
+    {
+        return Ticket::query()->where(function ($q) use ($user) {
+            ClubAccess::filter($q, $user);
+            if ($user->role === 'specialist') $q->orWhere('assignee_id', $user->id);
+        });
+    }
+
+    /** Chart data for the tickets page; honours the list's club / priority / assignee / category filters. */
+    public function ticketStats(Request $request)
+    {
+        $user = $request->user();
+        abort_unless($user->active, 403);
+        $filters = [...TicketFilters::read($request), 'period' => null, 'search' => ''];
+        if ($filters['club'] && ! ClubAccess::allows($user, $filters['club'])) $filters['club'] = null;
+        $tickets = TicketFilters::apply($this->visibleTickets($user), $filters, $user);
+        return response()->json(TicketStats::build($tickets, (int) $request->query('range', 30)));
     }
 
     public function club(Request $request)
