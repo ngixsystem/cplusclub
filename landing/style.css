@@ -137,9 +137,15 @@ h1 .indent{padding-left:12%}
 .meta div+div{padding-left:18px;border-left:1px solid var(--line)}
 .meta dt{font-family:var(--mono);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
 .meta dd{font-size:14px;margin-top:6px}
-.step-log{display:flex;flex-direction:column;justify-content:center;gap:22px;padding:40px;border-left:1px solid var(--line);background:radial-gradient(120% 120% at 100% 0%,rgba(182,255,0,.09),transparent 55%),var(--surface-2)}
-.step-log ol{list-style:none;padding:0;display:grid;gap:12px;font-family:var(--mono);font-size:14px}
-.step-log li{display:flex;gap:16px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:rgba(6,7,6,.55)}
+/* Right half: the step render fills the panel, the sample ticket log floats
+ * over its lower edge as a glass card. */
+.step-log{position:relative;display:flex;flex-direction:column;justify-content:flex-end;min-height:380px;padding:28px;border-left:1px solid var(--line);background:var(--bg);overflow:hidden}
+.step-media{position:absolute;inset:0;margin:0}
+.step-media img{width:100%;height:100%;object-fit:cover;object-position:50% 35%;transform:scale(1.02);transition:transform 1.4s var(--ease-out),filter .6s ease}
+.step-media:after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,7,6,0) 35%,rgba(6,7,6,.85) 78%,var(--bg) 100%),linear-gradient(90deg,rgba(6,7,6,.35),transparent 30%)}
+.log-card{position:relative;z-index:1;display:grid;gap:14px;padding:16px;border-radius:16px;border:1px solid var(--line-strong);background:rgba(13,15,12,.62);backdrop-filter:blur(12px)}
+.step-log ol{list-style:none;padding:0;display:grid;gap:8px;font-family:var(--mono);font-size:13.5px}
+.step-log li{display:flex;gap:16px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:rgba(6,7,6,.6)}
 .step-log time{color:var(--dim)}
 .step-log b{color:var(--lime);font-weight:500}
 .routine{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:40px}
@@ -259,6 +265,8 @@ dialog .pill{margin-top:8px}
 /* The render settles from a slight zoom and dim as its card arrives. */
 .m .svc.reveal .svc-media img{transform:scale(1.12);filter:brightness(.55)}
 .m .svc.reveal.in .svc-media img{transform:scale(1.01);filter:none}
+.m .step.reveal .step-media img{transform:scale(1.1);filter:brightness(.5)}
+.m .step.reveal.in .step-media img{transform:scale(1.02);filter:none}
 details[open] p{animation:rise .4s var(--ease-out)}
 dialog{transition:opacity .25s var(--ease-out),transform .25s var(--ease-out),overlay .25s allow-discrete,display .25s allow-discrete}
 dialog:not([open]){opacity:0;transform:scale(.97)}
@@ -281,7 +289,7 @@ dialog:not([open]){opacity:0;transform:scale(.97)}
   .section-aside{justify-self:start}
   .service-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .step{grid-template-columns:1fr;min-height:0}
-  .step-log{border-left:0;border-top:1px solid var(--line)}
+  .step-log{border-left:0;border-top:1px solid var(--line);min-height:420px}
   .plans{grid-template-columns:1fr}
   .expansion,.platform,.terms{grid-template-columns:1fr;gap:40px}
   .footer-grid{grid-template-columns:1fr 1fr}
@@ -307,7 +315,8 @@ dialog:not([open]){opacity:0;transform:scale(.97)}
   .section{padding-block:72px}
   .service-grid{grid-template-columns:1fr}
   .step{position:relative;top:auto}
-  .step-body,.step-log{padding:28px 22px}
+  .step-body{padding:28px 22px}
+  .step-log{padding:16px;min-height:360px}
   .step-num{font-size:104px;right:16px}
   .step h3{padding-top:56px}
   .routine{grid-template-columns:1fr}
@@ -331,7 +340,7 @@ dialog:not([open]){opacity:0;transform:scale(.97)}
   .m .reveal{transform:none;transition:opacity .4s ease}
   .card3d{transition:none}
   .svc:hover,.pill:active,.round:active{transform:none}
-  .svc-media img,.m .svc.reveal .svc-media img,.m .svc.reveal.in .svc-media img,.svc:hover .svc-media img{transform:none!important}
+  .step-media img,.m .step.reveal .step-media img,.m .step.reveal.in .step-media img,.svc-media img,.m .svc.reveal .svc-media img,.m .svc.reveal.in .svc-media img,.svc:hover .svc-media img{transform:none!important}
   .platform-list>div:hover h3{transform:none}
   dialog,dialog:not([open]){transform:none}
   @starting-style{dialog[open]{transform:none}}
