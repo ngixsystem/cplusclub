@@ -63,16 +63,21 @@ img{max-width:100%;display:block}
 .round{display:inline-grid;place-items:center;width:46px;height:46px;border-radius:50%;border:1px solid var(--line-strong);background:rgba(13,15,12,.8);color:var(--fg);font-size:18px;transition:transform .14s var(--ease-out),border-color .2s ease,color .2s ease}
 .round:hover{border-color:var(--lime);color:var(--lime)}
 
-/* Header: floating, transparent over the hero. */
-.header{position:fixed;inset:0 0 auto;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:24px;padding:calc(16px + env(safe-area-inset-top,0px)) max(24px,env(safe-area-inset-right,0px)) 16px max(24px,env(safe-area-inset-left,0px));pointer-events:none;transition:background-color .3s ease,backdrop-filter .3s ease}
-.header>*{pointer-events:auto}
-.header.scrolled{background:linear-gradient(rgba(6,7,6,.85),rgba(6,7,6,0))}
-.brand{display:inline-flex;align-items:center;height:48px;padding:0 18px;border-radius:999px;border:1px solid var(--line-strong);background:rgba(13,15,12,.72);backdrop-filter:blur(10px)}
-.brand img{width:92px;height:auto}
-.header nav{display:flex;gap:4px;padding:5px;border-radius:999px;border:1px solid var(--line);background:rgba(13,15,12,.62);backdrop-filter:blur(10px)}
-.header nav a{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:9px 14px;border-radius:999px;transition:color .15s ease,background-color .15s ease}
+/* Header: one glass bar on the same 1240px column as the content, so its
+ * edges line up with the hero rules. Logo, links and button share one
+ * vertical centre; the current section is marked with a lime dot. */
+.header{position:fixed;inset:0 0 auto;z-index:50;padding-top:calc(14px + env(safe-area-inset-top,0px));pointer-events:none}
+.header-bar{pointer-events:auto;max-width:1240px;margin:0 auto;width:calc(100% - 2 * max(24px,env(safe-area-inset-left,0px)));height:64px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;padding:0 8px 0 22px;border-radius:999px;border:1px solid var(--line-strong);background:rgba(13,15,12,.55);backdrop-filter:blur(16px) saturate(140%);-webkit-backdrop-filter:blur(16px) saturate(140%);box-shadow:inset 0 1px 0 rgba(255,255,255,.05);transition:background-color .3s ease,box-shadow .3s ease,border-color .3s ease}
+.header.scrolled .header-bar{background:rgba(10,12,9,.82);border-color:rgba(236,244,225,.14);box-shadow:inset 0 1px 0 rgba(255,255,255,.05),0 18px 50px rgba(0,0,0,.5)}
+.brand{justify-self:start;display:flex;align-items:center;height:100%}
+.brand img{width:96px;height:auto}
+.header nav{display:flex;align-items:center;gap:2px}
+.header nav a{position:relative;display:flex;align-items:center;height:40px;padding:0 16px;border-radius:999px;font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);transition:color .15s ease,background-color .15s ease}
 .header nav a:hover{color:var(--fg);background:rgba(255,255,255,.06)}
-.login{min-height:44px;padding:0 20px;font-size:11px}
+.header nav a[aria-current=true]{color:var(--fg)}
+.header nav a:after{content:"";position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime);opacity:0;transform:scale(.4);transition:opacity .2s ease,transform .25s var(--ease-out)}
+.header nav a[aria-current=true]:after{opacity:1;transform:none}
+.login{justify-self:end;min-height:48px;padding:0 22px;font-size:11px}
 
 /* Hero */
 .hero{position:relative;overflow:hidden;padding:150px 0 0}
@@ -282,6 +287,7 @@ dialog:not([open]){opacity:0;transform:scale(.97)}
 /* ---------- Responsive ---------- */
 @media(max-width:1000px){
   .header nav{display:none}
+  .header-bar{grid-template-columns:1fr auto}
   .section{padding-block:88px}
   .hero-bottom{margin-left:0}
   h1 .indent{padding-left:8%}
@@ -297,9 +303,9 @@ dialog:not([open]){opacity:0;transform:scale(.97)}
 }
 @media(max-width:640px){
   .wrap{padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px))}
-  .header{padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px))}
-  .brand{height:44px;padding:0 14px}.brand img{width:80px}
-  .login{min-height:42px;padding:0 16px}
+  .header-bar{width:calc(100% - 2 * max(14px,env(safe-area-inset-left,0px)));height:58px;padding:0 6px 0 18px}
+  .brand img{width:84px}
+  .login{min-height:44px;padding:0 18px}
   .hero{padding-top:118px}
   .hero-top{flex-direction:column;gap:6px}
   h1{margin:40px 0 44px}

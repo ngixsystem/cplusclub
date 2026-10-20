@@ -8,14 +8,16 @@
 <title>C+CLUB — технические заботы клуба берём на себя</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23060706'/%3E%3Cpath d='M20 9v22M9 20h22' stroke='%23b6ff00' stroke-width='6'/%3E%3C/svg%3E">
 <link rel="preload" href="fonts/roboto-flex-cyrillic-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=dark-20261020d">
+<link rel="stylesheet" href="style.css?v=dark-20261020e">
 <script>document.documentElement.classList.add("m");setTimeout(function(){if(!window.cplusMotion)document.documentElement.classList.remove("m")},2500)</script>
 </head>
 <body>
 <header class="header">
-  <a href="#" class="brand" aria-label="C+CLUB, главная"><img src="logo-480.png" alt="C+CLUB" width="96" height="32"></a>
-  <nav aria-label="Основная навигация"><a href="#services">Услуги</a><a href="#process">Как работаем</a><a href="#pricing">Тарифы</a><a href="#terms">Условия</a></nav>
-  <a class="pill pill-lime login" href="https://admin.cplusclub.tech/login">Войти <span aria-hidden="true">↗</span></a>
+  <div class="header-bar">
+    <a href="#" class="brand" aria-label="C+CLUB, главная"><img src="logo-480.png" alt="C+CLUB" width="96" height="32"></a>
+    <nav aria-label="Основная навигация"><a href="#services">Услуги</a><a href="#process">Как работаем</a><a href="#pricing">Тарифы</a><a href="#terms">Условия</a></nav>
+    <a class="pill pill-lime login" href="https://admin.cplusclub.tech/login">Войти <span aria-hidden="true">↗</span></a>
+  </div>
 </header>
 
 <main>
@@ -228,6 +230,6 @@
 </footer>
 
 <dialog id="plan-dialog" aria-labelledby="plan-title"><button class="close" aria-label="Закрыть">×</button><span class="mono lime">Предварительный расчёт</span><h2 id="plan-title"></h2><p id="plan-summary"></p><div class="dialog-total" id="plan-total"></div><p>Этот расчёт не оформляет заказ. Итоговая стоимость, часы поддержки и состав работ согласуются при заключении договора.</p><button class="pill pill-lime" id="copy-calculation">Скопировать расчёт</button><p class="copy-status" id="copy-status" role="status"></p></dialog>
-<script src="app.js?v=dark-20261020b"></script>
+<script src="app.js?v=dark-20261020e"></script>
 </body>
 </html>

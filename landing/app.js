@@ -82,3 +82,16 @@ document.querySelector('#copy-calculation').addEventListener('click',async()=>{c
   els.forEach(el=>io.observe(el));
   document.querySelectorAll('a[href^="#"]').forEach(a=>a.addEventListener('click',()=>{const h=a.getAttribute('href')||'';if(h.length<2)return;const t=document.getElementById(h.slice(1));if(t)t.querySelectorAll('.reveal').forEach(el=>el.classList.add('in'));}));
 })();
+
+/* Header: mark the section currently in view with aria-current (lime dot). */
+(function(){
+  const links=[...document.querySelectorAll('.header nav a[href^="#"]')];
+  const map=new Map(links.map(a=>[a.getAttribute('href').slice(1),a]));
+  const sections=[...map.keys()].map(id=>document.getElementById(id)).filter(Boolean);
+  if(!sections.length||!('IntersectionObserver' in window))return;
+  const visible=new Set();
+  const io=new IntersectionObserver(es=>{es.forEach(e=>e.isIntersecting?visible.add(e.target.id):visible.delete(e.target.id));
+    const current=sections.find(s=>visible.has(s.id));
+    links.forEach(a=>a.setAttribute('aria-current',String(!!current&&a===map.get(current.id))));},{rootMargin:'-45% 0px -50% 0px'});
+  sections.forEach(s=>io.observe(s));
+})();
