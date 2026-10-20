@@ -77,7 +77,19 @@ img{max-width:100%;display:block}
 .header nav a[aria-current=true]{color:var(--fg)}
 .header nav a:after{content:"";position:absolute;left:50%;bottom:5px;width:4px;height:4px;margin-left:-2px;border-radius:50%;background:var(--lime);box-shadow:0 0 8px var(--lime);opacity:0;transform:scale(.4);transition:opacity .2s ease,transform .25s var(--ease-out)}
 .header nav a[aria-current=true]:after{opacity:1;transform:none}
-.login{justify-self:end;min-height:48px;padding:0 22px;font-size:11px}
+/* Login: a calm lime pill in the headline face, no arrow. A soft light
+ * sweeps across it on hover (mouse only); press scales down slightly. */
+.login{justify-self:end;position:relative;display:inline-flex;align-items:center;justify-content:center;height:46px;padding:0 26px;border-radius:999px;overflow:hidden;isolation:isolate;
+  font-family:var(--display);font-stretch:112%;font-size:14.5px;font-weight:620;letter-spacing:-.01em;color:var(--lime-ink);
+  background:linear-gradient(180deg,#c8ff3d 0%,var(--lime) 55%,#a6eb00 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(0,0,0,.12),0 0 0 1px rgba(182,255,0,.35),0 8px 26px rgba(182,255,0,.22);
+  transition:box-shadow .25s ease,transform .14s var(--ease-out)}
+.login:before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.55) 50%,transparent 70%);transform:translateX(-120%)}
+.login:active{transform:scale(.97)}
+@media(hover:hover) and (pointer:fine){
+  .login:hover{box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(0,0,0,.12),0 0 0 1px rgba(182,255,0,.5),0 10px 36px rgba(182,255,0,.38)}
+  .login:hover:before{transform:translateX(120%);transition:transform .7s var(--ease-out)}
+}
 
 /* Hero */
 .hero{position:relative;overflow:hidden;padding:112px 0 0}
@@ -321,7 +333,7 @@ dialog:not([open]){opacity:0;transform:scale(.97)}
   .wrap{padding-left:max(18px,env(safe-area-inset-left,0px));padding-right:max(18px,env(safe-area-inset-right,0px))}
   .header-bar{width:calc(100% - 2 * max(14px,env(safe-area-inset-left,0px)));height:58px;padding:0 6px 0 18px}
   .brand img{width:84px}
-  .login{min-height:44px;padding:0 18px}
+  .login{height:42px;padding:0 20px;font-size:14px}
   .hero{padding-top:98px}
   .horizon{left:-10%;top:560px;width:190%}
   .hero-top{flex-direction:column;gap:6px}
@@ -362,7 +374,8 @@ dialog:not([open]){opacity:0;transform:scale(.97)}
   .card3d{transition:none}
   .card3d-media img{transform:none;transition:opacity .3s ease}
   .expansion-art img,.m .expansion-art.reveal img{transform:none!important}
-  .svc:hover,.pill:active,.round:active{transform:none}
+  .svc:hover,.pill:active,.round:active,.login:active{transform:none}
+  .login:hover:before{transform:translateX(-120%)}
   .step-media img,.m .step.reveal .step-media img,.m .step.reveal.in .step-media img,.svc-media img,.m .svc.reveal .svc-media img,.m .svc.reveal.in .svc-media img,.svc:hover .svc-media img{transform:none!important}
   .platform-list>div:hover h3{transform:none}
   dialog,dialog:not([open]){transform:none}
