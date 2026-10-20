@@ -23,6 +23,10 @@ class TicketFiltersTest extends TestCase
                 'description' => $attrs['description'] ?? 'Проблема', 'priority' => $attrs['priority'] ?? 'normal',
                 'equipment_id' => $attrs['equipment_id'] ?? null, 'assignee_id' => $attrs['assignee_id'] ?? null]);
             foreach (['status', 'created_at'] as $k) if (isset($attrs[$k])) $t->{$k} = $attrs[$k];
+            if (($attrs['status'] ?? null) === 'closed') {
+                // The schema requires the full work record on a closed ticket.
+                $t->work_result = 'Fixed'; $t->verification_result = 'Tested'; $t->cause = 'Driver'; $t->solution = 'Reinstalled'; $t->closed_at = now();
+            }
             $t->save();
             return $t;
         };
