@@ -158,8 +158,16 @@ h1 .indent{padding-left:12%}
 .routine p{color:var(--muted);font-size:15px}
 
 /* SLA: one tilting 3D card with a pager, then a statement. */
-.sla{border-top:1px solid var(--line);overflow:hidden}
-.sla-stage{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px;margin-top:40px}
+/* The SLA block pins to the screen while the page scrolls past it; scroll
+ * progress picks the slide (app.js). overflow-x:clip keeps sticky working. */
+.sla{border-top:1px solid var(--line);overflow-x:clip;padding-top:0}
+.sla-track{position:relative;height:calc(100vh + 3 * 60vh);height:calc(100svh + 3 * 60svh)}
+.sla-sticky{position:sticky;top:0;height:100vh;height:100svh;display:grid;align-content:center;padding-top:72px}
+.sla-top{display:flex;justify-content:space-between;align-items:center;gap:16px}
+.sla-count b{color:var(--fg);font-weight:600}
+.sla-progress{width:min(240px,60%);height:2px;margin:18px auto 0;border-radius:2px;background:var(--line-strong);overflow:hidden}
+.sla-progress i{display:block;height:100%;background:var(--lime);box-shadow:0 0 10px var(--lime);transform-origin:left;transform:scaleX(0)}
+.sla-stage{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px;margin-top:24px}
 .card3d-wrap{perspective:1100px;display:grid;place-items:center;padding:30px 0}
 .card3d{--rx:8deg;--ry:-14deg;position:relative;display:grid;align-content:center;justify-items:center;gap:14px;width:min(320px,70vw);aspect-ratio:3/4;border-radius:26px;border:1px solid rgba(182,255,0,.7);background-color:#0c0f08;background-image:linear-gradient(rgba(182,255,0,.12) 1px,transparent 1px),linear-gradient(90deg,rgba(182,255,0,.12) 1px,transparent 1px);background-size:22px 22px;box-shadow:0 0 0 1px rgba(182,255,0,.15),0 30px 80px rgba(0,0,0,.6),0 0 60px rgba(182,255,0,.18);transform:rotateX(var(--rx)) rotateY(var(--ry));transition:transform .6s var(--ease-out)}
 .card3d strong{font-family:var(--display);font-stretch:125%;font-size:clamp(64px,9vw,96px);font-weight:650;letter-spacing:-.05em;line-height:1;color:var(--lime);text-shadow:0 0 30px rgba(182,255,0,.4);padding:6px 14px;border-radius:12px;background:rgba(6,7,6,.65)}
@@ -170,7 +178,7 @@ h1 .indent{padding-left:12%}
 .dots{display:flex;justify-content:center;gap:8px;margin-top:12px}
 .dots button{width:22px;height:4px;border-radius:2px;background:var(--line-strong);transition:background-color .2s ease,width .3s var(--ease-out)}
 .dots button[aria-selected=true]{background:var(--lime);width:36px}
-.statement{max-width:900px;margin:72px auto 0;text-align:center;font-size:clamp(28px,3.8vw,46px);line-height:1.12}
+.statement{max-width:900px;margin:40px auto 0;text-align:center;font-size:clamp(28px,3.8vw,46px);line-height:1.12}
 .statement .w{transition:color .3s ease}
 
 /* Pricing */

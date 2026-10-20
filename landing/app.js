@@ -33,14 +33,25 @@ document.querySelector('#copy-calculation').addEventListener('click',async()=>{c
   if(card){
     const dots=[...document.querySelectorAll('.dots button')];
     const label=document.getElementById('sla-label'),value=document.getElementById('sla-value'),sub=document.getElementById('sla-sub');
+    const num=document.getElementById('sla-num'),bar=document.getElementById('sla-bar'),track=document.querySelector('.sla-track');
     let i=0,swapTimer;
-    const show=n=>{i=(n+slides.length)%slides.length;dots.forEach((d,k)=>d.setAttribute('aria-selected',String(k===i)));
+    const show=n=>{n=Math.max(0,Math.min(slides.length-1,n));if(n===i)return;i=n;dots.forEach((d,k)=>d.setAttribute('aria-selected',String(k===i)));if(num)num.textContent=String(i+1).padStart(2,'0');
       const s=slides[i];if(reduce){label.textContent=s.label;value.textContent=s.value;sub.textContent=s.sub;return;}
       card.classList.add('swap');clearTimeout(swapTimer);
       swapTimer=setTimeout(()=>{label.textContent=s.label;value.textContent=s.value;sub.textContent=s.sub;card.classList.remove('swap');},180);};
-    document.querySelector('.sla .prev').addEventListener('click',()=>show(i-1));
-    document.querySelector('.sla .next').addEventListener('click',()=>show(i+1));
-    dots.forEach((d,k)=>d.addEventListener('click',()=>show(k)));
+    // Scroll drives the slides: the block stays pinned while the page scrolls
+    // through its track, and each quarter of the track shows the next figure.
+    const progress=()=>{const r=track.getBoundingClientRect();const total=r.height-innerHeight;return total>0?Math.min(1,Math.max(0,-r.top/total)):0;};
+    let ticking=false;
+    const sync=()=>{ticking=false;const p=progress();if(bar)bar.style.transform=`scaleX(${p.toFixed(3)})`;show(Math.min(slides.length-1,Math.floor(p*slides.length)));};
+    addEventListener('scroll',()=>{if(!ticking){ticking=true;requestAnimationFrame(sync);}},{passive:true});
+    addEventListener('resize',sync);sync();
+    // Arrows and dots scroll to the middle of that figure's part of the track.
+    const goTo=k=>{k=Math.max(0,Math.min(slides.length-1,k));const r=track.getBoundingClientRect();const total=r.height-innerHeight;
+      scrollTo({top:scrollY+r.top+total*((k+.5)/slides.length),behavior:reduce?'auto':'smooth'});};
+    document.querySelector('.sla .prev').addEventListener('click',()=>goTo(i-1));
+    document.querySelector('.sla .next').addEventListener('click',()=>goTo(i+1));
+    dots.forEach((d,k)=>d.addEventListener('click',()=>goTo(k)));
     // Decorative tilt follows the pointer with easing (mouse only, never on touch).
     if(fine&&!reduce){
       const stage=document.querySelector('.sla-stage');let tx=8,ty=-14,cx=8,cy=-14,raf=0;
@@ -70,7 +81,7 @@ document.querySelector('#copy-calculation').addEventListener('click',async()=>{c
   if(!root.classList.contains('m'))return;
   if(!('IntersectionObserver' in window)){root.classList.remove('m');return;}
   window.cplusMotion=true;
-  const single=['.section-head','.routine','.sla .center','.sla-stage','.calculator','.pricing-note','.expansion-art','.expansion-copy','.platform>div:first-child','.terms h2','.footer-grid','.wordmark'];
+  const single=['.section-head','.routine','.sla-top','.sla-stage','.calculator','.pricing-note','.expansion-art','.expansion-copy','.platform>div:first-child','.terms h2','.footer-grid','.wordmark'];
   const groups=['.service-grid>.svc','.plans>.plan','.platform-list>div','.faq details'];
   const els=[];
   single.forEach(sel=>document.querySelectorAll(sel).forEach(el=>{el.classList.add('reveal');els.push(el);}));

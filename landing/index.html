@@ -8,7 +8,7 @@
 <title>C+CLUB — технические заботы клуба берём на себя</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23060706'/%3E%3Cpath d='M20 9v22M9 20h22' stroke='%23b6ff00' stroke-width='6'/%3E%3C/svg%3E">
 <link rel="preload" href="fonts/roboto-flex-cyrillic-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=dark-20261020g">
+<link rel="stylesheet" href="style.css?v=dark-20261020h">
 <script>document.documentElement.classList.add("m");setTimeout(function(){if(!window.cplusMotion)document.documentElement.classList.remove("m")},2500)</script>
 </head>
 <body>
@@ -134,20 +134,25 @@
 </section>
 
 <section class="section sla" aria-labelledby="sla-title">
-  <div class="wrap">
-    <span class="mono lime center">Сроки и регламент</span>
-    <div class="sla-stage">
-      <button class="round prev" type="button" aria-label="Предыдущий показатель">←</button>
-      <div class="card3d-wrap"><div class="card3d" id="sla-card" aria-live="polite">
-        <span class="mono dim card3d-label" id="sla-label">Инцидент на клиентском ПК</span>
-        <strong id="sla-value">2 ч</strong>
-        <span class="mono card3d-sub" id="sla-sub">на решение</span>
-      </div></div>
-      <button class="round next" type="button" aria-label="Следующий показатель">→</button>
+  <div class="sla-track">
+    <div class="sla-sticky">
+      <div class="wrap">
+        <div class="sla-top"><span class="mono lime">Сроки и регламент</span><span class="mono dim sla-count" aria-hidden="true"><b id="sla-num">01</b> / 04</span></div>
+        <div class="sla-stage">
+          <button class="round prev" type="button" aria-label="Предыдущий показатель">←</button>
+          <div class="card3d-wrap"><div class="card3d" id="sla-card" aria-live="polite">
+            <span class="mono dim card3d-label" id="sla-label">Инцидент на клиентском ПК</span>
+            <strong id="sla-value">2 ч</strong>
+            <span class="mono card3d-sub" id="sla-sub">на решение</span>
+          </div></div>
+          <button class="round next" type="button" aria-label="Следующий показатель">→</button>
+        </div>
+        <div class="dots" role="tablist" aria-label="Показатели"><button type="button" role="tab" aria-selected="true" aria-label="2 часа"></button><button type="button" role="tab" aria-selected="false" aria-label="24 часа"></button><button type="button" role="tab" aria-selected="false" aria-label="2 выезда"></button><button type="button" role="tab" aria-selected="false" aria-label="6 месяцев"></button></div>
+        <div class="sla-progress" aria-hidden="true"><i id="sla-bar"></i></div>
+      </div>
     </div>
-    <div class="dots" role="tablist" aria-label="Показатели"><button type="button" role="tab" aria-selected="true" aria-label="2 часа"></button><button type="button" role="tab" aria-selected="false" aria-label="24 часа"></button><button type="button" role="tab" aria-selected="false" aria-label="2 выезда"></button><button type="button" role="tab" aria-selected="false" aria-label="6 месяцев"></button></div>
-    <h2 id="sla-title" class="statement" data-words>Договорённости без мелкого шрифта.<span class="soft"> Сроки, приоритет и часы действия фиксируем в договоре.</span></h2>
   </div>
+  <div class="wrap"><h2 id="sla-title" class="statement" data-words>Договорённости без мелкого шрифта.<span class="soft"> Сроки, приоритет и часы действия фиксируем в договоре.</span></h2></div>
 </section>
 
 <section id="pricing" class="wrap section pricing" aria-labelledby="pricing-title">
@@ -230,6 +235,6 @@
 </footer>
 
 <dialog id="plan-dialog" aria-labelledby="plan-title"><button class="close" aria-label="Закрыть">×</button><span class="mono lime">Предварительный расчёт</span><h2 id="plan-title"></h2><p id="plan-summary"></p><div class="dialog-total" id="plan-total"></div><p>Этот расчёт не оформляет заказ. Итоговая стоимость, часы поддержки и состав работ согласуются при заключении договора.</p><button class="pill pill-lime" id="copy-calculation">Скопировать расчёт</button><p class="copy-status" id="copy-status" role="status"></p></dialog>
-<script src="app.js?v=dark-20261020e"></script>
+<script src="app.js?v=dark-20261020h"></script>
 </body>
 </html>
