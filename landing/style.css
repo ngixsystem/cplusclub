@@ -213,11 +213,13 @@ h1 .indent{padding-left:12%}
 
 /* Expansion */
 .expansion{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:56px;align-items:center;padding-block:40px 120px}
-.expansion-art{position:relative;min-height:420px;border-radius:28px;overflow:hidden;border:1px solid var(--line);background:radial-gradient(90% 80% at 50% 110%,rgba(182,255,0,.22),transparent 60%),linear-gradient(180deg,#0b0d09,#060706)}
-.outline-word{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-family:var(--display);font-stretch:130%;font-size:clamp(56px,9vw,120px);font-weight:700;letter-spacing:-.04em;color:transparent;-webkit-text-stroke:1.2px rgba(242,244,238,.5);white-space:nowrap}
-.cables{position:absolute;inset:auto 0 0;height:60%;display:flex;justify-content:space-evenly;align-items:flex-end}
-.cables i{width:2px;height:100%;background:linear-gradient(rgba(182,255,0,0),rgba(182,255,0,.6));border-radius:2px;transform-origin:bottom;opacity:.7}
-.cables i:nth-child(2n){height:72%}.cables i:nth-child(3){height:88%}
+/* Expansion: the club render, framed like the other cards; it settles from a
+ * slight zoom when it scrolls into view. */
+.expansion-art{position:relative;margin:0;aspect-ratio:3/2;border-radius:28px;overflow:hidden;border:1px solid var(--line);background:var(--bg)}
+.expansion-art img{width:100%;height:100%;object-fit:cover;transition:transform 1.4s var(--ease-out),filter .6s ease}
+.expansion-art:after{content:"";position:absolute;inset:0;pointer-events:none;border-radius:inherit;box-shadow:inset 0 0 80px rgba(6,7,6,.55)}
+.m .expansion-art.reveal img{transform:scale(1.1);filter:brightness(.55)}
+.m .expansion-art.reveal.in img{transform:none;filter:none}
 .expansion-copy{display:grid;gap:22px;justify-items:start}
 .expansion-copy p{color:var(--muted);max-width:520px}
 
@@ -345,7 +347,6 @@ dialog:not([open]){opacity:0;transform:scale(.97)}
   .calculator{flex-direction:column;align-items:stretch}
   .count-controls{width:100%}
   .expansion{padding-bottom:72px}
-  .expansion-art{min-height:280px}
   .footer-grid{grid-template-columns:1fr 1fr;gap:28px}
   .footer .up{display:none}
   .faq p,summary{padding-right:48px}
@@ -360,6 +361,7 @@ dialog:not([open]){opacity:0;transform:scale(.97)}
   .m .reveal{transform:none;transition:opacity .4s ease}
   .card3d{transition:none}
   .card3d-media img{transform:none;transition:opacity .3s ease}
+  .expansion-art img,.m .expansion-art.reveal img{transform:none!important}
   .svc:hover,.pill:active,.round:active{transform:none}
   .step-media img,.m .step.reveal .step-media img,.m .step.reveal.in .step-media img,.svc-media img,.m .svc.reveal .svc-media img,.m .svc.reveal.in .svc-media img,.svc:hover .svc-media img{transform:none!important}
   .platform-list>div:hover h3{transform:none}
