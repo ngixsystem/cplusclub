@@ -4,8 +4,10 @@ import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import Shell from '../Layouts/Shell.vue';
 import EquipmentCards from '../Components/EquipmentCards.vue';
 import TicketCards from '../Components/TicketCards.vue';
+import TicketToolbar from '../Components/TicketToolbar.vue';
+import type { TicketFilters } from '../Components/tickets';
 type Row = { id: number; name?: string; address?: string; description?: string; status: string; priority?: string; workstation_number?: string; next_inspection_date?: string; club?: { name: string }; assignee?: { name: string } };
-const props = defineProps<{ ticketComputers:{id:number;club_id:number;name:string;type:string;workstation_number:string|null;zone:string|null}[]; section: string; search: string; stats: Record<string, number>; clubs: {id:number;name:string}[]; rows: {data:Row[];total:number;prev_page_url:string|null;next_page_url:string|null} }>();
+const props = defineProps<{ filters?: TicketFilters; ticketCounts?: Record<string,number>; filterOptions?: {assignees:{id:number;name:string}[];categories:string[]}; ticketComputers:{id:number;club_id:number;name:string;type:string;workstation_number:string|null;zone:string|null}[]; section: string; search: string; stats: Record<string, number>; clubs: {id:number;name:string}[]; rows: {data:Row[];total:number;prev_page_url:string|null;next_page_url:string|null} }>();
 const page = usePage<{auth:{user:{role:string}}}>();
 const titles: Record<string,string> = {overview:'Обзор',clubs:'Клубы',equipment:'Оборудование',tickets:'Заявки'};
 const status: Record<string,string> = {new:'Новая',accepted:'Принята',working:'В работе',approval:'Согласование',parts:'Ожидает запчастей',resolved:'Решена',closed:'Закрыта',active:'Обслуживается',paused:'Приостановлен',ended:'Завершён'};
@@ -14,6 +16,12 @@ const canCreate = computed(() => props.section === 'tickets' || (props.section =
 const form = useForm({icafe_license:'',icafe_token:'',icafe_currency:'UZS',equipment_id:'',name:'',address:'',timezone:'Asia/Tashkent',contacts:'',support_hours:'Пн–Пт 09:00–18:00',notes:'',club_id:props.clubs[0]?.id ?? '',workstation_number:'',type:'pc',zone:'',next_inspection_date:new Date().toISOString().slice(0,10),category:'Диагностика',description:'',priority:'normal'});
 const computers = computed(() => props.ticketComputers.filter(pc => pc.club_id === Number(form.club_id)).sort((a,b)=>a.name.localeCompare(b.name,'ru',{numeric:true})));
 watch(()=>form.club_id,()=>{form.equipment_id='';form.clearErrors('equipment_id');});
+// Tickets: card or compact list view, remembered per browser.
+const ticketView = ref<'cards'|'list'>('cards');
+try { if (localStorage.getItem('cclub-ticket-view') === 'list') ticketView.value = 'list'; } catch { /* optional */ }
+watch(ticketView, v => { try { localStorage.setItem('cclub-ticket-view', v); } catch { /* optional */ } });
+const ticketsLoading = ref(false);
+const ticketFiltersActive = computed(() => { const f = props.filters; return !!f && (f.tab !== 'all' || f.priority.length > 0 || !!f.club || f.assignee !== null || !!f.category || !!f.period || !!f.search); });
 function save() { form.post('/'+props.section, {onSuccess:()=>{adding.value=false; form.reset();}}); }
 </script>
 <template>
@@ -29,10 +37,15 @@ function save() { form.post('/'+props.section, {onSuccess:()=>{adding.value=fals
       <div class="error" role="alert" v-for="(error,key) in form.errors" :key="key">{{ error }}</div><button :disabled="form.processing">{{ form.processing?'Сохраняем…':'Сохранить' }}</button>
     </form>
     <section class="panel records-panel">
-      <div class="toolbar"><h2>{{ section==='overview'?'Последние заявки':section==='equipment'?'Реестр оборудования':section==='clubs'?'Все клубы':'Все заявки' }} <small>{{ rows.total }}</small></h2><form @submit.prevent="router.get(section==='overview'?'/':'/'+section,{search:search},{preserveState:true})"><input v-model="search" placeholder="Поиск" aria-label="Поиск" /><button class="secondary">Найти</button></form></div>
-      <div v-if="!rows.data.length" class="empty"><h3>Пока нет записей</h3><p>Добавьте клуб, затем оборудование и первую заявку. Демонстрационные данные не загружены.</p></div>
+      <div v-if="section!=='tickets' || !filters" class="toolbar"><h2>{{ section==='overview'?'Последние заявки':section==='equipment'?'Реестр оборудования':section==='clubs'?'Все клубы':'Все заявки' }} <small>{{ rows.total }}</small></h2><form @submit.prevent="router.get(section==='overview'?'/':'/'+section,{search:search},{preserveState:true})"><input v-model="search" placeholder="Поиск" aria-label="Поиск" /><button class="secondary">Найти</button></form></div>
+      <template v-else>
+        <div class="toolbar tickets-head"><h2>Все заявки <small>{{ rows.total }}</small></h2></div>
+        <TicketToolbar v-model:view="ticketView" :filters="filters" :counts="ticketCounts ?? {}" :options="filterOptions ?? {assignees:[],categories:[]}" :clubs="clubs" @loading="ticketsLoading=$event" />
+      </template>
+      <div v-if="!rows.data.length && section==='tickets' && ticketFiltersActive" class="empty"><h3>По этим фильтрам заявок нет</h3><p>Измените вкладку или сбросьте фильтры.</p></div>
+      <div v-else-if="!rows.data.length" class="empty"><h3>Пока нет записей</h3><p>Добавьте клуб, затем оборудование и первую заявку. Демонстрационные данные не загружены.</p></div>
       <EquipmentCards v-else-if="section==='equipment'" :items="rows.data" />
-      <TicketCards v-else-if="section==='tickets'" :items="rows.data" />
+      <TicketCards v-else-if="section==='tickets'" :items="rows.data" :view="ticketView" :loading="ticketsLoading" />
       <div v-else class="table-scroll"><table><thead><tr><th>№ / Название</th><th>{{ section==='clubs'?'Адрес':'Клуб' }}</th><th>Статус</th><th>{{ section==='equipment'?'Следующий осмотр':section==='clubs'?'':'Детали' }}</th></tr></thead><tbody><tr v-for="row in rows.data" :key="row.id"><td><Link v-if="['tickets','overview'].includes(section)" :href="'/tickets/'+row.id">#{{ row.id }} · {{ row.description }}</Link><Link v-else :href="'/'+section+'/'+row.id">{{ row.name }}</Link></td><td>{{ row.club?.name || row.address || '—' }}</td><td><span class="badge" :data-status="row.status">{{ status[row.status] || row.status }}</span></td><td><Link v-if="section==='clubs'" :href="'/clubs/'+row.id" class="muted">Открыть карточку</Link><template v-else>{{ row.next_inspection_date || row.assignee?.name || (row.priority==='critical'?'Критическая':'—') }}</template></td></tr></tbody></table></div>
       <div class="pagination"><Link v-if="rows.prev_page_url" :href="rows.prev_page_url">← Назад</Link><Link v-if="rows.next_page_url" :href="rows.next_page_url">Далее →</Link></div>
     </section>

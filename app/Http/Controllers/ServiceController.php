@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Access\ClubAccess;
-use App\Domain\Tickets\{TicketStatus, TransitionTicket};
+use App\Domain\Tickets\{TicketFilters, TicketStatus, TransitionTicket};
 use App\Models\{Club, Equipment, Ticket, User};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{Auth, DB, Gate};
@@ -42,14 +42,32 @@ class ServiceController extends Controller
             'tickets' => (clone $tickets)->whereNotIn('status', ['closed', 'resolved'])->count(),
             'critical' => (clone $tickets)->where('priority', 'critical')->whereNotIn('status', ['closed','resolved'])->count(),
         ];
-        $query = match ($section) {
-            'clubs' => $clubs->when($search, fn ($q) => $q->where('name', 'ilike', '%'.$search.'%')),
-            'equipment' => $equipment->with('club')->when($search, fn ($q) => $q->where('name', 'ilike', '%'.$search.'%')),
-            default => $tickets->with(['club', 'assignee', 'equipment'])->when($search, fn ($q) => $q->where('description', 'ilike', '%'.$search.'%')),
-        };
+        $ticketView = [];
+        if ($section === 'tickets') {
+            $filters = TicketFilters::read($request);
+            if ($filters['club'] && ! ClubAccess::allows($user, $filters['club'])) $filters['club'] = null;
+            $filtered = TicketFilters::apply(clone $tickets, $filters, $user);
+            $ticketView = [
+                'filters' => $filters,
+                'ticketCounts' => TicketFilters::counts($filtered),
+                'filterOptions' => [
+                    'assignees' => User::withTrashed()->whereIn('id', (clone $tickets)->whereNotNull('assignee_id')->select('assignee_id'))
+                        ->orderBy('name')->get(['id', 'name']),
+                    'categories' => (clone $tickets)->toBase()->distinct()->orderBy('category')->pluck('category'),
+                ],
+            ];
+            $query = TicketFilters::sort(TicketFilters::tab($filtered, $filters['tab']), $filters['sort'])
+                ->with(['club:id,name', 'assignee:id,name', 'equipment:id,name,workstation_number']);
+        } else {
+            $query = ($section === 'clubs'
+                ? $clubs->when($search, fn ($q) => $q->where('name', 'ilike', '%'.$search.'%'))
+                : $equipment->with('club')->when($search, fn ($q) => $q->where('name', 'ilike', '%'.$search.'%'))
+            )->orderByDesc('id');
+        }
         return Inertia::render('Workspace', [
+            ...$ticketView,
             'section' => $section, 'stats' => $stats, 'search' => $search,
-            'rows' => $query->orderByDesc('id')->paginate(20)->withQueryString(),
+            'rows' => $query->paginate(20)->withQueryString(),
             'clubs' => ClubAccess::filter(Club::query(), $user, 'id')->orderBy('name')->get(['id', 'name']),
             'ticketComputers' => $section === 'tickets' ? ClubAccess::filter(Equipment::query(), $user)
                 ->whereIn('type', ['pc', 'server'])->orderBy('name')->get(['id','club_id','name','type','workstation_number','zone']) : [],
