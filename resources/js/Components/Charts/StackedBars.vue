@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { useEntered } from './motion';
+import { markDelay, useEntered } from './motion';
 
 type Series = { key: string; label: string; color: string; values: number[] };
 const props = defineProps<{ labels: string[]; series: Series[]; caption: string; unit?: string }>();
@@ -32,7 +32,7 @@ const fmt = (n: number) => new Intl.NumberFormat('ru-RU').format(n);
         <div class="columns">
           <div v-for="(label, i) in labels" :key="label + i" class="column" @mouseenter="hover = i" @mouseleave="hover = null"
             @focus="hover = i" @blur="hover = null" tabindex="0" :aria-label="label + ': ' + series.map(s => s.label + ' ' + s.values[i]).join(', ')">
-            <div class="stack" :style="{ height: (entered ? totals[i] / niceMax * 100 : 0) + '%', transitionDelay: (i * 70) + 'ms' }">
+            <div class="stack grow-y" :class="{ in: entered }" :style="{ height: totals[i] / niceMax * 100 + '%', transitionDelay: markDelay(i, 40) }">
               <span v-for="s in series" v-show="s.values[i] > 0" :key="s.key" class="seg"
                 :style="{ flexGrow: s.values[i], background: s.color }"></span>
             </div>
@@ -69,12 +69,11 @@ const fmt = (n: number) => new Intl.NumberFormat('ru-RU').format(n);
 .grid i:last-child { border-top-style:solid }
 .columns { position:absolute; inset:0; display:flex; justify-content:space-around; gap:4px }
 .column { position:relative; flex:1; max-width:64px; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; outline:none; border-radius:8px }
-.column { transition:background-color .2s }
+.column { transition:background-color var(--dur-fast) ease }
 .column:hover,.column:focus-visible { background:color-mix(in srgb,var(--text) 4%,transparent) }
 .column:hover .stack { filter:brightness(1.12) }
-.tip { animation:tip-in .18s cubic-bezier(.16,1,.3,1) }
-@keyframes tip-in { from { opacity:0; transform:translate(-50%,4px) } }
-.stack { width:14px; display:flex; flex-direction:column-reverse; gap:2px; margin-bottom:28px; transition:height 1s cubic-bezier(.16,1,.3,1) }
+/* Tooltips follow the pointer across columns, so they appear instantly. */
+.stack { width:14px; display:flex; flex-direction:column-reverse; gap:2px; margin-bottom:28px }
 .seg { display:block; min-height:2px; flex-basis:0 }
 .seg:last-child { border-radius:4px 4px 0 0 }
 .x { position:absolute; bottom:4px; font-size:12px; color:var(--muted) }
@@ -88,5 +87,4 @@ const fmt = (n: number) => new Intl.NumberFormat('ru-RU').format(n);
 .values summary { cursor:pointer; padding:6px 0; width:max-content }
 .values table { margin-top:8px }
 @media (max-width:640px) { .plot { height:240px } .stack { width:10px } }
-@media (prefers-reduced-motion:reduce) { .stack { transition:none } }
 </style>

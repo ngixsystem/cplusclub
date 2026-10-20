@@ -130,11 +130,13 @@ const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigat
             <div ref="bell" class="bell">
               <button type="button" class="icon-button ghost" :class="{ 'has-dot': attentionTotal > 0 }" :aria-expanded="bellOpen"
                 :aria-label="attentionTotal ? 'Требует внимания: ' + attentionTotal : 'Уведомлений нет'" @click.stop="bellOpen=!bellOpen"><Bell aria-hidden="true" /></button>
+              <Transition name="pop">
               <div v-if="bellOpen" class="bell-panel" role="dialog" aria-label="Требует внимания">
                 <p class="bell-title">Требует внимания</p>
                 <Link href="/tickets" class="bell-row"><span class="icon-tile rose"><Ticket aria-hidden="true" /></span><span><b>{{ attention.critical }}</b> критических заявок<small>Весь клуб или группа ПК</small></span></Link>
                 <Link href="/monitoring" class="bell-row"><span class="icon-tile amber"><TriangleAlert aria-hidden="true" /></span><span><b>{{ attention.alerts }}</b> активных тревог<small>Пороги мониторинга</small></span></Link>
               </div>
+              </Transition>
             </div>
             <ThemeToggle />
             <Link href="/profile" class="avatar" :aria-label="'Профиль: ' + user.name" :title="user.name + ' · ' + (roles[role] || role)">
@@ -171,7 +173,7 @@ const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigat
 <style scoped>
 .sidebar-brand { padding:22px 20px 16px }
 .bell { position:relative }
-.bell-panel { position:absolute; right:0; top:calc(100% + 10px); width:300px; padding:8px; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow-pop); z-index:50 }
+.bell-panel { transform-origin:top right; position:absolute; right:0; top:calc(100% + 10px); width:300px; padding:8px; background:var(--surface); border:1px solid var(--border); border-radius:14px; box-shadow:var(--shadow-pop); z-index:50 }
 .bell-title { margin:4px 8px 8px; font-size:12px; color:var(--muted); font-weight:500 }
 .bell-row { display:flex; align-items:center; gap:12px; padding:8px; border-radius:10px }
 .bell-row:hover { background:var(--hover) }

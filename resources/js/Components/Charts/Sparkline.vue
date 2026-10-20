@@ -32,7 +32,8 @@ function move(e: PointerEvent) {
 <style scoped>
 .spark { position:relative; height:84px }
 svg { width:100%; height:100%; overflow:visible; display:block; cursor:crosshair }
-.reveal { transform:scaleX(0); transform-origin:left center; transform-box:fill-box; transition:transform 1.4s cubic-bezier(.65,0,.35,1) .25s }
+/* The line draws left to right once, then stays put. */
+.reveal { transform:scaleX(0); transform-origin:left center; transform-box:fill-box; transition:transform 700ms var(--ease-out) 120ms }
 .reveal.shown { transform:scaleX(1) }
 .readout { position:absolute; top:-6px; transform:translate(-50%,-100%); white-space:nowrap; padding:4px 8px; border-radius:8px; background:var(--surface-2); border:1px solid var(--border-strong); font-size:11.5px; font-variant-numeric:tabular-nums; pointer-events:none }
 </style>

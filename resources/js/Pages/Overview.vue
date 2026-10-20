@@ -11,7 +11,7 @@ import MiniBars from '../Components/Charts/MiniBars.vue';
 import Sparkline from '../Components/Charts/Sparkline.vue';
 import IcafeDashboard from '../Components/IcafeDashboard.vue';
 import AnimatedNumber from '../Components/Charts/AnimatedNumber.vue';
-import { useEntered } from '../Components/Charts/motion';
+import { markDelay, useEntered } from '../Components/Charts/motion';
 
 type Urgent = { id: number; description: string; status: string; priority: string; club: string | null; equipment: string | null; created_at: string | null };
 type Alert = { id: number; equipment_id: number; metric: string; opened_at: string; equipment: string; club: string };
@@ -89,7 +89,7 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
         </div>
         <div class="hero-report">
           <div class="card-head"><div><h2>Работы</h2><p>За последние 30 дней</p></div></div>
-          <ul class="report-list">
+          <ul class="report-list stagger-in">
             <li><span class="icon-tile green"><Wrench aria-hidden="true" /></span><div><b>Трудозатраты</b><span><AnimatedNumber :value="o.work.hours_30" :decimals="1" /> ч</span></div></li>
             <li><span class="icon-tile blue"><Wallet aria-hidden="true" /></span><div><b>Расходы</b>
               <span v-if="o.work.costs.length">{{ o.work.costs.map(c => money(c.cost_minor, c.currency)).join(' · ') }}</span><span v-else>Не внесены</span></div></li>
@@ -137,7 +137,7 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
         <div class="inspection-cols">
           <div v-for="c in columns" :key="c.key" class="inspection-col">
             <span class="muted">{{ c.label }}</span><b><AnimatedNumber :value="share(c.value)" />%</b><small>{{ fmt(c.value) }} ПК</small>
-            <div class="col-bar"><i :style="{ height: (entered ? Math.max(c.value ? 6 : 0, share(c.value)) : 0) + '%', background: c.tone, transitionDelay: (300 + columns.indexOf(c) * 120) + 'ms' }"></i></div>
+            <div class="col-bar"><i class="grow-y" :class="{ in: entered }" :style="{ height: Math.max(c.value ? 6 : 0, share(c.value)) + '%', background: c.tone, transitionDelay: markDelay(columns.indexOf(c) * 3, 120) }"></i></div>
           </div>
         </div>
         <p v-if="o.inspections.unscheduled" class="muted footnote">Без даты осмотра: {{ fmt(o.inspections.unscheduled) }} ПК</p>
@@ -147,7 +147,7 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
         <section>
           <div class="card-head"><h2>Срочные заявки</h2><Link href="/tickets" class="button card-menu" aria-label="Все заявки"><EllipsisVertical aria-hidden="true" /></Link></div>
           <p v-if="!o.urgent.length" class="list-empty">Открытых заявок нет.</p>
-          <ul class="rows">
+          <ul class="rows stagger-in">
             <li v-for="t in o.urgent" :key="t.id">
               <Link :href="'/tickets/' + t.id" class="row">
                 <span class="icon-tile" :class="priorityTile[t.priority]"><Ticket aria-hidden="true" /></span>
@@ -160,7 +160,7 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
         <section>
           <div class="card-head"><h2>Требуют внимания</h2><Link href="/monitoring" class="button card-menu" aria-label="Мониторинг"><EllipsisVertical aria-hidden="true" /></Link></div>
           <p v-if="!o.alerts.length" class="list-empty">Активных тревог нет<template v-if="o.devices.monitored">, {{ fmt(o.devices.monitored) }} устройств на связи</template>.</p>
-          <ul class="rows">
+          <ul class="rows stagger-in">
             <li v-for="a in o.alerts" :key="a.id">
               <Link :href="'/equipment/' + a.equipment_id" class="row">
                 <span class="icon-tile rose"><Thermometer aria-hidden="true" /></span>
@@ -226,7 +226,7 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
 .inspection-col b { font-size:22px; font-weight:600; font-variant-numeric:tabular-nums }
 .inspection-col>span { font-size:13px }
 .col-bar { flex:1; display:flex; align-items:flex-end; margin-top:12px; min-height:90px }
-.col-bar i { display:block; width:100%; border-radius:10px 10px 4px 4px; opacity:.9; transition:height 1.1s cubic-bezier(.16,1,.3,1) }
+.col-bar i { display:block; width:100%; border-radius:10px 10px 4px 4px; opacity:.9 }
 .footnote { font-size:12.5px; margin:14px 0 0 }
 
 .lists { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); padding:0 }
@@ -234,14 +234,12 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
 .lists>section+section { border-left:1px solid var(--border) }
 .rows { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:minmax(0,1fr); gap:4px }
 .rows>li { min-width:0 }
-.row { display:flex; align-items:center; gap:12px; padding:9px 8px; margin:0 -8px; border-radius:12px; transition:background-color .15s,transform .25s cubic-bezier(.16,1,.3,1) }
-.row:hover { transform:translateX(3px) }
-.row .icon-tile { transition:transform .25s cubic-bezier(.16,1,.3,1) }
-.row:hover .icon-tile { transform:scale(1.06) }
-.rows>li { animation:rise-in .5s cubic-bezier(.16,1,.3,1) both }
-.rows>li:nth-child(2){animation-delay:.05s}.rows>li:nth-child(3){animation-delay:.1s}.rows>li:nth-child(4){animation-delay:.15s}.rows>li:nth-child(5){animation-delay:.2s}.rows>li:nth-child(n+6){animation-delay:.25s}
-.report-list li { animation:rise-in .5s cubic-bezier(.16,1,.3,1) both }
-.report-list li:nth-child(2){animation-delay:.08s}.report-list li:nth-child(3){animation-delay:.16s}
+.row { display:flex; align-items:center; gap:12px; padding:9px 8px; margin:0 -8px; border-radius:12px; transition:background-color .15s ease,transform var(--dur-fast) var(--ease-out) }
+.row .icon-tile { transition:transform var(--dur-fast) var(--ease-out) }
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+  .row:hover { transform:translateX(2px) }
+  .row:hover .icon-tile { transform:scale(1.04) }
+}
 .row:hover { background:var(--hover) }
 .row-main { flex:1; min-width:0 }
 .row-main b { display:block; font-weight:500; font-size:14.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis }

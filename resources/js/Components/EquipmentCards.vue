@@ -5,8 +5,8 @@ const types:Record<string,string>={pc:'Компьютер',server:'Сервер'
 const statuses:Record<string,string>={active:'Активно',maintenance:'Обслуживание',retired:'Выведено'};
 </script>
 <template>
-  <div class="equipment-grid">
-    <Link v-for="item in items" :key="item.id" :href="'/equipment/'+item.id" class="equipment-card" :aria-label="item.name">
+  <div class="equipment-grid stagger-in">
+    <Link v-for="item in items" :key="item.id" :href="'/equipment/'+item.id" class="equipment-card card-link" :aria-label="item.name">
       <div class="card-top"><span>{{types[item.type || 'pc'] || item.type}}</span><span class="badge" :data-status="item.status">{{statuses[item.status] || item.status}}</span></div>
       <div class="device-art" aria-hidden="true">
         <svg viewBox="0 0 160 100" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -23,10 +23,10 @@ const statuses:Record<string,string>={active:'Активно',maintenance:'Об�
 </template>
 <style scoped>
 .equipment-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;padding:24px}
-.equipment-card{min-width:0;display:block;border:1px solid var(--border);border-radius:14px;padding:18px;background:var(--surface);color:var(--text);text-decoration:none;transition:border-color .2s,background .2s,transform .25s cubic-bezier(.16,1,.3,1),box-shadow .25s;animation:rise-in .5s cubic-bezier(.16,1,.3,1) both}
-.equipment-card:nth-child(2){animation-delay:40ms}.equipment-card:nth-child(3){animation-delay:80ms}.equipment-card:nth-child(4){animation-delay:120ms}.equipment-card:nth-child(5){animation-delay:160ms}.equipment-card:nth-child(6){animation-delay:200ms}.equipment-card:nth-child(7){animation-delay:240ms}.equipment-card:nth-child(8){animation-delay:280ms}.equipment-card:nth-child(9){animation-delay:320ms}.equipment-card:nth-child(10){animation-delay:360ms}.equipment-card:nth-child(11){animation-delay:400ms}.equipment-card:nth-child(12){animation-delay:440ms}.equipment-card:nth-child(n+13){animation-delay:480ms}
-.equipment-card:hover{border-color:var(--border-strong);background:var(--hover);transform:translateY(-3px);box-shadow:0 12px 30px -14px rgba(0,0,0,.4)}
-.equipment-card .device-art svg{transition:transform .35s cubic-bezier(.16,1,.3,1)}.equipment-card:hover .device-art svg{transform:scale(1.04)}
+.equipment-card{min-width:0;display:block;border:1px solid var(--border);border-radius:14px;padding:18px;background:var(--surface);color:var(--text);text-decoration:none}
+.equipment-card:hover{border-color:var(--border-strong);background:var(--hover)}
+.equipment-card .device-art svg{transition:transform var(--dur-fast) var(--ease-out)}
+@media(hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference){.equipment-card:hover .device-art svg{transform:scale(1.03)}}
 .equipment-card:focus-visible{outline:3px solid var(--accent-text);outline-offset:3px}
 .card-top,.device-meta,.card-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
 .card-top,.club-name,.device-meta,.card-bottom{font-size:12px;color:var(--muted)}
@@ -34,5 +34,4 @@ const statuses:Record<string,string>={active:'Активно',maintenance:'Об�
 svg{width:160px;height:100px}.screen{fill:var(--soft)}.led{fill:var(--success);stroke:var(--success)}
 h3{font-size:19px;font-weight:700;overflow-wrap:anywhere;margin:0 0 4px}.club-name{margin:0 0 16px;overflow-wrap:anywhere}.device-meta{min-height:22px}.card-bottom{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
 @media(max-width:560px){.equipment-grid{grid-template-columns:1fr;padding:14px;gap:12px}}
-@media(prefers-reduced-motion:reduce){.equipment-card{transition:none}}
 </style>

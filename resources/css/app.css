@@ -154,7 +154,7 @@ legend { padding:0 6px; font-size:12px; color:var(--muted) }
     position:fixed; inset:0 auto 0 0; width:var(--sidebar-width); z-index:40;
     display:flex; flex-direction:column;
     background:var(--sidebar); border-right:1px solid var(--border);
-    transition:transform .2s ease
+    transition:transform var(--dur-drawer) var(--ease-drawer)
 }
 .sidebar-brand { display:flex; align-items:center; gap:12px; padding:18px 18px 14px; color:var(--text) }
 .sidebar-brand .mark { width:38px; height:38px; flex:none; display:grid; place-items:center; border-radius:50%; background:var(--text); color:var(--bg); font-weight:700; font-size:15px; letter-spacing:-.04em }
@@ -324,23 +324,71 @@ td a:hover { text-decoration:underline; text-underline-offset:4px }
 
 
 /* ---------- Motion ----------
- * One orchestrated entrance per page: cards rise in sequence, charts grow from
- * the baseline, numbers count up. Hover lifts only interactive cards.
- * Everything is disabled by prefers-reduced-motion (see the end of the file). */
-:root { --ease-out:cubic-bezier(.16,1,.3,1); --rise-step:55ms }
-@keyframes rise-in { from { opacity:0; transform:translateY(10px) } to { opacity:1; transform:none } }
-@keyframes fade-in { from { opacity:0 } to { opacity:1 } }
-.panel,.card,.stats article,.metric-grid article,.page-header,.heading {
-    animation:rise-in .6s var(--ease-out) both;
-    animation-delay:calc(var(--i,0) * var(--rise-step))
+ * Rules follow Emil Kowalski's animation guidelines (emilkowal.ski):
+ *  - pages are opened tens of times a day, so entrances are short and subtle
+ *    (260ms, 6px) with a capped 40ms stagger that never blocks clicks;
+ *  - only transform/opacity animate; charts grow with scaleY, not height;
+ *  - hover motion only on cards that are links, and only for a real mouse;
+ *  - reduced motion keeps opacity fades and drops all movement.
+ * Use these tokens instead of hand-typed curves and durations. */
+:root {
+    --ease-out:cubic-bezier(0.23,1,0.32,1);       /* entering / exiting UI */
+    --ease-in-out:cubic-bezier(0.77,0,0.175,1);   /* moving on screen */
+    --ease-drawer:cubic-bezier(0.32,0.72,0,1);    /* iOS-like drawer */
+    --dur-press:140ms; --dur-fast:180ms; --dur-enter:260ms; --dur-drawer:300ms;
+    --dur-chart:560ms; --chart-step:24ms; --chart-cap:240ms;
+    --stagger-step:40ms; --stagger-cap:320ms; --rise-dist:6px
 }
+@keyframes rise-in { from { opacity:0; transform:translateY(var(--rise-dist)) } to { opacity:1; transform:none } }
+@keyframes fade-in { from { opacity:0 } to { opacity:1 } }
+
+/* Page entrance: sections follow page order (--page-i), cards inside them follow
+ * their own index (--i). The total delay is capped so long pages stay quick. */
+#main-content>:nth-child(2) { --page-i:1 }
+#main-content>:nth-child(3) { --page-i:2 }
+#main-content>:nth-child(4) { --page-i:3 }
+#main-content>:nth-child(n+5) { --page-i:4 }
+.panel,.card,.stats article,.metric-grid article {
+    animation:rise-in var(--dur-enter) var(--ease-out) backwards;
+    animation-delay:min(calc((var(--page-i,0) + var(--i,0)) * var(--stagger-step)),var(--stagger-cap))
+}
+/* Headers carry text people read immediately: fade only, no movement. */
+.page-header,.heading { animation:fade-in var(--dur-fast) ease backwards }
 .stats article:nth-child(2),.metric-grid article:nth-child(2) { --i:1 }
 .stats article:nth-child(3),.metric-grid article:nth-child(3) { --i:2 }
 .stats article:nth-child(4),.metric-grid article:nth-child(4) { --i:3 }
-.lift { transition:transform .25s var(--ease-out),border-color .2s,box-shadow .25s var(--ease-out) }
-.lift:hover { transform:translateY(-2px); border-color:var(--border-strong); box-shadow:0 10px 30px -12px rgba(0,0,0,.35) }
-.stats article { transition:transform .25s var(--ease-out),border-color .2s }
-.stats article:hover { transform:translateY(-2px); border-color:var(--border-strong) }
+
+/* Lists of cards (equipment, tickets, live PCs): add .stagger-in to the parent.
+ * Only for first render: never re-run it on filtering or typing. */
+.stagger-in>* { animation:rise-in var(--dur-enter) var(--ease-out) backwards; animation-delay:min(calc(var(--si,0) * var(--stagger-step)),var(--stagger-cap)) }
+.stagger-in>:nth-child(2){--si:1}.stagger-in>:nth-child(3){--si:2}.stagger-in>:nth-child(4){--si:3}.stagger-in>:nth-child(5){--si:4}
+.stagger-in>:nth-child(6){--si:5}.stagger-in>:nth-child(7){--si:6}.stagger-in>:nth-child(8){--si:7}.stagger-in>:nth-child(n+9){--si:8}
+
+/* Chart marks grow from the baseline. Height stays static (no layout work per
+ * frame); only the transform animates. scaleY(0) is deliberate here: a bar
+ * growing out of its axis is the physical metaphor, not an element popping in. */
+.grow-y { transform:scaleY(0); transform-origin:50% 100%; transition:transform var(--dur-chart) var(--ease-out) }
+.grow-y.in { transform:none }
+
+/* Cards: non-interactive ones only highlight their border; cards that are
+ * links lift by 2px. Motion is gated to a real pointer (touch fakes hover). */
+.lift,.stats article,.metric-grid article { transition:border-color var(--dur-fast) ease,box-shadow var(--dur-fast) ease }
+.lift:hover,.stats article:hover,.metric-grid article:hover { border-color:var(--border-strong) }
+.card-link { transition:transform var(--dur-fast) var(--ease-out),border-color var(--dur-fast) ease,background-color var(--dur-fast) ease,box-shadow var(--dur-fast) ease }
+@media (hover:hover) and (pointer:fine) and (prefers-reduced-motion:no-preference) {
+    .card-link:hover { transform:translateY(-2px); box-shadow:0 12px 30px -14px rgba(0,0,0,.4) }
+}
+
+/* Press feedback on every button: subtle scale, fast release. */
+@media (prefers-reduced-motion:no-preference) {
+    button,.button { transition-property:background-color,border-color,color,opacity,transform; transition-duration:.15s,.15s,.15s,.15s,var(--dur-press); transition-timing-function:ease,ease,ease,ease,var(--ease-out) }
+    button:not(:disabled):active,.button:active { transform:scale(.97) }
+}
+
+/* Popover (notifications): grows from its trigger in the top-right corner. */
+.pop-enter-active { transition:opacity var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out) }
+.pop-leave-active { transition:opacity 120ms var(--ease-out),transform 120ms var(--ease-out) }
+.pop-enter-from,.pop-leave-to { opacity:0; transform:translateY(-4px) scale(.97) }
 
 /* ---------- Responsive ---------- */
 @media (max-width:1100px) {
@@ -369,6 +417,13 @@ td a:hover { text-decoration:underline; text-underline-offset:4px }
     .records-panel>.toolbar { padding:16px }
     .login .panel { padding:24px }
 }
+/* Reduced motion = fewer and gentler, not zero: keep opacity and colour
+ * changes that explain state, drop every movement and scale. */
 @media (prefers-reduced-motion:reduce) {
-    *,*:before,*:after { transition:none!important; animation:none!important; scroll-behavior:auto!important }
+    @keyframes rise-in { from { opacity:0 } to { opacity:1 } }
+    :root { --stagger-step:0ms; --rise-dist:0px }
+    .grow-y { transform:none; transition:none }
+    .sidebar,.main { transition:none }
+    .pop-enter-from,.pop-leave-to { transform:none }
+    html { scroll-behavior:auto }
 }

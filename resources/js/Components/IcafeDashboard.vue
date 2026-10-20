@@ -75,8 +75,7 @@ const detailLabels:Record<string,string>={cash_sales:'Поступления н�
 .live-indicator { height:8px; width:8px; border-radius:50%; background:var(--chart-1); box-shadow:0 0 0 3px var(--success-bg) }
 .live-indicator.warning { background:var(--warning); box-shadow:0 0 0 3px var(--warning-bg) }
 .metric-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:20px; margin-bottom:20px }
-.metric-grid article { background:var(--surface); border:1px solid var(--border); padding:20px 22px; border-radius:var(--radius-card); transition:transform .25s cubic-bezier(.16,1,.3,1),border-color .2s }
-.metric-grid article:hover { transform:translateY(-2px); border-color:var(--border-strong) }
+.metric-grid article { background:var(--surface); border:1px solid var(--border); padding:20px 22px; border-radius:var(--radius-card) }
 .metric-grid span,.metric-grid small { color:var(--muted); font-size:13px }
 .metric-grid strong { display:block; font-size:24px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-.03em; margin:14px 0 6px; overflow-wrap:anywhere }
 .dash-grid { display:grid; grid-template-columns:minmax(0,2fr) minmax(0,1fr); gap:20px }
@@ -96,8 +95,8 @@ const detailLabels:Record<string,string>={cash_sales:'Поступления н�
 .detail-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:18px; border-top:1px solid var(--border); padding:18px 0 }
 .dashboard-warning { background:var(--warning-bg); color:var(--warning); border-radius:var(--radius-control); padding:11px 14px }
 .pc-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(72px,1fr)); gap:8px; margin-top:16px }
-.pc { padding:10px 6px; border:1px solid var(--border); border-radius:10px; display:grid; gap:4px; text-align:center; background:var(--surface-2); transition:background-color .4s,border-color .4s,transform .2s }
-.pc:hover { transform:translateY(-2px) }
+/* Live status: colour crossfades when a PC goes on/offline. Tiles are not links, so no hover lift. */
+.pc { padding:10px 6px; border:1px solid var(--border); border-radius:10px; display:grid; gap:4px; text-align:center; background:var(--surface-2); transition:background-color 300ms ease,border-color 300ms ease }
 .pc b { font-weight:500; font-size:13px }
 .pc span { font-size:11px; color:var(--subtle) }
 .pc-online { border-color:color-mix(in srgb,var(--chart-1) 45%,var(--border)); background:var(--success-bg) }
