@@ -33,9 +33,9 @@ document.querySelector('#copy-calculation').addEventListener('click',async()=>{c
   if(card){
     const dots=[...document.querySelectorAll('.dots button')];
     const label=document.getElementById('sla-label'),value=document.getElementById('sla-value'),sub=document.getElementById('sla-sub');
-    const num=document.getElementById('sla-num'),bar=document.getElementById('sla-bar'),track=document.querySelector('.sla-track');
+    const pics=[...card.querySelectorAll('.card3d-media img')],num=document.getElementById('sla-num'),bar=document.getElementById('sla-bar'),track=document.querySelector('.sla-track');
     let i=0,swapTimer;
-    const show=n=>{n=Math.max(0,Math.min(slides.length-1,n));if(n===i)return;i=n;dots.forEach((d,k)=>d.setAttribute('aria-selected',String(k===i)));if(num)num.textContent=String(i+1).padStart(2,'0');
+    const show=n=>{n=Math.max(0,Math.min(slides.length-1,n));if(n===i)return;i=n;dots.forEach((d,k)=>d.setAttribute('aria-selected',String(k===i)));if(num)num.textContent=String(i+1).padStart(2,'0');pics.forEach((p,k)=>{p.classList.toggle('active',k===i);if(k===i)p.loading='eager';});
       const s=slides[i];if(reduce){label.textContent=s.label;value.textContent=s.value;sub.textContent=s.sub;return;}
       card.classList.add('swap');clearTimeout(swapTimer);
       swapTimer=setTimeout(()=>{label.textContent=s.label;value.textContent=s.value;sub.textContent=s.sub;card.classList.remove('swap');},180);};

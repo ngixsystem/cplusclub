@@ -8,7 +8,7 @@
 <title>C+CLUB — технические заботы клуба берём на себя</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%23060706'/%3E%3Cpath d='M20 9v22M9 20h22' stroke='%23b6ff00' stroke-width='6'/%3E%3C/svg%3E">
 <link rel="preload" href="fonts/roboto-flex-cyrillic-standard-normal.woff2" as="font" type="font/woff2" crossorigin>
-<link rel="stylesheet" href="style.css?v=dark-20261020h">
+<link rel="stylesheet" href="style.css?v=dark-20261020i">
 <script>document.documentElement.classList.add("m");setTimeout(function(){if(!window.cplusMotion)document.documentElement.classList.remove("m")},2500)</script>
 </head>
 <body>
@@ -141,7 +141,8 @@
         <div class="sla-stage">
           <button class="round prev" type="button" aria-label="Предыдущий показатель">←</button>
           <div class="card3d-wrap"><div class="card3d" id="sla-card" aria-live="polite">
-            <span class="mono dim card3d-label" id="sla-label">Инцидент на клиентском ПК</span>
+            <div class="card3d-media" aria-hidden="true"><img src="img/metrics/incident-480.webp" srcset="img/metrics/incident-480.webp 480w, img/metrics/incident-720.webp 720w" sizes="320px" width="720" height="1080" alt="" decoding="async" class="active"><img src="img/metrics/planned-480.webp" srcset="img/metrics/planned-480.webp 480w, img/metrics/planned-720.webp 720w" sizes="320px" width="720" height="1080" alt="" decoding="async" loading="lazy"><img src="img/metrics/visits-480.webp" srcset="img/metrics/visits-480.webp 480w, img/metrics/visits-720.webp 720w" sizes="320px" width="720" height="1080" alt="" decoding="async" loading="lazy"><img src="img/metrics/cleaning-480.webp" srcset="img/metrics/cleaning-480.webp 480w, img/metrics/cleaning-720.webp 720w" sizes="320px" width="720" height="1080" alt="" decoding="async" loading="lazy"></div>
+            <span class="mono card3d-label" id="sla-label">Инцидент на клиентском ПК</span>
             <strong id="sla-value">2 ч</strong>
             <span class="mono card3d-sub" id="sla-sub">на решение</span>
           </div></div>
@@ -235,6 +236,6 @@
 </footer>
 
 <dialog id="plan-dialog" aria-labelledby="plan-title"><button class="close" aria-label="Закрыть">×</button><span class="mono lime">Предварительный расчёт</span><h2 id="plan-title"></h2><p id="plan-summary"></p><div class="dialog-total" id="plan-total"></div><p>Этот расчёт не оформляет заказ. Итоговая стоимость, часы поддержки и состав работ согласуются при заключении договора.</p><button class="pill pill-lime" id="copy-calculation">Скопировать расчёт</button><p class="copy-status" id="copy-status" role="status"></p></dialog>
-<script src="app.js?v=dark-20261020h"></script>
+<script src="app.js?v=dark-20261020i"></script>
 </body>
 </html>
