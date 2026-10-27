@@ -44,6 +44,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/updates/verify',[\App\Http\Controllers\UpdatesController::class,'verify']);
     Route::get('/integrations',[\App\Http\Controllers\IntegrationController::class,'index']);
     Route::post('/integrations/channels',[\App\Http\Controllers\IntegrationController::class,'store']);
+    Route::post('/integrations/telegram/chats',[\App\Http\Controllers\IntegrationController::class,'chats'])->middleware('throttle:avatar');
     Route::post('/integrations/channels/{channel}/test',[\App\Http\Controllers\IntegrationController::class,'test']);
     Route::post('/integrations/channels/{channel}/toggle',[\App\Http\Controllers\IntegrationController::class,'toggle']);
     Route::post('/integrations/deliveries/{id}/retry',[\App\Http\Controllers\IntegrationController::class,'retry']);

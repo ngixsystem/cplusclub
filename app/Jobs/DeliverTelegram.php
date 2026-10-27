@@ -11,6 +11,13 @@ class DeliverTelegram implements ShouldQueue {
     public int $timeout=25;
     public function __construct(public int $deliveryId){$this->onQueue('notifications');}
     public function backoff():array {return [10,30,120,600,1800];}
+    /** Kinds meant for club staff: they get only the human text, no technical header or payload. */
+    public const PLAIN=['link_down','link_restored'];
+    public static function text(string $kind,int $eventId,string $payload):string {
+        $human=json_decode($payload,true)['message']??null;
+        if(in_array($kind,self::PLAIN,true)&&is_string($human))return $human;
+        return 'C+CLub · '.$kind.' · событие #'.$eventId."\n".(is_string($human)?$human."\n":'').$payload;
+    }
     public function handle(TelegramTransport $transport):void {
         $lock=Cache::lock('delivery:'.$this->deliveryId,40);
         if(!$lock->get()){ $this->release(10);return; }
@@ -24,8 +31,7 @@ class DeliverTelegram implements ShouldQueue {
             }
             $number=$delivery->attempts+1;
             DB::table('deliveries')->where('id',$delivery->id)->update(['attempts'=>$number,'status'=>'sending','next_attempt_at'=>now()->addSeconds(60)]);
-            $human=json_decode($event->payload,true)['message']??null;
-            $result=$transport->send($channel,'C+CLub · '.$event->kind.' · событие #'.$event->id."\n".(is_string($human)?$human."\n":'').$event->payload);
+            $result=$transport->send($channel,self::text($event->kind,$event->id,$event->payload));
             $success=$result['ok'];$delay=$result['retry_after']??min(1800,10*(2**min($number,7)));
             DB::transaction(function()use($delivery,$result,$success,$number,$delay){
                 DB::table('delivery_attempts')->insert(['delivery_id'=>$delivery->id,'number'=>$number,'outcome'=>$success?(config('services.telegram.transport')==='fake'?'fake_sent':'sent'):(!empty($result['ambiguous'])?'unknown_acceptance':'rejected'),'http_status'=>$result['status'],'created_at'=>now()]);

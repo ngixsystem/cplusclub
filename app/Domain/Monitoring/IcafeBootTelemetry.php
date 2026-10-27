@@ -133,6 +133,10 @@ final class IcafeBootTelemetry
                     $update += ['state' => 'active', 'episode' => $alert->episode + 1, 'opened_at' => $when, 'recovered_at' => null];
                     $this->evaluator->event($clubId, 'monitor_problem', 'alert:'.$alert->id.':'.($alert->episode + 1).':open',
                         $payload + ['message' => "{$name}: сетевой линк упал до {$link} Мбит/с (норма {$expected} Мбит/с)"]);
+                    // Club staff get a plain request to reseat the cable (separate kind, so a client
+                    // group can subscribe to it without receiving the technical alerts).
+                    $this->evaluator->event($clubId, 'link_down', 'alert:'.$alert->id.':'.($alert->episode + 1).':link_down',
+                        $payload + ['message' => LinkMessages::down($this->place($equipmentId, $name), $link, $expected)]);
                 }
             }
         } else {
@@ -141,9 +145,18 @@ final class IcafeBootTelemetry
                 $update += ['state' => 'normal', 'recovered_at' => $when];
                 $this->evaluator->event($clubId, 'monitor_recovered', 'alert:'.$alert->id.':'.$alert->episode.':recovered',
                     $payload + ['message' => "{$name}: сетевой линк восстановлен, {$link} Мбит/с"]);
+                $this->evaluator->event($clubId, 'link_restored', 'alert:'.$alert->id.':'.$alert->episode.':link_restored',
+                    $payload + ['message' => LinkMessages::restored($this->place($equipmentId, $name), $link)]);
             }
         }
         DB::table('alerts')->where('id', $alert->id)->update($update);
+    }
+
+    /** "PC027 · место 27 · зал 2" — what staff in the club can find quickly. */
+    private function place(int $equipmentId, string $name): string
+    {
+        $e = DB::table('equipment')->where('id', $equipmentId)->first(['workstation_number', 'zone']);
+        return implode(' · ', array_filter([$name, $e?->workstation_number ? 'место '.$e->workstation_number : null, $e?->zone]));
     }
 
     private static function mac(string $mac): string

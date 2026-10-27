@@ -118,11 +118,21 @@ class IcafeBootTelemetryTest extends TestCase
         $event = DB::table('outbox_events')->where('kind', 'monitor_problem')->first();
         $this->assertStringContainsString('PC017: сетевой линк упал до 100', json_decode($event->payload, true)['message']);
         $this->assertTrue(collect(app(LiveComputers::class)->snapshot($c)['pcs'])->first()['link_alert']);
+        // Club staff get a separate, plain request to reseat the cable.
+        $down = DB::table('outbox_events')->where('kind', 'link_down')->sole();
+        $text = \App\Jobs\DeliverTelegram::text('link_down', $down->id, $down->payload);
+        $this->assertStringStartsWith('⚠️ PC017', $text);
+        $this->assertStringContainsString('100 Мбит/с вместо 1 Гбит/с', $text);
+        $this->assertStringContainsString('подключите заново', $text);
+        $this->assertStringNotContainsString('equipment_id', $text, 'no technical payload for club staff');
+        $this->assertStringContainsString('"equipment_id"', \App\Jobs\DeliverTelegram::text('monitor_problem', 1, $down->payload), 'internal kinds keep the details');
 
         $speed = '1000M';
         $this->travel(60)->seconds(); $boot->collect($c);
         $this->assertSame('normal', $state());
         $this->assertDatabaseHas('outbox_events', ['kind' => 'monitor_recovered']);
+        $up = DB::table('outbox_events')->where('kind', 'link_restored')->sole();
+        $this->assertStringContainsString('Сеть восстановлена: 1 Гбит/с', \App\Jobs\DeliverTelegram::text('link_restored', $up->id, $up->payload));
     }
 
     public function test_pc_that_starts_at_100_is_flagged_and_link_parsing(): void
