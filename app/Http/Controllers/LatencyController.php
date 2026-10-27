@@ -105,7 +105,7 @@ class LatencyController extends Controller
             'port' => 'nullable|integer|between:1,65535', 'max_rtt_ms' => 'required|integer|between:5,1000', 'max_loss_pct' => 'required|integer|between:0,50']);
         Gate::authorize('view', Club::findOrFail($d['club_id']));
         abort_if(DB::table('latency_targets')->where('club_id', $d['club_id'])->count() >= 10, 422, 'Не более 10 серверов на клуб.');
-        DB::table('latency_targets')->insertOrIgnore($d + ['host' => strtolower($d['host']), 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('latency_targets')->insertOrIgnore(array_merge($d, ['host' => strtolower($d['host']), 'created_at' => now(), 'updated_at' => now()]));
         return back()->with('success', 'Сервер добавлен. Агент начнёт измерять его в течение пяти минут.');
     }
 

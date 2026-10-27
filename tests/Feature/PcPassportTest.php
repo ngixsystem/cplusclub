@@ -12,11 +12,18 @@ class PcPassportTest extends TestCase
 {
     use RefreshDatabase;
 
+    private array $row = [];
+
     private function boot(array $row): void
     {
+        $this->row = $row;
+        if ($this->faked ?? false) return;
+        $this->faked = true;
         Http::preventStrayRequests();
-        Http::fake(['*/bootPcs' => Http::response(['code' => 200, 'data' => [['bpc_id' => 10, 'bpc_icafe_id' => 123, 'bpc_name' => 'PC017', 'bpc_mac' => ''] + $row]])]);
+        Http::fake(fn () => Http::response(['code' => 200, 'data' => [['bpc_id' => 10, 'bpc_icafe_id' => 123, 'bpc_name' => 'PC017', 'bpc_mac' => ''] + $this->row]]));
     }
+
+    private bool $faked = false;
 
     public function test_first_reading_fills_the_passport_and_a_swap_raises_an_alert(): void
     {
