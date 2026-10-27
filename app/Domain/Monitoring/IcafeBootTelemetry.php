@@ -135,12 +135,11 @@ final class IcafeBootTelemetry
                         $payload + ['message' => "{$name}: сетевой линк упал до {$link} Мбит/с (норма {$expected} Мбит/с)"]);
                     // Club staff get a plain request to reseat the cable (separate kind, so a client
                     // group can subscribe to it without receiving the technical alerts).
-                    $place = $this->place($equipmentId, $name);
-                    $followup = \App\Domain\Telegram\LinkFollowups::open($alert->id, $alert->episode + 1, $clubId, $equipmentId, $place, $link, $expected);
-                    $this->evaluator->event($clubId, 'link_down', 'alert:'.$alert->id.':'.($alert->episode + 1).':link_down',
-                        $payload + ['message' => LinkMessages::down($place, $link, $expected), 'followup_id' => $followup,
-                            'buttons' => \App\Domain\Telegram\LinkFollowups::buttons($followup)]);
+                    $this->announceDown($clubId, $alert->id, $alert->episode + 1, $equipmentId, $name, $link, $expected, $payload);
                 }
+            } elseif (! DB::table('link_followups')->where('alert_id', $alert->id)->where('episode', $alert->episode)->exists()) {
+                // Opened before club staff were asked (an older alert, or a group added later): ask now.
+                $this->announceDown($clubId, $alert->id, $alert->episode, $equipmentId, $name, $link, $expected, $payload);
             }
         } else {
             $update['breach_since'] = null;
@@ -154,6 +153,16 @@ final class IcafeBootTelemetry
             }
         }
         DB::table('alerts')->where('id', $alert->id)->update($update);
+    }
+
+    /** Asks the club group to reseat the cable, with the «Переподключил / Не помогло» buttons. */
+    private function announceDown(int $clubId, int $alertId, int $episode, int $equipmentId, string $name, int $link, int $expected, array $payload): void
+    {
+        $place = $this->place($equipmentId, $name);
+        $followup = \App\Domain\Telegram\LinkFollowups::open($alertId, $episode, $clubId, $equipmentId, $place, $link, $expected);
+        $this->evaluator->event($clubId, 'link_down', 'alert:'.$alertId.':'.$episode.':link_down',
+            $payload + ['message' => LinkMessages::down($place, $link, $expected), 'followup_id' => $followup,
+                'buttons' => \App\Domain\Telegram\LinkFollowups::buttons($followup)]);
     }
 
     /** "PC027 · место 27 · зал 2" — what staff in the club can find quickly. */

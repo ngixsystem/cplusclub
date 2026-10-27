@@ -135,6 +135,28 @@ class IcafeBootTelemetryTest extends TestCase
         $this->assertStringContainsString('Сеть восстановлена: 1 Гбит/с', \App\Jobs\DeliverTelegram::text('link_restored', $up->id, $up->payload));
     }
 
+    public function test_alert_opened_before_the_group_existed_is_announced_once(): void
+    {
+        $c = $this->club();
+        $a = $this->pc($c, 'PC017');
+        DB::table('equipment')->where('id', $a->id)->update(['link_expected_mbps' => 1000]);
+        // An alert opened yesterday, before club staff were ever asked to check the cable.
+        DB::table('alerts')->insert(['club_id' => $c->id, 'equipment_id' => $a->id, 'metric' => 'link_speed', 'state' => 'active', 'episode' => 1,
+            'opened_at' => now()->subDay(), 'last_sample_at' => now()->subMinute()]);
+        Http::preventStrayRequests();
+        Http::fake(function ($request) {
+            if (str_ends_with($request->url(), '/bootPcs')) return Http::response(['code' => 200, 'data' => [['bpc_id' => 10, 'bpc_icafe_id' => 123, 'bpc_name' => 'PC017', 'bpc_mac' => '']]]);
+            return Http::response(['code' => 200, 'data' => ['result' => 1, 'message' => ['data' => ['pcs' => [['id' => 10, 'cpu_temp' => '50', 'gpu_temp' => '50', 'linkspeed' => '100M']]]]]]);
+        });
+        $boot = app(IcafeBootTelemetry::class);
+        $boot->collect($c);
+        $this->travel(60)->seconds(); $boot->collect($c);
+        $down = DB::table('outbox_events')->where('kind', 'link_down')->sole();
+        $this->assertStringStartsWith('⚠️ PC017', json_decode($down->payload, true)['message']);
+        $this->assertSame(1, DB::table('link_followups')->where('episode', 1)->count());
+        $this->assertSame(0, DB::table('outbox_events')->where('kind', 'monitor_problem')->count(), 'the team already knew');
+    }
+
     public function test_pc_that_starts_at_100_is_flagged_and_link_parsing(): void
     {
         $this->assertSame(1000, IcafeBootTelemetry::linkMbps('1000M'));
