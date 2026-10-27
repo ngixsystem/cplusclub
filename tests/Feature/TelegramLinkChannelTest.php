@@ -30,12 +30,19 @@ class TelegramLinkChannelTest extends TestCase
         $this->assertSame(0, TelegramChannel::count());
         $this->assertSame(0, DB::table('audit_logs')->where('subject', 'like', '%ABC_def%')->count());
 
-        Http::fake(['*/getMe' => Http::response(['ok' => false], 401)]);
-        $this->postJson('/integrations/telegram/chats', ['bot_token' => '123456:wrong'])->assertStatus(422)->assertJsonPath('ok', false);
         $this->postJson('/integrations/telegram/chats', ['bot_token' => 'not a token'])->assertUnprocessable();
-
         $rep = User::factory()->create(['role' => 'representative']);
         $this->actingAs($rep)->postJson('/integrations/telegram/chats', ['bot_token' => '123456:ABC'])->assertForbidden();
+    }
+
+    public function test_rejected_token_gives_a_readable_error(): void
+    {
+        config(['services.telegram.transport' => 'http']);
+        Http::preventStrayRequests();
+        Http::fake(['*/getMe' => Http::response(['ok' => false], 401)]);
+        $this->actingAs(User::factory()->create(['role' => 'owner']))
+            ->postJson('/integrations/telegram/chats', ['bot_token' => '123456:wrong'])
+            ->assertStatus(422)->assertJsonPath('ok', false)->assertJsonPath('error', 'Telegram не принял токен. Проверьте его в @BotFather.');
     }
 
     public function test_client_group_can_subscribe_to_link_events_only(): void
