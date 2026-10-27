@@ -9,7 +9,10 @@ from pathlib import Path
 import random
 import re
 import shutil
+import socket
+import statistics
 import subprocess
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -94,6 +97,73 @@ def local_versions(config):
         except OSError:
             print('FACEIT monitored file unavailable; no release claim')
 
+# Reply lines carry TTL= in every Windows language ("time=14ms TTL=", "время=14мс TTL=").
+PING_REPLY = re.compile(r'[=<]\s*(\d+(?:[.,]\d+)?)\S*\s+TTL=', re.I)
+SAFE_HOST = re.compile(r'[A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?')
+
+def parse_ping(text):
+    return [float(v.replace(',', '.')) for v in PING_REPLY.findall(text)]
+
+def tcp_rtt(host, port, timeout=2.0):
+    start = time.perf_counter()
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return (time.perf_counter() - start) * 1000
+    except OSError:
+        return None
+
+def summarize(target_id, sent, rtts):
+    result = {'target_id': target_id, 'sent': sent, 'received': len(rtts), 'rtt_avg_ms': None, 'rtt_max_ms': None, 'jitter_ms': None}
+    if rtts:
+        result['rtt_avg_ms'] = round(statistics.fmean(rtts), 2)
+        result['rtt_max_ms'] = round(max(rtts), 2)
+        if len(rtts) > 1:
+            result['jitter_ms'] = round(statistics.fmean(abs(a - b) for a, b in zip(rtts, rtts[1:])), 2)
+    return result
+
+def measure(target, count=5):
+    host, port = str(target['host']), target.get('port')
+    if not SAFE_HOST.fullmatch(host):
+        return None
+    if port:
+        rtts = [r for r in (tcp_rtt(host, int(port)) for _ in range(count)) if r is not None]
+    else:
+        args = ['ping', '-n', str(count), '-w', '1000', host] if os.name == 'nt' else ['ping', '-c', str(count), '-W', '1', host]
+        try:
+            out = subprocess.run(args, capture_output=True, timeout=count * 2 + 5).stdout.decode('latin-1')
+        except (OSError, subprocess.SubprocessError):
+            return None
+        rtts = parse_ping(out) if os.name == 'nt' else [float(v) for v in re.findall(r'time[=<]([\d.]+)', out)]
+    return summarize(target['id'], count, rtts)
+
+def get(config, path):
+    url = config['server'].rstrip('/') + '/api/v1/' + path
+    if not url.startswith('https://') and not config.get('allow_insecure_local', False):
+        raise ValueError('HTTPS required. allow_insecure_local is for an isolated lab only.')
+    request = urllib.request.Request(url, headers={'Accept': 'application/json', 'Authorization': 'Bearer ' + config['token']})
+    with urllib.request.urlopen(request, timeout=20) as response:
+        return json.load(response)
+
+def latency_loop(config):
+    """Pings the game servers the admin configured for this club, once a minute."""
+    targets, fetched = [], 0.0
+    while True:
+        started = time.monotonic()
+        try:
+            if time.monotonic() - fetched > 300:
+                answer = get(config, 'latency/targets')
+                targets, fetched = answer.get('targets', [])[:10], time.monotonic()
+            results = [r for r in (measure(t) for t in targets) if r]
+            if results:
+                post(config, 'latency', {'batch_id': str(uuid.uuid4()), 'observed_at': dt.datetime.now(dt.timezone.utc).isoformat(), 'results': results})
+        except urllib.error.HTTPError as error:
+            print('Latency HTTP', error.code)
+            if error.code in (401, 403):
+                return
+        except (OSError, ValueError):
+            print('Latency delivery unavailable (details omitted to protect credentials)')
+        time.sleep(max(5, 60 - (time.monotonic() - started)))
+
 def post(config, path, payload):
     url = config['server'].rstrip('/') + '/api/v1/' + path
     if not url.startswith('https://') and not config.get('allow_insecure_local', False):
@@ -120,6 +190,8 @@ def main():
         raise SystemExit('Machine registration mismatch. Re-register this device; do not clone tokens.')
     if args.simulate:
         print('SIMULATION: synthetic measurements, isolated lab only')
+    if config.get('latency') and not args.once:
+        threading.Thread(target=latency_loop, args=(config,), daemon=True).start()
     if not args.once:
         time.sleep(random.uniform(0, 60))
     while True:

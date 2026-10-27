@@ -35,3 +35,16 @@ Artisan::command('cclub:icafe-boot {club}', function () {
 })->purpose('Pull CPU/GPU temperatures for a club from iCafeCloud Boot once');
 Schedule::call(fn () => \App\Jobs\PollTelegram::dispatch())->name('telegram-poll')->everyMinute()->withoutOverlapping();
 Schedule::call(fn () => app(\App\Domain\Telegram\LinkFollowups::class)->sweep())->name('link-followups')->everyMinute()->withoutOverlapping();
+Schedule::call(function () {
+    // Reports for the month that just ended; clubs with no activity at all are skipped.
+    foreach (\App\Models\Club::where('status', 'active')->get() as $club) {
+        $month = now($club->timezone ?: 'Asia/Tashkent')->subMonthNoOverflow()->format('Y-m');
+        $r = app(\App\Domain\Reports\MonthlyReport::class)->build($club, $month);
+        if (! $r['tickets']['created'] && ! $r['service']['visits'] && ! $r['monitoring']['link'] && ! $r['monitoring']['temperature']) continue;
+        app(\App\Domain\Monitoring\EvaluateSample::class)->event($club->id, 'monthly_report', 'monthly-report:'.$club->id.':'.$month,
+            ['month' => $month, 'message' => \App\Domain\Reports\MonthlyReport::telegram($r)."\n\nПодробный отчёт: ".rtrim(config('app.url'), '/').'/reports/monthly?club_id='.$club->id.'&month='.$month]);
+    }
+})->name('monthly-reports')->monthlyOn(1, '04:07')->withoutOverlapping();
+Schedule::call(function () {
+    foreach (\App\Models\Club::whereNotNull('icafe_license')->whereNotNull('icafe_token')->pluck('id') as $id) \App\Jobs\SyncBootHardware::dispatch($id);
+})->name('boot-hardware')->hourlyAt(17)->withoutOverlapping();

@@ -12,7 +12,7 @@ class DeliverTelegram implements ShouldQueue {
     public function __construct(public int $deliveryId){$this->onQueue('notifications');}
     public function backoff():array {return [10,30,120,600,1800];}
     /** Kinds meant for club staff: they get only the human text, no technical header or payload. */
-    public const PLAIN=['link_down','link_restored','link_ticket','ticket_status','ticket_reply'];
+    public const PLAIN=['link_down','link_restored','link_ticket','ticket_status','ticket_reply','monthly_report','ticket_rated'];
     public static function text(string $kind,int $eventId,string $payload):string {
         $human=json_decode($payload,true)['message']??null;
         if(in_array($kind,self::PLAIN,true)&&is_string($human))return $human;

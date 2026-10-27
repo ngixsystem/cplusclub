@@ -60,6 +60,26 @@ class ReportController extends Controller
         return $q;
     }
 
+    /** Monthly report for one club (printable; the browser saves it as PDF). */
+    public function monthly(Request $r)
+    {
+        abort_unless($r->user()->active, 403);
+        $d = $r->validate(['club_id' => 'nullable|integer|min:1', 'month' => ['nullable', 'regex:/^20\d{2}-(0[1-9]|1[0-2])$/']]);
+        $clubs = ClubAccess::filter(Club::query(), $r->user(), 'id')->orderBy('name')->get(['id', 'name', 'timezone']);
+        abort_if($clubs->isEmpty(), 403);
+        $club = isset($d['club_id']) ? $clubs->firstWhere('id', (int) $d['club_id']) : $clubs->first();
+        abort_unless($club, 403);
+        $tz = $club->timezone ?: 'Asia/Tashkent';
+        $month = $d['month'] ?? now($tz)->subMonthNoOverflow()->format('Y-m');
+        abort_if($month > now($tz)->format('Y-m'), 422);
+        $months = collect(range(0, 11))->map(fn ($k) => now($tz)->startOfMonth()->subMonths($k))
+            ->map(fn ($m) => ['value' => $m->format('Y-m'), 'label' => mb_convert_case($m->locale('ru')->isoFormat('MMMM YYYY'), MB_CASE_TITLE)]);
+        return Inertia::render('MonthlyReport', [
+            'report' => app(\App\Domain\Reports\MonthlyReport::class)->build(Club::findOrFail($club->id), $month),
+            'clubs' => $clubs->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values(), 'months' => $months,
+        ]);
+    }
+
     public function index(Request $r)
     {
         [$f,$clubs,$equipment,$assignees]=$this->context($r);

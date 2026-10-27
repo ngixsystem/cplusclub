@@ -37,6 +37,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/clubs/{club}',[\App\Http\Controllers\AssetController::class,'club']);
     Route::post('/clubs/{club}',[\App\Http\Controllers\AssetController::class,'updateClub']);
     Route::get('/reports',[\App\Http\Controllers\ReportController::class,'index']);
+    Route::get('/reports/monthly',[\App\Http\Controllers\ReportController::class,'monthly']);
     Route::get('/reports/export',[\App\Http\Controllers\ReportController::class,'export']);
     Route::post('/tickets/{ticket}/work',[\App\Http\Controllers\ReportController::class,'log']);
     Route::get('/updates',[\App\Http\Controllers\UpdatesController::class,'index']);
@@ -49,6 +50,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/integrations/channels/{channel}/toggle',[\App\Http\Controllers\IntegrationController::class,'toggle']);
     Route::post('/integrations/deliveries/{id}/retry',[\App\Http\Controllers\IntegrationController::class,'retry']);
     Route::get('/monitoring',[\App\Http\Controllers\MonitoringController::class,'index']);
+    Route::get('/monitoring/latency',[\App\Http\Controllers\LatencyController::class,'index']);
+    Route::get('/monitoring/latency/export',[\App\Http\Controllers\LatencyController::class,'export']);
+    Route::post('/monitoring/latency/targets',[\App\Http\Controllers\LatencyController::class,'store']);
+    Route::post('/monitoring/latency/targets/{target}',[\App\Http\Controllers\LatencyController::class,'update'])->whereNumber('target');
     Route::get('/monitoring/clubs/{club}',[\App\Http\Controllers\MonitoringController::class,'live'])->middleware('throttle:live');
     Route::post('/monitoring/clubs/{club}/import',[\App\Http\Controllers\MonitoringController::class,'import']);
     Route::post('/monitoring/clubs/{club}/template',[\App\Http\Controllers\MonitoringController::class,'template']);

@@ -17,7 +17,7 @@ const date=(s?:string|null)=>s?new Date(s).toLocaleString('ru-RU',{timeZone:'Asi
 const money=(n:number)=>new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(Number(n)/100);
 </script>
 <template><Head title="Отчёты"/><Shell>
- <div class="heading"><div><h1>Отчёты и трудозатраты</h1><p>Выполненные работы и фактические расходы клуба</p></div><a :href="exportUrl" class="button secondary">Скачать CSV</a></div>
+ <div class="heading"><div><h1>Отчёты и трудозатраты</h1><p>Выполненные работы и фактические расходы клуба</p></div><div class="toolbar"><Link href="/reports/monthly" class="button">Отчёт за месяц</Link><a :href="exportUrl" class="button secondary">Скачать CSV</a></div></div>
  <nav class="toolbar report-tabs" aria-label="Вид отчёта"><button :class="closed?'':'secondary'" :aria-pressed="closed" @click="tab('closed')">Закрытые заявки</button><button :class="!closed?'':'secondary'" :aria-pressed="!closed" @click="tab('work')">Трудозатраты и расходы</button></nav>
  <form class="panel form-grid" @submit.prevent="apply">
   <label>Клуб отчёта<select v-model="form.club_id" @change="form.equipment_id=''"><option value="">Все доступные клубы</option><option v-for="c in clubs" :key="c.id" :value="c.id">{{c.name}}</option></select></label>

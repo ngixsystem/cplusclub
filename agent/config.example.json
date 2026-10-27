@@ -8,5 +8,6 @@
   "interval_seconds": 15,
   "steam_manifests": {},
   "faceit_file": null,
+  "latency": false,
   "allow_insecure_local": false
 }

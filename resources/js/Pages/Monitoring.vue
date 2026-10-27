@@ -8,7 +8,7 @@ const agent=useForm({club_id:'',equipment_id:'',name:''});const rule=useForm({cl
 const confirm = (message: string) => window.confirm(message);
 function signal(date:string|null){return !date?'Нет данных':Date.now()-new Date(date).getTime()>180000?'Нет свежей связи':'Связь есть';}
 </script>
-<template><Head title="Мониторинг"/><Shell><div class="page-header"><div><h1>Мониторинг</h1><p>Отсутствие heartbeat означает отсутствие свежей связи. Оно не доказывает, что ПК выключен.</p></div></div>
+<template><Head title="Мониторинг"/><Shell><div class="page-header"><div><h1>Мониторинг</h1><p>Отсутствие heartbeat означает отсутствие свежей связи. Оно не доказывает, что ПК выключен.</p></div><Link href="/monitoring/latency" class="button secondary">Пинг до игровых серверов</Link></div>
 <div v-if="agentSecret" class="panel"><h2>Сохраните токен — он показан один раз</h2><code class="prewrap">{{JSON.stringify(agentSecret,null,2)}}</code></div>
 
 <LivePcBoard :clubs="clubs" :can-manage="canManage"/>
