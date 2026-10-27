@@ -68,7 +68,7 @@ const pc = (t: Item) => t.equipment ? t.equipment.name + (t.equipment.workstatio
           <span class="age" :data-tone="age(t).tone"><Clock aria-hidden="true" />{{ age(t).text }}</span>
           <span v-if="t.category" class="chip">{{ t.category }}</span>
           <span class="who" :title="t.assignee?.name ?? 'Исполнитель не назначен'">
-            <span class="avatar" :class="{ empty: !t.assignee }" aria-hidden="true">{{ t.assignee ? initials(t.assignee.name) : '?' }}</span>
+            <span class="t-avatar" :class="{ unassigned: !t.assignee }" aria-hidden="true">{{ t.assignee ? initials(t.assignee.name) : '?' }}</span>
             <span class="who-name">{{ t.assignee?.name ?? 'Не назначен' }}</span>
           </span>
           <span class="upd">{{ updated(t.updated_at) }}</span>
@@ -82,7 +82,7 @@ const pc = (t: Item) => t.equipment ? t.equipment.name + (t.equipment.workstatio
         <span class="t-row-main"><b>{{ firstLine(t.description) }}</b><small>{{ t.club?.name }}<template v-if="pc(t)"> · {{ pc(t) }}</template></small></span>
         <span class="badge" :data-status="t.status">{{ statuses[t.status] ?? t.status }}</span>
         <span class="age" :data-tone="age(t).tone"><Clock aria-hidden="true" />{{ age(t).text }}</span>
-        <span class="avatar" :class="{ empty: !t.assignee }" :title="t.assignee?.name ?? 'Не назначен'">{{ t.assignee ? initials(t.assignee.name) : '?' }}</span>
+        <span class="t-avatar" :class="{ unassigned: !t.assignee }" :title="t.assignee?.name ?? 'Не назначен'">{{ t.assignee ? initials(t.assignee.name) : '?' }}</span>
       </Link>
     </template>
     <p class="timezone">Время указано по Ташкенту (UTC+5)</p>
@@ -129,8 +129,9 @@ const pc = (t: Item) => t.equipment ? t.equipment.name + (t.equipment.workstatio
 .age[data-tone=done] { color:var(--success); background:var(--success-bg); border-color:transparent }
 .who { display:inline-flex; align-items:center; gap:7px; margin-left:auto; min-width:0; color:var(--muted) }
 .who-name { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px }
-.avatar { flex:none; width:24px; height:24px; border-radius:50%; display:grid; place-items:center; font-size:10.5px; font-weight:600; background:var(--active); color:var(--text) }
-.avatar.empty { background:transparent; border:1px dashed var(--border-strong); color:var(--subtle) }
+/* Own class: the global .avatar (profile button in the topbar) adds size and an online dot. */
+.t-avatar { flex:none; box-sizing:border-box; width:24px; height:24px; min-width:24px; aspect-ratio:1; border-radius:50%; display:grid; place-items:center; font-size:10.5px; line-height:1; font-weight:600; background:var(--active); color:var(--text) }
+.t-avatar.unassigned { background:transparent; border:1px dashed var(--border-strong); color:var(--subtle) }
 .upd { color:var(--subtle); font-size:11.5px; white-space:nowrap }
 
 /* Compact list */
@@ -147,7 +148,7 @@ const pc = (t: Item) => t.equipment ? t.equipment.name + (t.equipment.workstatio
   .tickets { padding:12px }
   .tickets.cards { grid-template-columns:1fr }
   .t-row { grid-template-columns:52px minmax(0,1fr) auto; }
-  .t-row .age,.t-row .avatar { display:none }
+  .t-row .age,.t-row .t-avatar { display:none }
   .upd { display:none }
 }
 @media (prefers-reduced-motion:reduce) { .tickets { transition:none } }
