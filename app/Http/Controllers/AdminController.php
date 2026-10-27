@@ -26,7 +26,7 @@ class AdminController extends Controller
     public function index(Request $r)
     {
         $this->owner($r);
-        return Inertia::render('Users', ['users' => User::with('clubs:id,name')->orderBy('name')->paginate(30), 'clubs' => Club::get(['id','name'])]);
+        return Inertia::render('Users', ['users' => User::with('clubs:id,name')->where('email', '!=', \App\Domain\Telegram\BotUser::EMAIL)->orderBy('name')->paginate(30), 'clubs' => Club::get(['id','name'])]);
     }
 
     private function rules(?User $user = null): array

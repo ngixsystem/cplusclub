@@ -227,6 +227,10 @@ return [
                 'connection' => 'redis', 'queue' => ['telemetry'], 'balance' => false,
                 'maxProcesses' => 2, 'tries' => 3, 'timeout' => 45, 'memory' => 128,
             ],
+            'telegram' => [
+                'connection' => 'redis', 'queue' => ['telegram'], 'balance' => false,
+                'maxProcesses' => 1, 'tries' => 1, 'timeout' => 90, 'memory' => 128,
+            ],
             'reports' => [
                 'connection' => 'redis', 'queue' => ['reports'], 'balance' => false,
                 'maxProcesses' => 1, 'tries' => 3, 'timeout' => 60, 'memory' => 128,

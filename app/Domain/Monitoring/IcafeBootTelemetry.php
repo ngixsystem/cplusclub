@@ -135,8 +135,11 @@ final class IcafeBootTelemetry
                         $payload + ['message' => "{$name}: сетевой линк упал до {$link} Мбит/с (норма {$expected} Мбит/с)"]);
                     // Club staff get a plain request to reseat the cable (separate kind, so a client
                     // group can subscribe to it without receiving the technical alerts).
+                    $place = $this->place($equipmentId, $name);
+                    $followup = \App\Domain\Telegram\LinkFollowups::open($alert->id, $alert->episode + 1, $clubId, $equipmentId, $place, $link, $expected);
                     $this->evaluator->event($clubId, 'link_down', 'alert:'.$alert->id.':'.($alert->episode + 1).':link_down',
-                        $payload + ['message' => LinkMessages::down($this->place($equipmentId, $name), $link, $expected)]);
+                        $payload + ['message' => LinkMessages::down($place, $link, $expected), 'followup_id' => $followup,
+                            'buttons' => \App\Domain\Telegram\LinkFollowups::buttons($followup)]);
                 }
             }
         } else {
@@ -145,6 +148,7 @@ final class IcafeBootTelemetry
                 $update += ['state' => 'normal', 'recovered_at' => $when];
                 $this->evaluator->event($clubId, 'monitor_recovered', 'alert:'.$alert->id.':'.$alert->episode.':recovered',
                     $payload + ['message' => "{$name}: сетевой линк восстановлен, {$link} Мбит/с"]);
+                \App\Domain\Telegram\LinkFollowups::recovered($alert->id, $alert->episode);
                 $this->evaluator->event($clubId, 'link_restored', 'alert:'.$alert->id.':'.$alert->episode.':link_restored',
                     $payload + ['message' => LinkMessages::restored($this->place($equipmentId, $name), $link)]);
             }

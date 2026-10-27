@@ -54,6 +54,7 @@ final class TransitionTicket
                 'actor_id' => $actor->id, 'from_status' => $previous->value,
                 'to_status' => $next->value, 'comment' => $input['comment'] ?? null,
             ]);
+            \App\Domain\Telegram\TicketNotices::status($ticket, $previous->value);
             return $ticket;
         });
     }

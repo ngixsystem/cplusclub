@@ -143,20 +143,7 @@ class ServiceController extends Controller
         if (! empty($data['equipment_id'])) {
             abort_unless(Equipment::whereKey($data['equipment_id'])->where('club_id', $data['club_id'])->exists(), 422);
         }
-        $ticket = DB::transaction(function () use ($request, $data) {
-            $ticket = Ticket::create([...$data, 'initiator_id' => $request->user()->id]);
-            if ($ticket->priority === 'critical') {
-                $ticket->assignee_id = User::where('role', 'lead')->where('active', true)->orderBy('id')->value('id');
-                $ticket->save();
-                DB::table('outbox_events')->insert([
-                    'club_id' => $ticket->club_id, 'kind' => 'critical_ticket',
-                    'dedup_key' => 'critical-ticket:'.$ticket->id,
-                    'payload' => json_encode(['ticket_id' => $ticket->id], JSON_THROW_ON_ERROR),
-                    'created_at' => now(),
-                ]);
-            }
-            return $ticket;
-        });
+        $ticket = app(\App\Domain\Tickets\OpenTicket::class)->execute($data, $request->user()->id);
         return redirect('/tickets/'.$ticket->id)->with('success', 'Заявка создана.');
     }
 

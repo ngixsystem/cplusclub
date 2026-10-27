@@ -33,3 +33,5 @@ Artisan::command('cclub:icafe-boot {club}', function () {
     $r = app(\App\Domain\Monitoring\IcafeBootTelemetry::class)->collect($club);
     $this->info(sprintf('%s: Boot %s, matched %d PCs, unmatched %d.', $club->name, $r['supported'] ? 'on' : 'off', $r['matched'], $r['unmatched']));
 })->purpose('Pull CPU/GPU temperatures for a club from iCafeCloud Boot once');
+Schedule::call(fn () => \App\Jobs\PollTelegram::dispatch())->name('telegram-poll')->everyMinute()->withoutOverlapping();
+Schedule::call(fn () => app(\App\Domain\Telegram\LinkFollowups::class)->sweep())->name('link-followups')->everyMinute()->withoutOverlapping();

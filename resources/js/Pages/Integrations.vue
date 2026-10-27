@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue';import { Head, Link, useForm } from '@inertiajs/vue3';import Shell from '../Layouts/Shell.vue';
-const props=defineProps<{clubs:{id:number;name:string}[];channels:{id:number;club_id:number;name:string;chat_id:string;enabled:boolean;kinds:string[]}[];kinds:string[];transport:string;deliveries:{data:{id:number;status:string;attempts:number;sent_at:string|null}[];next_page_url:string|null;prev_page_url:string|null};attempts:{id:number;delivery_id:number;outcome:string;http_status:number|null}[]}>();
+const props=defineProps<{clubs:{id:number;name:string}[];channels:{id:number;club_id:number;name:string;chat_id:string;enabled:boolean;kinds:string[]}[];kinds:string[];transport:string;deliveries:{data:{id:number;status:string;attempts:number;sent_at:string|null}[];next_page_url:string|null;prev_page_url:string|null};attempts:{id:number;delivery_id:number;outcome:string;http_status:number|null}[];botStatus:Record<number,{last_error:string|null;polled_at:string|null}|null>}>();
+const botText=(id:number)=>{const b=props.botStatus?.[id];if(!b||!b.polled_at)return 'бот ещё не опрошен';return ({webhook:'у бота настроен webhook — кнопки и заявки не работают',token:'Telegram не принимает токен',rate:'Telegram ограничил запросы',unavailable:'Telegram не отвечает'} as Record<string,string>)[b.last_error??'']??'бот на связи';};
 const form=useForm({club_id:'',name:'',bot_token:'',chat_id:'',kinds:['test']});
 // Human names for subscriptions; unknown kinds fall back to their code.
-const labels:Record<string,string>={link_down:'Линк упал: просьба проверить кабель',link_restored:'Линк восстановлен',monitor_problem:'Тревоги мониторинга (все)',monitor_recovered:'Восстановление после тревог',critical_ticket:'Критические заявки',inspection_due:'Подошёл срок осмотра',published_build:'Вышла новая сборка игры',local_build:'Сборка в клубе обновлена',faceit_file:'Файл FACEIT',source_unavailable:'Источник данных недоступен',test:'Тестовое сообщение'};
-const presets=[{name:'Группа клуба: сетевой кабель',kinds:['link_down','link_restored','test']},{name:'Команда C+CLub: все тревоги',kinds:['monitor_problem','monitor_recovered','critical_ticket','link_down','link_restored','test']}];
+const labels:Record<string,string>={ticket_intake:'Заявки из группы (/ticket), статусы и оценка',ticket_rated:'Оценки клиентов по заявкам',link_down:'Линк упал: просьба проверить кабель',link_restored:'Линк восстановлен',monitor_problem:'Тревоги мониторинга (все)',monitor_recovered:'Восстановление после тревог',critical_ticket:'Критические заявки',inspection_due:'Подошёл срок осмотра',published_build:'Вышла новая сборка игры',local_build:'Сборка в клубе обновлена',faceit_file:'Файл FACEIT',source_unavailable:'Источник данных недоступен',test:'Тестовое сообщение'};
+const presets=[{name:'Группа клуба: кабель и заявки',kinds:['link_down','link_restored','ticket_intake','test']},{name:'Команда C+CLub: все тревоги',kinds:['monitor_problem','monitor_recovered','critical_ticket','ticket_rated','link_down','link_restored','test']}];
 function preset(p:{name:string;kinds:string[]}){form.kinds=[...p.kinds];if(!form.name)form.name=p.name;}
 const clubName=(id:number)=>props.clubs.find(c=>c.id===id)?.name??'Клуб #'+id;
 // Find the group: Telegram returns the chats the bot was recently added to.
@@ -46,9 +47,10 @@ function pick(c:{id:string;title:string}){form.chat_id=c.id;if(!form.name||prese
 </div>
 <fieldset><legend>Что отправлять</legend>
 <div class="tg-presets"><button v-for="p in presets" :key="p.name" type="button" class="secondary small" @click="preset(p)">{{p.name}}</button></div>
+<p class="muted tg-hint" v-if="form.kinds.includes('ticket_intake')">В группе можно написать <b>/ticket ПК 12 не запускается игра</b> и приложить фото. Чтобы бот понимал и сообщения «заявка …» без команды, сделайте его администратором группы.</p>
 <label v-for="k in kinds" :key="k" class="check"><input type="checkbox" v-model="form.kinds" :value="k"/>{{labels[k]??k}}</label></fieldset>
 <button :disabled="form.processing">Сохранить канал</button><p class="error" v-for="error in form.errors" :key="error">{{error}}</p></form>
-<section class="panel"><h2>Каналы</h2><p v-if="!channels.length">Каналы ещё не добавлены.</p><div class="toolbar" v-for="c in channels" :key="c.id"><div><strong>{{c.name}}</strong><small class="tg-meta">{{clubName(c.club_id)}} · {{c.chat_id}} · {{c.enabled?'включён':'отключён'}}</small><small class="tg-meta">{{(c.kinds??[]).map(k=>labels[k]??k).join(' · ')}}</small></div><Link :href="'/integrations/channels/'+c.id+'/test'" method="post" as="button" class="secondary">Тестовое сообщение</Link><Link :href="'/integrations/channels/'+c.id+'/toggle'" method="post" as="button" class="secondary">{{c.enabled?'Отключить':'Включить'}}</Link></div></section>
+<section class="panel"><h2>Каналы</h2><p v-if="!channels.length">Каналы ещё не добавлены.</p><div class="toolbar" v-for="c in channels" :key="c.id"><div><strong>{{c.name}}</strong><small class="tg-meta">{{clubName(c.club_id)}} · {{c.chat_id}} · {{c.enabled?'включён':'отключён'}}</small><small class="tg-meta">{{(c.kinds??[]).map(k=>labels[k]??k).join(' · ')}}</small><small class="tg-meta">Бот: {{botText(c.id)}}</small></div><Link :href="'/integrations/channels/'+c.id+'/test'" method="post" as="button" class="secondary">Тестовое сообщение</Link><Link :href="'/integrations/channels/'+c.id+'/toggle'" method="post" as="button" class="secondary">{{c.enabled?'Отключить':'Включить'}}</Link></div></section>
 <section class="panel"><h2>Доставка</h2><p>При потерянном ответе Telegram повторная отправка может создать дубль. ID события помогает его распознать.</p><table><tbody><tr v-for="d in deliveries.data" :key="d.id"><td>#{{d.id}}</td><td>{{d.status}}</td><td>Попыток: {{d.attempts}}</td><td><Link v-if="d.status==='failed'" :href="'/integrations/deliveries/'+d.id+'/retry'" method="post" as="button">Повторить</Link></td></tr></tbody></table><Link v-if="deliveries.next_page_url" :href="deliveries.next_page_url">Далее</Link><Link v-if="deliveries.prev_page_url" :href="deliveries.prev_page_url">Назад</Link></section>
 <section class="panel"><h2>Последние попытки</h2><p v-for="a in attempts" :key="a.id">Доставка #{{a.delivery_id}} · {{a.outcome}} · HTTP {{a.http_status??'ответ не получен'}}</p></section></Shell></template>
 
@@ -62,6 +64,7 @@ function pick(c:{id:string;title:string}){form.chat_id=c.id;if(!form.name||prese
 .tg-chat small{color:var(--muted);font-weight:400}
 .tg-chat:hover{border-color:var(--border-strong);opacity:1}
 .tg-chat[aria-pressed=true]{border-color:var(--chart-1);box-shadow:0 0 0 3px color-mix(in srgb,var(--chart-1) 20%,transparent)}
+.tg-hint{margin:0 0 4px;font-size:13px}
 .tg-presets{display:flex;gap:8px;flex-wrap:wrap;width:100%}
 .small{min-height:32px;padding:4px 12px;font-size:12.5px}
 .tg-meta{display:block;color:var(--muted);margin-top:3px}

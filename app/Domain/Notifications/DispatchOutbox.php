@@ -8,8 +8,9 @@ class DispatchOutbox {
         DB::transaction(function(){
             $events=DB::table('outbox_events')->whereNull('dispatched_at')->orderBy('id')->limit(200)->lock('FOR UPDATE SKIP LOCKED')->get();
             foreach($events as $event){
+                $payload=json_decode($event->payload,true)?:[];
                 foreach(TelegramChannel::where('club_id',$event->club_id)->where('enabled',true)->get() as $channel){
-                    if(!in_array($event->kind,$channel->kinds,true))continue;
+                    if(!$channel->accepts($event->kind,$payload))continue;
                     DB::table('deliveries')->insertOrIgnore(['outbox_event_id'=>$event->id,'telegram_channel_id'=>$channel->id]);
                 }
                 DB::table('outbox_events')->where('id',$event->id)->update(['dispatched_at'=>now()]);
