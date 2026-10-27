@@ -55,6 +55,22 @@ class PcPassportTest extends TestCase
         $this->assertSame('8 ГБ', $passport['hardware']['ram']);
     }
 
+    public function test_duplicate_boot_entries_pick_one_and_first_sync_is_quiet(): void
+    {
+        $club = Club::create(['name' => 'SPOT', 'address' => 'x']);
+        $club->icafe_license = 123; $club->icafe_token = 'secret'; $club->save();
+        $pc = Equipment::create(['club_id' => $club->id, 'name' => '086', 'type' => 'pc', 'mac' => '00:11:22:33:44:55', 'cpu' => 'typed by hand']);
+        Http::preventStrayRequests();
+        Http::fake(fn () => Http::response(['code' => 200, 'data' => [
+            ['bpc_id' => 1, 'bpc_icafe_id' => 123, 'bpc_name' => 'old-086', 'bpc_mac' => '001122334455', 'bpc_cpu' => 'Intel i3-12100F', 'bpc_last_time' => '2026-01-01 10:00:00'],
+            ['bpc_id' => 2, 'bpc_icafe_id' => 123, 'bpc_name' => '086', 'bpc_mac' => '001122334455', 'bpc_cpu' => 'AMD Ryzen 7 7800X3D', 'bpc_last_time' => '2026-10-27 10:00:00',
+                'bpc_nic_description' => 'VEN_10EC&DEV_8125&SUBSYS_88E11043&REV_0C\\01000000684CE00000'],
+        ]]));
+        foreach ([1, 2] as $run) $this->assertSame(['matched' => 1, 'changed' => 0], app(BootHardware::class)->sync($club->fresh()));
+        $this->assertSame(['AMD Ryzen 7 7800X3D', 'Realtek 8125'], [$pc->fresh()->cpu, $pc->fresh()->nic]);
+        $this->assertSame(0, DB::table('outbox_events')->where('kind', 'hardware_changed')->count());
+    }
+
     public function test_ram_parsing(): void
     {
         $this->assertSame(16384, BootHardware::ramMb('16 GB'));

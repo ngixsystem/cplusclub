@@ -30,15 +30,20 @@ final class BootHardware
             foreach ([$e->icafe_pc_name ?? null, $e->name] as $n) if ($n !== null && $n !== '') $byName[mb_strtolower(trim($n))] ??= $e;
             if ($e->mac) $byMac[strtolower(preg_replace('/[^a-fA-F0-9]/', '', $e->mac))] = $e;
         }
-        $matched = 0; $changed = 0;
+        // One Boot entry per PC: an exact name match beats a MAC match, then the most recently
+        // seen entry wins (a PC re-added in Boot keeps its old entry with old hardware).
+        $pick = [];
         foreach ($rows as $b) {
             if ((int) ($b['bpc_icafe_id'] ?? $club->icafe_license) !== (int) $club->icafe_license || ! isset($b['bpc_name'])) continue;
             $mac = strtolower(preg_replace('/[^a-fA-F0-9]/', '', (string) ($b['bpc_mac'] ?? '')));
-            $e = $byName[mb_strtolower(trim((string) $b['bpc_name']))] ?? ($mac !== '' ? ($byMac[$mac] ?? null) : null);
+            $byNameHit = $byName[mb_strtolower(trim((string) $b['bpc_name']))] ?? null;
+            $e = $byNameHit ?? ($mac !== '' ? ($byMac[$mac] ?? null) : null);
             if (! $e) continue;
-            $matched++;
-            $changed += $this->apply($club->id, $e, self::reading($b));
+            $rank = [$byNameHit ? 1 : 0, (string) ($b['bpc_last_time'] ?? '')];
+            if (! isset($pick[$e->id]) || $rank > $pick[$e->id][0]) $pick[$e->id] = [$rank, $e, $b];
         }
+        $matched = count($pick); $changed = 0;
+        foreach ($pick as [, $e, $b]) $changed += $this->apply($club->id, $e, self::reading($b));
         return ['matched' => $matched, 'changed' => $changed];
     }
 
@@ -50,9 +55,18 @@ final class BootHardware
             $v = trim(preg_replace('/\s+/u', ' ', (string) ($b[$key] ?? '')));
             if ($v === '' || $v === '-' || $v === '0') continue;
             if ($col === 'ram_mb') { $mb = self::ramMb($v); if ($mb) $out[$col] = $mb; continue; }
+            if ($col === 'nic') $v = self::nic($v);
             $out[$col] = mb_substr($v, 0, 255);
         }
         return $out;
+    }
+
+    /** "VEN_10EC&DEV_8125&SUBSYS_…\\0100…" → "Realtek 8125"; plain names pass through. */
+    public static function nic(string $v): string
+    {
+        if (! preg_match('/VEN_([0-9A-F]{4})&DEV_([0-9A-F]{4})/i', $v, $m)) return $v;
+        $vendor = ['10EC' => 'Realtek', '8086' => 'Intel', '14E4' => 'Broadcom', '1969' => 'Qualcomm Atheros', '1D6A' => 'Aquantia', '10B7' => '3Com'][strtoupper($m[1])] ?? 'VEN '.strtoupper($m[1]);
+        return $vendor.' '.strtoupper($m[2]);
     }
 
     /** "16 GB", "16384MB", "16", "15.9G" → MB. */
@@ -82,12 +96,13 @@ final class BootHardware
                 DB::table('equipment_changes')->insert(['equipment_id' => $e->id, 'field' => $col, 'old_value' => $current->$col,
                     'new_value' => (string) $value, 'source' => 'boot', 'created_at' => now()]);
             }
-            if ($diff) {
+            // The first Boot sync of a PC is its baseline: values typed by hand before are replaced quietly.
+            if ($diff && $current->hardware_checked_at !== null) {
                 $lines = array_map(fn ($col, $d) => self::LABELS[$col].': '.self::show($col, $d[0]).' → '.self::show($col, $d[1]), array_keys($diff), $diff);
                 $this->events->event($clubId, 'hardware_changed', 'hardware:'.$e->id.':'.sha1(json_encode($diff)).':'.now()->format('Ymd'),
                     ['equipment_id' => $e->id, 'changes' => $diff, 'message' => "🧩 {$current->name}: изменилось железо\n".implode("\n", $lines)]);
             }
-            return $diff ? 1 : 0;
+            return $diff && $current->hardware_checked_at !== null ? 1 : 0;
         });
     }
 
