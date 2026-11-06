@@ -31,6 +31,7 @@ class GamesTest extends TestCase
         $this->assertSame(['kind' => 'game', 'name' => 'Dota 2'], GameCatalog::classify('dota2.exe'));
         $this->assertSame(['kind' => 'app', 'name' => 'Лаунчер'], GameCatalog::classify('steam.exe'));
         $this->assertSame(['kind' => 'none', 'name' => null], GameCatalog::classify('-'));
+        $this->assertSame(['kind' => 'none', 'name' => null], GameCatalog::classify('NA'));
         $this->assertSame(['kind' => 'game', 'name' => 'HogwartsLegacy'], GameCatalog::classify('HogwartsLegacy.exe'));
     }
 

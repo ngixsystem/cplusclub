@@ -52,7 +52,7 @@ final class GameCatalog
     public static function key(?string $process): ?string
     {
         $p = trim((string) $process);
-        if ($p === '' || $p === '-' || $p === '0') return null;
+        if ($p === '' || in_array(mb_strtolower($p), ['-', '0', 'na', 'n/a', 'null', 'none', 'unknown'], true)) return null;
         $file = mb_strtolower(basename(str_replace('\\', '/', $p)));
         $file = preg_replace('/\.exe$/', '', $file);
         if ($file === '' || in_array($file, ['system', 'idle', 'dwm', 'svchost', 'csrss', 'winlogon', 'lockapp', 'searchhost', 'shellexperiencehost'], true)) return null;
