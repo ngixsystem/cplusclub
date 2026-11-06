@@ -75,7 +75,7 @@ final class GameUsage
         $rows = DB::table('game_usage_hourly')->where('club_id', $club->id)->where('hour', '>=', $from->utc())->where('hour', '<', $to->utc())
             ->select('game')->selectRaw('sum(minutes) as minutes')->groupBy('game')->orderByDesc('minutes')->limit(15)->get();
         $all = (int) DB::table('game_usage_hourly')->where('club_id', $club->id)->where('hour', '>=', $from->utc())->where('hour', '<', $to->utc())->sum('minutes');
-        $top = $rows->map(fn ($r) => ['name' => $r->game, 'hours' => round($r->minutes / 60, 1), 'share' => $all ? (int) round($r->minutes * 100 / $all) : 0])->values();
+        $top = $rows->map(fn ($r) => ['name' => $r->game, 'hours' => round($r->minutes / 60, 1), 'share' => $all ? (int) round($r->minutes * 100 / $all) : 0])->values()->all();
 
         // Trend: the five most played games over the trend window, in hours per day or per week.
         $weeks = $trend === 'weeks';

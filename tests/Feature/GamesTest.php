@@ -15,7 +15,7 @@ class GamesTest extends TestCase
     private function club(string $name = 'SPOT'): Club
     {
         $c = Club::create(['name' => $name, 'address' => 'x']);
-        $c->icafe_license = 123; $c->icafe_token = 't'; $c->timezone = 'Asia/Tashkent'; $c->save();
+        $c->icafe_license = random_int(1000, 999999); $c->icafe_token = 't'; $c->timezone = 'Asia/Tashkent'; $c->save();
         return $c;
     }
 
