@@ -49,6 +49,8 @@ Route::middleware('auth')->group(function () {
     Route::post('/integrations/channels/{channel}/test',[\App\Http\Controllers\IntegrationController::class,'test']);
     Route::post('/integrations/channels/{channel}/toggle',[\App\Http\Controllers\IntegrationController::class,'toggle']);
     Route::post('/integrations/deliveries/{id}/retry',[\App\Http\Controllers\IntegrationController::class,'retry']);
+    Route::get('/games/live',[\App\Http\Controllers\GameController::class,'live'])->middleware('throttle:live');
+    Route::get('/games/stats',[\App\Http\Controllers\GameController::class,'stats'])->middleware('throttle:live');
     Route::get('/monitoring',[\App\Http\Controllers\MonitoringController::class,'index']);
     Route::get('/monitoring/latency',[\App\Http\Controllers\LatencyController::class,'index']);
     Route::get('/monitoring/latency/export',[\App\Http\Controllers\LatencyController::class,'export']);

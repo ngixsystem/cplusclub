@@ -21,6 +21,7 @@ final class OverviewController extends Controller
             'overview' => (new OverviewSnapshot($user))->toArray(),
             'financeClubs' => $finance ? ClubAccess::filter(Club::query(), $user, 'id')->orderBy('name')
                 ->get(['id', 'name', 'icafe_license', 'icafe_currency', 'timezone']) : [],
+            'gameClubs' => \App\Domain\Games\GameUsage::clubs($user)->map(fn ($c) => ['id' => $c->id, 'name' => $c->name])->values(),
             'canManage' => ClubAccess::allClubs($user),
         ]);
     }

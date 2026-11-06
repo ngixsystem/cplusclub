@@ -45,17 +45,19 @@ final class IcafeBootTelemetry
         }
 
         $now = now()->utc(); $matched = 0; $unmatched = 0;
+        \App\Domain\Games\GameUsage::record($club->id, $pcs, $now);
         foreach ($pcs as $pc) {
             $meta = $boot[(int) ($pc['id'] ?? 0)] ?? null;
             $id = $meta ? ($byName[mb_strtolower(trim($meta['name']))] ?? ($meta['mac'] !== '' ? ($byMac[$meta['mac']] ?? null) : null)) : null;
             if (! $id) { $unmatched++; continue; }
             $sample = self::sample($pc) + ['observed_at' => $now->toIso8601String()];
             $link = self::linkMbps($pc['linkspeed'] ?? null);
-            DB::transaction(function () use ($club, $id, $sample, $now, $link, $names) {
+            $process = \App\Domain\Games\GameCatalog::key($pc['activeprocess'] ?? null) !== null ? mb_substr(trim((string) $pc['activeprocess']), 0, 120) : null;
+            DB::transaction(function () use ($club, $id, $sample, $now, $link, $names, $process) {
                 $eq = DB::table('equipment')->where('id', $id)->lockForUpdate()->first(['id', 'link_expected_mbps']);
                 $expected = $link ? max(1000, (int) $eq->link_expected_mbps, $link) : $eq->link_expected_mbps;
                 DB::table('equipment')->where('id', $id)->update(['last_seen_at' => now(), 'link_expected_mbps' => $expected]);
-                $row = ['equipment_id' => $id, 'observed_at' => $now, 'received_at' => now(), 'link_mbps' => $link,
+                $row = ['equipment_id' => $id, 'observed_at' => $now, 'received_at' => now(), 'link_mbps' => $link, 'active_process' => $process,
                     'sensor_status' => json_encode($sample['sensor_status'], JSON_THROW_ON_ERROR)];
                 foreach (self::METRICS as $m) $row[$m] = $sample[$m];
                 DB::table('telemetry_samples')->insert($row);

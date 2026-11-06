@@ -10,6 +10,7 @@ import StackedBars from '../Components/Charts/StackedBars.vue';
 import MiniBars from '../Components/Charts/MiniBars.vue';
 import Sparkline from '../Components/Charts/Sparkline.vue';
 import IcafeDashboard from '../Components/IcafeDashboard.vue';
+import GamesBoard from '../Components/GamesBoard.vue';
 import AnimatedNumber from '../Components/Charts/AnimatedNumber.vue';
 import { markDelay, useEntered } from '../Components/Charts/motion';
 
@@ -27,7 +28,7 @@ type Overview = {
     devices: { monitored: number; stale: number };
     published: { app_id: number; build_id: string | null; source_status: string; checked_at: string | null }[];
 };
-const props = defineProps<{ overview: Overview; financeClubs: { id: number; name: string; icafe_license: number | null; icafe_currency: string; timezone: string }[]; canManage: boolean }>();
+const props = defineProps<{ overview: Overview; financeClubs: { id: number; name: string; icafe_license: number | null; icafe_currency: string; timezone: string }[]; gameClubs: { id: number; name: string }[]; canManage: boolean }>();
 const page = usePage<{ auth: { user: { name: string } } }>();
 const o = computed(() => props.overview);
 
@@ -128,6 +129,7 @@ const priorityTile: Record<string, string> = { critical: 'rose', high: 'amber', 
       </article>
     </section>
 
+    <GamesBoard v-if="gameClubs.length" :clubs="gameClubs" />
     <section class="overview-row">
       <article class="card inspections" style="--i:5">
         <div class="card-head"><div class="title-with-tile"><span class="icon-tile"><Cpu aria-hidden="true" /></span><h2>Осмотры ПК</h2></div>
