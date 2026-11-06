@@ -6,7 +6,7 @@ import TimeSeries from './Charts/TimeSeries.vue';
 type Pc = { id: number; name: string; zone: string | null };
 type Live = { on: number; total: number; playing: number; apps: number; idle: number; games: { name: string; count: number; pcs: Pc[] }[];
   machines: (Pc & { kind: string; title: string | null })[]; updated_at: string };
-type Stats = { period: string; period_label: string; total_hours: number; top: { name: string; hours: number; share: number }[];
+type Stats = { metric: string; period: string; period_label: string; total_hours: number; total_launches?: number; launches_since?: string | null; top: { name: string; hours: number; launches?: number; share: number }[];
   trend: { mode: string; labels: string[]; series: { key: string; label: string; values: number[] }[]; leaders: { bucket: string; game: string | null; hours: number }[] } };
 
 const props = defineProps<{ clubs: { id: number; name: string }[] }>();
@@ -15,14 +15,21 @@ const saved = (() => { try { return JSON.parse(localStorage.getItem(KEY) ?? '{}'
 const club = ref<number>(props.clubs.some(c => c.id === saved.club) ? saved.club : props.clubs[0]?.id ?? 0);
 const period = ref<string>(saved.period ?? 'today');
 const trend = ref<string>(saved.trend ?? 'days');
+const metric = ref<'hours' | 'launches'>(saved.metric === 'launches' ? 'launches' : 'hours');
 const view = ref<'games' | 'pcs'>('games');
 const live = ref<Live | null>(null), stats = ref<Stats | null>(null), open = ref<string | null>(null), error = ref('');
-watch([club, period, trend], () => { try { localStorage.setItem(KEY, JSON.stringify({ club: club.value, period: period.value, trend: trend.value })); } catch { /* private mode */ } });
+watch([club, period, trend, metric], () => { try { localStorage.setItem(KEY, JSON.stringify({ club: club.value, period: period.value, trend: trend.value, metric: metric.value })); } catch { /* private mode */ } });
+// «Всё время» exists only for iCafeCloud launches.
+watch(metric, m => { if (m === 'hours' && period.value === 'all') period.value = 'month'; });
 
 const PERIODS = [{ v: 'today', l: 'Сегодня' }, { v: 'yesterday', l: 'Вчера' }, { v: 'week', l: 'Эта неделя' }, { v: 'last_week', l: 'Прошлая неделя' }, { v: 'month', l: '30 дней' }];
+const periods = computed(() => metric.value === 'launches' ? [...PERIODS, { v: 'all', l: 'Всё время' }] : PERIODS);
+const value = (g: { hours: number; launches?: number }) => metric.value === 'launches' ? g.launches ?? 0 : g.hours;
+const count = (n: number) => new Intl.NumberFormat('ru-RU').format(n);
+const sinceText = computed(() => stats.value?.launches_since ? new Date(stats.value.launches_since + 'T00:00:00').toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' }) : null);
 const COLORS = ['var(--chart-1)', 'var(--chart-2)', 'var(--chart-3)', 'var(--chart-4)', 'var(--chart-5)'];
 const maxLive = computed(() => Math.max(1, ...(live.value?.games.map(g => g.count) ?? [1])));
-const maxTop = computed(() => Math.max(1, ...(stats.value?.top.map(g => g.hours) ?? [1])));
+const maxTop = computed(() => Math.max(1, ...(stats.value?.top.map(value) ?? [1])));
 const series = computed(() => (stats.value?.trend.series ?? []).map((s, i) => ({ ...s, color: COLORS[i % COLORS.length] })));
 const hasTrend = computed(() => series.value.some(s => s.values.some(v => v > 0)));
 const hours = (h: number) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(h) + ' ч';
@@ -51,11 +58,11 @@ async function loadLive() {
 async function loadStats() {
   if (!club.value) return;
   statsCtl?.abort(); const c = new AbortController(); statsCtl = c;
-  try { const d = await get<Stats>(`/games/stats?club_id=${club.value}&period=${period.value}&trend=${trend.value}`, c); if (d && !c.signal.aborted) stats.value = d; }
+  try { const d = await get<Stats>(`/games/stats?club_id=${club.value}&period=${period.value}&trend=${trend.value}&metric=${metric.value}`, c); if (d && !c.signal.aborted) stats.value = d; }
   catch { if (!c.signal.aborted) error.value = 'Не удалось загрузить статистику игр.'; }
 }
 watch(club, () => { live.value = null; stats.value = null; open.value = null; void loadLive(); void loadStats(); });
-watch([period, trend], () => void loadStats());
+watch([period, trend, metric], () => void loadStats());
 const visible = () => { if (!document.hidden) void loadLive(); };
 onMounted(() => { void loadLive(); void loadStats(); document.addEventListener('visibilitychange', visible); });
 onUnmounted(() => { clearTimeout(timer); liveCtl?.abort(); statsCtl?.abort(); document.removeEventListener('visibilitychange', visible); });
@@ -113,17 +120,29 @@ onUnmounted(() => { clearTimeout(timer); liveCtl?.abort(); statsCtl?.abort(); do
       <!-- Top -->
       <article class="games-panel" aria-labelledby="games-top">
         <header class="games-panel-head"><h3 id="games-top">Топ игр</h3>
-          <span v-if="stats" class="muted games-total">{{ hours(stats.total_hours) }} игры · {{ stats.period_label }}</span></header>
+          <div class="seg seg-sm" role="group" aria-label="Показатель">
+            <button type="button" :aria-pressed="metric === 'hours'" @click="metric = 'hours'">Часы игры</button>
+            <button type="button" :aria-pressed="metric === 'launches'" @click="metric = 'launches'">Запуски</button>
+          </div>
+        </header>
         <div class="seg seg-sm seg-wrap" role="group" aria-label="Период">
-          <button v-for="p in PERIODS" :key="p.v" type="button" :aria-pressed="period === p.v" @click="period = p.v">{{ p.l }}</button>
+          <button v-for="p in periods" :key="p.v" type="button" :aria-pressed="period === p.v" @click="period = p.v">{{ p.l }}</button>
         </div>
-        <p v-if="stats && !stats.top.length" class="muted games-empty">За этот период данных нет. Статистика собирается с момента подключения.</p>
+        <p v-if="stats" class="muted games-total">
+          <template v-if="stats.metric === 'launches'">{{ count(stats.total_launches ?? 0) }} запусков · {{ stats.period_label }} · по данным iCafeCloud, запуски из меню клуба</template>
+          <template v-else>{{ hours(stats.total_hours) }} игры · {{ stats.period_label }} · по данным iCafeCloud Boot</template>
+        </p>
+        <p v-if="stats && !stats.top.length" class="muted games-empty">
+          <template v-if="stats.metric === 'launches' && stats.period !== 'all'">Запуски за период считаются с {{ sinceText ?? 'сегодняшнего дня' }}. Пока их нет — выберите «Всё время».</template>
+          <template v-else-if="stats.metric === 'launches'">iCafeCloud не записал запусков: в этом клубе игры, видимо, запускают не через меню iCafe.</template>
+          <template v-else>За этот период данных нет. Статистика собирается с момента подключения.</template>
+        </p>
         <ol v-else-if="stats" class="rank rank-top">
           <li v-for="(g, i) in stats.top.slice(0, 10)" :key="g.name" class="rank-row static">
             <span class="rank-no">{{ i + 1 }}</span>
             <span class="rank-name">{{ g.name }}</span>
-            <span class="rank-bar" aria-hidden="true"><i :style="{ transform: `scaleX(${g.hours / maxTop})` }"></i></span>
-            <b class="rank-val">{{ hours(g.hours) }}<small>{{ g.share }}%</small></b>
+            <span class="rank-bar" aria-hidden="true"><i :style="{ transform: `scaleX(${value(g) / maxTop})` }"></i></span>
+            <b class="rank-val">{{ stats.metric === 'launches' ? count(g.launches ?? 0) : hours(g.hours) }}<small>{{ g.share }}%</small></b>
           </li>
         </ol>
       </article>
@@ -169,7 +188,7 @@ onUnmounted(() => { clearTimeout(timer); liveCtl?.abort(); statsCtl?.abort(); do
 .games-kpi span { color: var(--muted); font-size: 13px }
 .games-leader { margin: 0 0 14px; font-size: 13.5px }
 .games-empty { font-size: 13px; margin: 8px 0 }
-.games-total { font-size: 12.5px }
+.games-total { font-size: 12px; margin: 0 0 10px }
 .games-foot { margin: 12px 0 0; color: var(--muted); font-size: 12px }
 .seg { display: inline-flex; gap: 2px; padding: 2px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border) }
 .seg-wrap { flex-wrap: wrap; margin-bottom: 12px }

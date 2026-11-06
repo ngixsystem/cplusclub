@@ -48,3 +48,6 @@ Schedule::call(function () {
 Schedule::call(function () {
     foreach (\App\Models\Club::whereNotNull('icafe_license')->whereNotNull('icafe_token')->pluck('id') as $id) \App\Jobs\SyncBootHardware::dispatch($id);
 })->name('boot-hardware')->hourlyAt(17)->withoutOverlapping();
+Schedule::call(function () {
+    foreach (\App\Models\Club::whereNotNull('icafe_license')->whereNotNull('icafe_token')->pluck('id') as $id) \App\Jobs\SyncIcafeGames::dispatch($id);
+})->name('icafe-games')->hourlyAt(23)->withoutOverlapping();

@@ -13,16 +13,16 @@ use Illuminate\Support\Facades\{Cache, DB};
  */
 final class GameUsage
 {
-    public const PERIODS = ['today', 'yesterday', 'week', 'last_week', 'month'];
+    public const PERIODS = ['today', 'yesterday', 'week', 'last_week', 'month', 'all'];
 
     /** Adds this minute of play. A poll repeated within the same minute is not counted twice. */
     public static function record(int $clubId, array $pcs, \DateTimeInterface $now): void
     {
         $minute = CarbonImmutable::instance($now)->utc();
         if (! Cache::add('game-minute:'.$clubId.':'.$minute->format('YmdHi'), 1, 180)) return;
-        $counts = [];
+        $counts = []; $names = IcafeGames::exeMap($clubId);
         foreach ($pcs as $pc) {
-            $g = GameCatalog::classify($pc['activeprocess'] ?? null);
+            $g = GameCatalog::classify($pc['activeprocess'] ?? null, $names);
             if ($g['kind'] === 'game') $counts[$g['name']] = ($counts[$g['name']] ?? 0) + 1;
         }
         if (! $counts) return;
@@ -41,10 +41,10 @@ final class GameUsage
             ->where('observed_at', '>=', now()->subSeconds(180))->where('observed_at', '<=', now()->addMinute())
             ->selectRaw('DISTINCT ON (equipment_id) equipment_id, active_process')
             ->orderBy('equipment_id')->orderByDesc('observed_at')->orderByDesc('id')->get();
-        $games = []; $apps = 0; $idle = 0; $machines = [];
+        $games = []; $apps = 0; $idle = 0; $machines = []; $names = IcafeGames::exeMap($club->id);
         foreach ($latest as $s) {
             $e = $pcs[$s->equipment_id];
-            $g = GameCatalog::classify($s->active_process);
+            $g = GameCatalog::classify($s->active_process, $names);
             $machines[] = ['id' => $e->id, 'name' => $e->name, 'zone' => $e->zone, 'kind' => $g['kind'], 'title' => $g['name']];
             if ($g['kind'] === 'game') $games[$g['name']][] = ['id' => $e->id, 'name' => $e->name, 'zone' => $e->zone];
             elseif ($g['kind'] === 'app') $apps++;
@@ -61,7 +61,7 @@ final class GameUsage
     }
 
     /** Ranking for a period and the daily or weekly trend of the top games. */
-    public function stats(Club $club, string $period, string $trend): array
+    public function stats(Club $club, string $period, string $trend, string $metric = 'hours'): array
     {
         $tz = $club->timezone ?: 'Asia/Tashkent';
         $today = CarbonImmutable::now($tz)->startOfDay();
@@ -69,14 +69,41 @@ final class GameUsage
             'yesterday' => [$today->subDay(), $today, 'вчера'],
             'week' => [$today->startOfWeek(), $today->addDay(), 'эта неделя'],
             'last_week' => [$today->startOfWeek()->subWeek(), $today->startOfWeek(), 'прошлая неделя'],
-            'month' => [$today->subDays(29), $today->addDay(), '30 дней'],
+            'month', 'all' => [$today->subDays(29), $today->addDay(), '30 дней'],
             default => [$today, $today->addDay(), 'сегодня'],
         };
+        if ($metric === 'launches') return $this->launches($club, $period, $from, $to, $label) + ['trend' => $this->trend($club, $tz, $today, $trend)];
         $rows = DB::table('game_usage_hourly')->where('club_id', $club->id)->where('hour', '>=', $from->utc())->where('hour', '<', $to->utc())
             ->select('game')->selectRaw('sum(minutes) as minutes')->groupBy('game')->orderByDesc('minutes')->limit(15)->get();
         $all = (int) DB::table('game_usage_hourly')->where('club_id', $club->id)->where('hour', '>=', $from->utc())->where('hour', '<', $to->utc())->sum('minutes');
         $top = $rows->map(fn ($r) => ['name' => $r->game, 'hours' => round($r->minutes / 60, 1), 'share' => $all ? (int) round($r->minutes * 100 / $all) : 0])->values()->all();
 
+        return ['metric' => 'hours', 'period' => $period, 'period_label' => $label, 'total_hours' => round($all / 60, 1), 'top' => $top,
+            'trend' => $this->trend($club, $tz, $today, $trend)];
+    }
+
+    /** Launches through the club menu, from iCafeCloud's counters (period) or its all-time total. */
+    private function launches(Club $club, string $period, CarbonImmutable $from, CarbonImmutable $to, string $label): array
+    {
+        if ($period === 'all') {
+            $rows = DB::table('icafe_games')->where('club_id', $club->id)->where('launches', '>', 0)->orderByDesc('launches')->limit(60)->get(['name', 'class', 'launches'])
+                ->filter(fn ($g) => IcafeGames::isGame($g->class))->take(15)->values();
+            $label = 'всё время';
+        } else {
+            $rows = DB::table('icafe_game_launches_daily as d')->join('icafe_games as g', fn ($j) => $j->on('g.club_id', '=', 'd.club_id')->on('g.pkg_id', '=', 'd.pkg_id'))
+                ->where('d.club_id', $club->id)->where('d.day', '>=', $from->toDateString())->where('d.day', '<', $to->toDateString())
+                ->select('d.name', 'g.class')->selectRaw('sum(d.launches) as launches')->groupBy('d.name', 'g.class')->orderByDesc('launches')->limit(60)->get()
+                ->filter(fn ($g) => IcafeGames::isGame($g->class))->take(15)->values();
+        }
+        $all = (int) $rows->sum('launches');
+        $since = DB::table('icafe_games')->where('club_id', $club->id)->min('synced_at');
+        return ['metric' => 'launches', 'period' => $period, 'period_label' => $label, 'total_launches' => $all, 'total_hours' => 0,
+            'launches_since' => DB::table('icafe_game_launches_daily')->where('club_id', $club->id)->min('day') ?? ($since ? CarbonImmutable::parse($since)->toDateString() : null),
+            'top' => $rows->map(fn ($r) => ['name' => $r->name, 'launches' => (int) $r->launches, 'hours' => 0, 'share' => $all ? (int) round($r->launches * 100 / $all) : 0])->all()];
+    }
+
+    private function trend(Club $club, string $tz, CarbonImmutable $today, string $trend): array
+    {
         // Trend: the five most played games over the trend window, in hours per day or per week.
         $weeks = $trend === 'weeks';
         $start = $weeks ? $today->startOfWeek()->subWeeks(7) : $today->subDays(13);
@@ -93,8 +120,7 @@ final class GameUsage
             return ['bucket' => $b, 'game' => $best?->game, 'hours' => $best ? round($best->minutes / 60, 1) : 0];
         })->values();
 
-        return ['period' => $period, 'period_label' => $label, 'total_hours' => round($all / 60, 1), 'top' => $top,
-            'trend' => ['mode' => $weeks ? 'weeks' : 'days', 'labels' => $labels, 'series' => $series, 'leaders' => $leadersBy]];
+        return ['mode' => $weeks ? 'weeks' : 'days', 'labels' => $labels, 'series' => $series, 'leaders' => $leadersBy];
     }
 
     /** Clubs the user may see that report games (iCafeCloud connected). */

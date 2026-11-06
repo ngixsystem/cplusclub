@@ -25,7 +25,7 @@ class GameController extends Controller
     public function stats(Request $r, GameUsage $games)
     {
         $club = $this->club($r);
-        $d = $r->validate(['period' => 'nullable|in:'.implode(',', GameUsage::PERIODS), 'trend' => 'nullable|in:days,weeks']);
-        return response()->json($games->stats($club, $d['period'] ?? 'today', $d['trend'] ?? 'days'));
+        $d = $r->validate(['period' => 'nullable|in:'.implode(',', GameUsage::PERIODS), 'trend' => 'nullable|in:days,weeks', 'metric' => 'nullable|in:hours,launches']);
+        return response()->json($games->stats($club, $d['period'] ?? 'today', $d['trend'] ?? 'days', $d['metric'] ?? 'hours'));
     }
 }

@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Domain\Games\{GameCatalog, GameUsage};
+use App\Domain\Games\{GameCatalog, GameUsage, IcafeGames};
 use App\Models\{Club, Equipment, User};
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\{DB, Http};
 use Tests\TestCase;
 
 class GamesTest extends TestCase
@@ -76,5 +76,28 @@ class GamesTest extends TestCase
         $this->getJson('/games/stats?club_id='.$c->id.'&period=month&trend=weeks')->assertOk()->assertJsonPath('trend.mode', 'weeks');
         $this->getJson('/games/stats?club_id='.$c->id.'&period=forever')->assertStatus(422);
         $this->get('/')->assertOk()->assertInertia(fn ($p) => $p->component('Overview', false)->where('gameClubs', [['id' => $c->id, 'name' => 'SPOT']]));
+    }
+
+    public function test_icafe_launch_counters_become_daily_launches_and_name_unknown_exes(): void
+    {
+        $c = $this->club();
+        $games = [['pkg_id' => 1, 'pkg_name' => 'Counter-Strike 2', 'pkg_idc_class' => 'Online Games', 'pkg_local_hot' => 500, 'pkg_match_files' => 'cs2.exe', 'pkg_run_exe' => ''],
+            ['pkg_id' => 2, 'pkg_name' => 'Steam', 'pkg_idc_class' => 'Launcher Games', 'pkg_local_hot' => 9000, 'pkg_match_files' => 'Steam.exe;/steamapps/', 'pkg_run_exe' => ''],
+            ['pkg_id' => 3, 'pkg_name' => 'ICCup Launcher', 'pkg_idc_class' => 'Online Games', 'pkg_local_hot' => 300, 'pkg_match_files' => '', 'pkg_run_exe' => 'D:\\Games\\iccup\\iCCupLauncher.exe']];
+        Http::preventStrayRequests();
+        Http::fake(function () use (&$games) { return Http::response(['code' => 200, 'data' => ['games' => $games, 'game_types' => []]]); });
+        $sync = app(IcafeGames::class);
+        $this->assertSame(['games' => 3, 'launches' => 0], $sync->sync($c->fresh()), 'first sync is the baseline');
+        $games[0]['pkg_local_hot'] = 512; $games[2]['pkg_local_hot'] = 299;   // a counter going down is a reset, not launches
+        $this->assertSame(12, $sync->sync($c->fresh())['launches']);
+
+        $s = app(GameUsage::class)->stats($c, 'today', 'days', 'launches');
+        $this->assertSame([['name' => 'Counter-Strike 2', 'launches' => 12, 'hours' => 0, 'share' => 100]], $s['top']);
+        $all = app(GameUsage::class)->stats($c, 'all', 'days', 'launches');
+        $this->assertSame(['Counter-Strike 2', 'ICCup Launcher'], collect($all['top'])->pluck('name')->all(), 'launchers are not ranked');
+
+        $this->assertSame(['kind' => 'game', 'name' => 'ICCup Launcher'], GameCatalog::classify('iCCupLauncher.exe', IcafeGames::exeMap($c->id)));
+        $this->assertSame('app', GameCatalog::classify('steam.exe', IcafeGames::exeMap($c->id))['kind']);
+        $this->assertArrayNotHasKey('steamapps', IcafeGames::exeMap($c->id));
     }
 }

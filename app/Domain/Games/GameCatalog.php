@@ -38,12 +38,14 @@ final class GameCatalog
     ];
 
     /** @return array{kind:'game'|'app'|'none', name:?string} */
-    public static function classify(?string $process): array
+    /** @param array<string,string> $club exe => name from the club's own iCafeCloud game list */
+    public static function classify(?string $process, array $club = []): array
     {
         $key = self::key($process);
         if ($key === null) return ['kind' => 'none', 'name' => null];
         if (isset(self::APPS[$key])) return ['kind' => 'app', 'name' => self::APPS[$key]];
         if (isset(self::GAMES[$key])) return ['kind' => 'game', 'name' => self::GAMES[$key]];
+        if (isset($club[$key])) return ['kind' => 'game', 'name' => mb_substr($club[$key], 0, 80)];
         // Unknown executables on a club PC are almost always games: show the file name.
         return ['kind' => 'game', 'name' => mb_substr(preg_replace('/\.exe$/i', '', trim(basename(str_replace('\\', '/', (string) $process)))), 0, 80)];
     }
