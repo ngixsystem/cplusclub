@@ -63,7 +63,7 @@ onUnmounted(() => { clearTimeout(timer); liveCtl?.abort(); statsCtl?.abort(); do
 
 <template>
   <section class="card games-card" aria-labelledby="games-title">
-    <div class="card-head">
+    <div class="card-head games-head">
       <div class="title-with-tile"><span class="icon-tile"><Gamepad2 aria-hidden="true" /></span>
         <div><h2 id="games-title">Игры в клубе</h2><p class="games-sub">Что запущено на компьютерах сейчас и во что играют больше всего</p></div></div>
       <label v-if="clubs.length > 1" class="games-club"><span class="sr-only">Клуб</span>
@@ -137,6 +137,7 @@ onUnmounted(() => { clearTimeout(timer); liveCtl?.abort(); statsCtl?.abort(); do
           <button type="button" :aria-pressed="trend === 'weeks'" @click="trend = 'weeks'">По неделям</button>
         </div>
       </header>
+      <ul v-if="stats && hasTrend" class="legend" aria-hidden="true"><li v-for="s in series" :key="s.key"><i :style="{ background: s.color }"></i>{{ s.label }}</li></ul>
       <TimeSeries v-if="stats && hasTrend" :labels="stats.trend.labels" :series="series" :fill="false" :height="200"
         :caption="trend === 'weeks' ? 'Часы игры по неделям за 8 недель' : 'Часы игры по дням за 14 дней'" />
       <p v-else-if="stats" class="muted games-empty">Данных пока мало — график появится после первых часов сбора.</p>
@@ -200,5 +201,16 @@ onUnmounted(() => { clearTimeout(timer); liveCtl?.abort(); statsCtl?.abort(); do
 .leaders b { font-size: 13px; font-weight: 600; white-space: nowrap }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0) }
 @media (max-width: 900px) { .games-grid { grid-template-columns: 1fr } }
+.legend { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted) }
+.legend li { display: inline-flex; align-items: center; gap: 6px }
+.legend i { width: 14px; height: 3px; border-radius: 2px }
+@media (max-width: 600px) {
+  .games-head { flex-direction: column; align-items: stretch }
+  .games-club select { width: 100% }
+  .games-panel { padding: 14px }
+  .rank-row, .rank-top .rank-row { grid-template-columns: 1fr auto; grid-template-areas: "name val" "bar bar"; row-gap: 6px }
+  .rank-top .rank-row { grid-template-columns: 22px 1fr auto; grid-template-areas: "no name val" "no bar bar" }
+  .rank-no { grid-area: no } .rank-name { grid-area: name; white-space: normal } .rank-bar { grid-area: bar } .rank-val { grid-area: val }
+}
 @media (prefers-reduced-motion: reduce) { .rank-bar i, .expand { transition: none } }
 </style>
