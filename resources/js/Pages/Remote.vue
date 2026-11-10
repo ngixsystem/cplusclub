@@ -28,20 +28,18 @@ const presenceTimer = window.setInterval(pollPresence, 15000);
 const onVisible = () => { if (!document.hidden) pollPresence(); };
 document.addEventListener('visibilitychange', onVisible);
 onUnmounted(() => { window.clearInterval(presenceTimer); document.removeEventListener('visibilitychange', onVisible); });
-const statusText = (h: Host) => {
+const STATUS = { on: 'В сети', off: 'Не в сети', wait: 'Ждёт установки', unknown: 'Нет данных' } as const;
+const statusDetail = (h: Host) => {
     const p = st(h);
-    if (h.pending) return 'Ждёт установки';
-    if (p.online === null) return 'Статус неизвестен';
-    if (p.online) return 'В сети';
-    const since = p.last_seen_at ?? p.status_changed_at;
-    return since ? `Не в сети · был ${ago(since)}` : 'Не в сети';
+    if (p.online === true && p.status_changed_at) return `в сети с ${new Date(p.status_changed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
+    if (p.online === false) { const since = p.last_seen_at ?? p.status_changed_at; return since ? `был в сети ${ago(since)}` : 'ещё не выходил на связь'; }
+    return '';
 };
-const statusClass = (h: Host) => h.pending ? 'wait' : st(h).online === null ? 'unknown' : st(h).online ? 'on' : 'off';
+const statusClass = (h: Host): keyof typeof STATUS => h.pending ? 'wait' : st(h).online === null ? 'unknown' : st(h).online ? 'on' : 'off';
 
 const list = computed(() => props.hosts.filter((h) => h.club_id === clubId.value)
     .slice().sort((a, b) => Number(!!st(b).online) - Number(!!st(a).online) || a.name.localeCompare(b.name, 'ru')));
-const onlineCount = computed(() => list.value.filter((h) => st(h).online).length);
-const enrolledCount = computed(() => list.value.filter((h) => !h.pending).length);
+
 
 const xsrf = () => decodeURIComponent((document.cookie.match(/XSRF-TOKEN=([^;]+)/) || [])[1] ?? '');
 const post = (url: string) => fetch(url, { method: 'POST', headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf() } });
@@ -106,7 +104,6 @@ watch(() => props.installFor, (id) => { const h = props.hosts.find((x) => x.id =
         <p class="muted">Подключение к серверам и ПК клубов через RustDesk. Весь трафик идёт через сервер C+CLub — открывать порты в клубе не нужно.</p>
       </div>
       <div class="rm-actions">
-        <span v-if="enrolledCount" class="rm-summary" :class="{ all: onlineCount === enrolledCount, none: onlineCount === 0 }"><span class="rm-dot" /> В сети {{ onlineCount }} из {{ enrolledCount }}</span>
         <select v-if="clubs.length" v-model.number="clubId" aria-label="Клуб" class="rm-club">
           <option v-for="c in clubs" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
@@ -138,19 +135,26 @@ watch(() => props.installFor, (id) => { const h = props.hosts.find((x) => x.id =
     <p v-if="!clubs.length" class="panel muted">Нет клубов, к которым у вас есть доступ.</p>
     <p v-else-if="!list.length" class="panel muted">В этом клубе пока нет компьютеров для удалённого доступа.<template v-if="canManage"> Нажмите «Добавить компьютер».</template></p>
 
-    <div class="rm-grid">
-      <article v-for="h in list" :key="h.id" class="panel rm-card" :class="{ pending: h.pending }">
+    <TransitionGroup name="rm-move" tag="div" class="rm-grid">
+      <article v-for="h in list" :key="h.id" class="panel rm-card" :class="'is-' + statusClass(h)">
+        <span class="rm-sweep" aria-hidden="true" />
         <div class="rm-top">
-          <span class="icon-tile rm-icon"><ScreenShare aria-hidden="true" /><span class="rm-badge" :class="statusClass(h)" aria-hidden="true" /></span>
+          <span class="rm-icon" aria-hidden="true"><span class="rm-halo" /><ScreenShare /></span>
           <div class="rm-title">
             <h3>{{ h.name }}</h3>
             <p class="muted small">
               <template v-if="h.rustdesk_id">ID <b class="mono">{{ h.rustdesk_id }}</b><template v-if="h.hostname"> · {{ h.hostname }}</template></template>
-              <template v-else>Ждёт установки RustDesk</template>
+              <template v-else>ID появится после установки</template>
             </p>
           </div>
         </div>
-        <p class="rm-status" :class="statusClass(h)" role="status"><span class="rm-dot" />{{ statusText(h) }}</p>
+        <div class="rm-state">
+          <span class="rm-sig" :class="statusClass(h)" role="status" :aria-label="STATUS[statusClass(h)] + (statusDetail(h) ? ', ' + statusDetail(h) : '')">
+            <span class="rm-bars" aria-hidden="true"><i v-for="n in 4" :key="n" :style="{ '--i': n - 1 }" /></span>
+            <Transition name="rm-swap" mode="out-in"><span :key="statusClass(h)" class="rm-sig-text" aria-hidden="true">{{ STATUS[statusClass(h)] }}</span></Transition>
+          </span>
+          <Transition name="rm-swap" mode="out-in"><span v-if="statusDetail(h)" :key="statusDetail(h)" class="rm-detail" :class="statusClass(h)" aria-hidden="true">{{ statusDetail(h) }}</span></Transition>
+        </div>
         <p class="muted small rm-last">{{ h.last ? `Последнее подключение: ${ago(h.last.at)}${h.last.by ? ', ' + h.last.by : ''}` : 'Ещё не подключались' }}</p>
         <button type="button" class="rm-connect" :class="{ secondary: st(h).online === false }" :disabled="h.pending || busy === h.id" @click="connect(h)">
           <ScreenShare aria-hidden="true" /> {{ busy === h.id ? 'Открываю…' : 'Подключиться' }}
@@ -164,7 +168,7 @@ watch(() => props.installFor, (id) => { const h = props.hosts.find((x) => x.id =
           <button type="button" class="ghost small danger" @click="remove(h)"><Trash2 aria-hidden="true" /> Убрать</button>
         </div>
       </article>
-    </div>
+    </TransitionGroup>
   </Shell>
 </template>
 
@@ -189,7 +193,6 @@ watch(() => props.installFor, (id) => { const h = props.hosts.find((x) => x.id =
 @keyframes rm-pulse { 50% { opacity: .3 } }
 .rm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 14px }
 .rm-card { display: grid; gap: 10px; margin: 0; align-content: start }
-.rm-card.pending { opacity: .8 }
 .rm-top { display: flex; gap: 12px; align-items: center; min-width: 0 }
 .rm-title { min-width: 0 }
 .rm-title h3 { margin: 0; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
@@ -203,18 +206,69 @@ watch(() => props.installFor, (id) => { const h = props.hosts.find((x) => x.id =
 .rm-tools { display: flex; gap: 4px; flex-wrap: wrap; border-top: 1px solid var(--border, rgba(127,127,127,.2)); padding-top: 8px }
 .rm-tools button { display: inline-flex; gap: 6px; align-items: center }
 .rm-tools .danger { color: var(--red, #dc2626) }
-.rm-icon { position: relative }
-.rm-badge { position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--panel, var(--surface, #111)); background: var(--muted-fg, #888) }
-.rm-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none }
-.rm-status { margin: 0; display: inline-flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 600 }
-.rm-badge.on { background: #22c55e } .rm-badge.off { background: #ef4444 } .rm-badge.wait { background: #f59e0b }
-.rm-status.on { color: #16a34a } .rm-status.off { color: #ef4444 } .rm-status.wait { color: #d97706 } .rm-status.unknown { color: var(--muted-fg, #888) }
-.rm-status.on .rm-dot, .rm-summary .rm-dot { box-shadow: 0 0 0 0 rgba(34, 197, 94, .55); animation: rm-ping 2s ease-out infinite }
-@keyframes rm-ping { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, .55) } 80%, 100% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0) } }
-.rm-summary { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 999px; color: #d97706; background: rgba(245, 158, 11, .12) }
-.rm-summary.all { color: #16a34a; background: rgba(34, 197, 94, .12) }
-.rm-summary.none { color: #ef4444; background: rgba(239, 68, 68, .12) }
-.rm-summary.none .rm-dot { animation: none }
+/* ── Card status: live signal ───────────────────────────── */
+.rm-card { position: relative; overflow: hidden; isolation: isolate; --st: 120 120 128;
+  transition: border-color .6s ease, box-shadow .6s ease }
+.rm-card.is-on { --st: 34 197 94; border-color: rgb(var(--st) / .28); box-shadow: 0 0 0 1px rgb(var(--st) / .06), 0 18px 40px -24px rgb(var(--st) / .55) }
+.rm-card.is-off { --st: 239 68 68 }
+.rm-card.is-wait { --st: 245 158 11 }
+/* soft corner glow, breathing while online */
+.rm-card::after { content: ''; position: absolute; z-index: -1; inset: -40% -30% auto auto; width: 70%; aspect-ratio: 1; border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(var(--st) / .22), transparent 70%); opacity: 0; transition: opacity .8s ease; pointer-events: none }
+.rm-card.is-on::after { opacity: 1; animation: rm-breathe 4.8s ease-in-out infinite }
+.rm-card.is-off::after { opacity: .45 }
+/* light sweeping along the top edge */
+.rm-sweep { position: absolute; inset: 0 0 auto; height: 2px; overflow: hidden; opacity: 0; transition: opacity .6s }
+.rm-sweep::before { content: ''; position: absolute; inset: 0; width: 45%;
+  background: linear-gradient(90deg, transparent, rgb(var(--st)), transparent); transform: translateX(-110%) }
+.rm-card.is-on .rm-sweep { opacity: 1 }
+.rm-card.is-on .rm-sweep::before { animation: rm-sweep 3.6s cubic-bezier(.45, 0, .2, 1) infinite }
+
+.rm-icon { position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px;
+  color: rgb(var(--st)); background: rgb(var(--st) / .12); border: 1px solid rgb(var(--st) / .22); transition: color .6s, background .6s, border-color .6s }
+.rm-icon svg { width: 20px; height: 20px; position: relative }
+.rm-card.is-unknown .rm-icon, .rm-card.is-off .rm-icon { color: var(--muted-fg, #8a8a93); background: rgba(127, 127, 127, .1); border-color: rgba(127, 127, 127, .2) }
+.rm-halo { position: absolute; inset: -1px; border-radius: inherit; border: 1.5px solid rgb(var(--st) / .7); opacity: 0 }
+.rm-card.is-on .rm-halo { animation: rm-halo 2.4s cubic-bezier(.2, .7, .3, 1) infinite }
+
+.rm-title { flex: 1 }
+.rm-title p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.rm-state { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 28px }
+.rm-sig { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 11px 0 9px; border-radius: 999px; flex: none;
+  font-size: 12px; font-weight: 650; letter-spacing: .01em; color: rgb(var(--st)); background: rgb(var(--st) / .1); border: 1px solid rgb(var(--st) / .25);
+  transition: color .5s, background .5s, border-color .5s; --st: 120 120 128 }
+.rm-sig.on { --st: 34 197 94 } .rm-sig.off { --st: 239 68 68 } .rm-sig.wait { --st: 245 158 11 }
+.rm-sig.unknown { color: var(--muted-fg, #8a8a93) }
+.rm-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px }
+.rm-bars i { width: 3px; height: 100%; border-radius: 2px; background: currentColor; transform-origin: bottom;
+  transform: scaleY(calc(.3 + var(--i) * .233)); transition: transform .6s cubic-bezier(.34, 1.56, .64, 1) calc(var(--i) * 60ms), opacity .4s }
+/* online: an equalizer-like live wave */
+.rm-sig.on .rm-bars i { animation: rm-wave 1.25s ease-in-out infinite; animation-delay: calc(var(--i) * -.18s) }
+/* offline: signal collapses, only the first bar left */
+.rm-sig.off .rm-bars i { transform: scaleY(.22); opacity: .35 }
+.rm-sig.off .rm-bars i:first-child { opacity: 1; transform: scaleY(.45) }
+/* waiting: bars light up one by one, like a search */
+.rm-sig.wait .rm-bars i { animation: rm-scan 1.6s ease-in-out infinite; animation-delay: calc(var(--i) * .2s); opacity: .25 }
+.rm-sig.unknown .rm-bars i { opacity: .3 }
+.rm-sig-text { display: inline-block }
+
+.rm-detail { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; color: var(--muted-fg, #8a8a93); font-variant-numeric: tabular-nums }
+.rm-detail.off { color: rgb(239 68 68 / .85) }
+
+/* status text swaps with a blur-slide */
+.rm-swap-enter-active, .rm-swap-leave-active { transition: opacity .28s ease, transform .38s cubic-bezier(.16, 1, .3, 1), filter .28s ease }
+.rm-swap-enter-from { opacity: 0; transform: translateY(6px); filter: blur(4px) }
+.rm-swap-leave-to { opacity: 0; transform: translateY(-6px); filter: blur(4px) }
+
+.rm-move-move { transition: transform .7s cubic-bezier(.16, 1, .3, 1) }
+.rm-move-enter-active { transition: opacity .4s, transform .5s cubic-bezier(.16, 1, .3, 1) }
+.rm-move-enter-from { opacity: 0; transform: translateY(12px) scale(.98) }
+.rm-move-leave-active { display: none }
+@keyframes rm-wave { 0%, 100% { transform: scaleY(.35) } 50% { transform: scaleY(1) } }
+@keyframes rm-scan { 0%, 100% { opacity: .25 } 40% { opacity: 1 } }
+@keyframes rm-halo { 0% { opacity: .8; transform: scale(1) } 100% { opacity: 0; transform: scale(1.45) } }
+@keyframes rm-sweep { 0% { transform: translateX(-110%) } 70%, 100% { transform: translateX(260%) } }
+@keyframes rm-breathe { 0%, 100% { transform: scale(1); opacity: .85 } 50% { transform: scale(1.12); opacity: 1 } }
 @media (max-width: 640px) { .rm-club { min-width: 0; flex: 1 } .rm-cmd { flex-direction: column } }
-@media (prefers-reduced-motion: reduce) { .rm-wait .dot, .rm-status .rm-dot, .rm-summary .rm-dot { animation: none } }
+@media (prefers-reduced-motion: reduce) { .rm-wait .dot, .rm-bars i, .rm-halo, .rm-sweep::before, .rm-card::after { animation: none !important } .rm-sig.on .rm-bars i { transform: scaleY(calc(.3 + var(--i) * .233)) } }
 </style>
