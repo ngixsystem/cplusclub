@@ -17,6 +17,8 @@ const hallGrid=ref<HTMLElement|null>(null), hallFull=ref(0), hallOpen=ref((()=>{
 const hallCollapsible=computed(()=>hallFull.value>HALL_ROWS_PX+24);
 const hallOnline=computed(()=>data.value?.computers?.filter(p=>p.online).length ?? 0);
 const measureHall=()=>{if(hallGrid.value)hallFull.value=hallGrid.value.scrollHeight;};
+const SESSIONS_KEY='cclub-shift-sessions', sessionsOpen=ref((()=>{try{return localStorage.getItem(SESSIONS_KEY)==='1'}catch{return false}})());
+const toggleSessions=()=>{sessionsOpen.value=!sessionsOpen.value;try{localStorage.setItem(SESSIONS_KEY,sessionsOpen.value?'1':'0')}catch{/* private mode */}};
 const toggleHall=()=>{measureHall();hallOpen.value=!hallOpen.value;try{localStorage.setItem(HALL_KEY,hallOpen.value?'1':'0')}catch{/* private mode */}};
 let hallObserver:ResizeObserver|undefined;
 watch(hallGrid,el=>{hallObserver?.disconnect();if(el&&'ResizeObserver' in window){hallObserver=new ResizeObserver(measureHall);hallObserver.observe(el);}measureHall();});
@@ -63,6 +65,9 @@ const detailLabels:Record<string,string>={cash_sales:'Поступления н�
  <section v-if="data?.connected===false" class="card empty"><h3>iCafeCloud не подключён</h3><p>Добавьте лицензию и API-токен в карточке клуба, чтобы видеть смены и выручку.</p><Link v-if="canManage" :href="'/clubs/'+clubId" class="button">Подключить iCafeCloud</Link></section>
  <div v-else-if="!data?.shifts" class="card empty">{{loading?'Получаем данные iCafeCloud…':'Данные ещё не получены. Нажмите «Обновить».'}}</div>
  <template v-else>
+ <section class="card"><div class="card-head"><div><h3>Смены за 7 дней</h3><p>Полные суммы смен по дате открытия, включая открытые смены. Листайте дни колесом мыши или стрелками.</p></div></div><ShiftTimeline v-if="weekDays.length" :days="weekDays" :currency="club?.icafe_currency??''" :timezone="club?.timezone"/>
+ <div class="hall-toggle sessions-toggle"><button type="button" class="mac-button" :aria-expanded="sessionsOpen" aria-controls="shift-sessions" @click="toggleSessions">{{ sessionsOpen ? 'Свернуть' : 'Подробнее' }}<span v-if="!sessionsOpen && shifts.length" class="mac-count">{{ shifts.length }}</span><svg viewBox="0 0 12 12" aria-hidden="true" :class="{ up: sessionsOpen }"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+ <div id="shift-sessions" class="sessions" :class="{ open: sessionsOpen }" :inert="!sessionsOpen || undefined"><div class="sessions-inner"><div class="table-scroll"><table><thead><tr><th>Оператор</th><th>Открытие</th><th>Закрытие</th><th>Сумма смены</th><th>Детали</th></tr></thead><tbody><template v-for="s in shifts" :key="s.id"><tr><td><b>{{s.operator}}</b><span v-if="!s.end" class="shift-open">Открыта</span></td><td>{{s.start}}<br/><small>{{duration(s)}}</small></td><td>{{s.end??'—'}}</td><td class="numeric">{{money(s.total)}}</td><td><button class="secondary" :aria-expanded="expanded===s.id" @click="expanded=expanded===s.id?'':s.id; if(expanded)choose(s.id)">{{expanded===s.id?'Скрыть':'Подробнее'}}</button></td></tr><tr v-if="expanded===s.id"><td colspan="5"><div class="payment-grid"><div><small>Наличные</small><b>{{money(s.cash)}}</b></div><div><small>Карты</small><b>{{money(s.card)}}</b></div><div><small>QR</small><b>{{money(s.qr)}}</b></div></div><div v-if="selected===s.id&&detail?.detail" class="detail-grid"><div v-for="(value,key) in detail.detail" :key="key"><small>{{detailLabels[key]??key}}</small><b>{{money(value)}}</b></div></div><p v-else>{{detail?.error??'Загрузка детализации…'}}</p></td></tr></template></tbody></table></div><p v-if="!shifts.length" class="empty">За выбранный период смен нет.</p></div></div></section>
  <section class="metric-grid"><article><span>Открытые смены</span><strong>{{money(total)}}</strong><small>{{active.length}} активных смен</small></article><article><span>Онлайн</span><strong>{{data.online_pcs}} <small>/ {{data.total_pcs}} ПК</small></strong><small>Подключены к iCafeCloud</small></article><article><span>Офлайн</span><strong>{{(data.total_pcs??0)-(data.online_pcs??0)}}</strong><small>Нет подключения</small></article><article><span>За 7 дней</span><strong>{{money(shifts.reduce((n,s)=>n+s.total,0))}}</strong><small>{{data.period_start}} — {{data.period_end}}</small></article></section>
  <div class="dash-grid">
  <section class="card shift-panel"><div class="toolbar"><div><p class="eyebrow">Кассовая смена</p><h3 class="operator">{{current?.operator ?? 'Нет смен за период'}}</h3></div><label v-if="shifts.length">Оператор и смена<select :value="selected" @change="choose(($event.target as HTMLSelectElement).value)"><option v-for="s in shifts" :key="s.id" :value="s.id">{{s.operator}} · {{s.start}} · {{s.end?'Закрыта':'Открыта'}}</option></select></label></div>
@@ -78,8 +83,6 @@ const detailLabels:Record<string,string>={cash_sales:'Поступления н�
   <div v-if="hallCollapsible" class="hall-toggle"><button type="button" class="mac-button" :aria-expanded="hallOpen" aria-controls="hall-grid" @click="toggleHall">{{ hallOpen ? 'Свернуть' : 'Показать все ' + (data.computers?.length ?? 0) + ' ПК' }}<svg viewBox="0 0 12 12" aria-hidden="true" :class="{ up: hallOpen }"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
 </section>
  </div>
- <section class="card"><div class="card-head"><div><h3>Смены за 7 дней</h3><p>Полные суммы смен по дате открытия, включая открытые смены. Листайте дни колесом мыши или стрелками.</p></div></div><ShiftTimeline v-if="weekDays.length" :days="weekDays" :currency="club?.icafe_currency??''" :timezone="club?.timezone"/>
- <div class="table-scroll"><table><thead><tr><th>Оператор</th><th>Открытие</th><th>Закрытие</th><th>Сумма смены</th><th>Детали</th></tr></thead><tbody><template v-for="s in shifts" :key="s.id"><tr><td><b>{{s.operator}}</b><span v-if="!s.end" class="shift-open">Открыта</span></td><td>{{s.start}}<br/><small>{{duration(s)}}</small></td><td>{{s.end??'—'}}</td><td class="numeric">{{money(s.total)}}</td><td><button class="secondary" :aria-expanded="expanded===s.id" @click="expanded=expanded===s.id?'':s.id; if(expanded)choose(s.id)">{{expanded===s.id?'Скрыть':'Подробнее'}}</button></td></tr><tr v-if="expanded===s.id"><td colspan="5"><div class="payment-grid"><div><small>Наличные</small><b>{{money(s.cash)}}</b></div><div><small>Карты</small><b>{{money(s.card)}}</b></div><div><small>QR</small><b>{{money(s.qr)}}</b></div></div><div v-if="selected===s.id&&detail?.detail" class="detail-grid"><div v-for="(value,key) in detail.detail" :key="key"><small>{{detailLabels[key]??key}}</small><b>{{money(value)}}</b></div></div><p v-else>{{detail?.error??'Загрузка детализации…'}}</p></td></tr></template></tbody></table></div><p v-if="!shifts.length" class="empty">За выбранный период смен нет.</p></section>
  </template>
  </section>
 </template>
@@ -142,7 +145,14 @@ const detailLabels:Record<string,string>={cash_sales:'Поступления н�
   box-shadow:0 .5px 1px rgba(0,0,0,.5),inset 0 .5px 0 rgba(255,255,255,.18) }
 :root[data-theme=dark] .mac-button svg { color:#c7c7cc }
 :root[data-theme=dark] .mac-button:active { background:linear-gradient(#6a6a70,#5c5c62) }
-@media (prefers-reduced-motion:reduce) { .hall-grid,.mac-button,.mac-button svg { transition:none } }
+.sessions-toggle { margin-top:16px }
+.mac-count { min-width:18px; height:16px; padding:0 5px; border-radius:8px; display:inline-grid; place-items:center; font-size:11px; font-weight:600; font-variant-numeric:tabular-nums; color:#6e6e73; background:rgba(0,0,0,.07) }
+:root[data-theme=dark] .mac-count { color:#e5e5ea; background:rgba(255,255,255,.14) }
+.sessions { display:grid; grid-template-rows:0fr; opacity:0; transition:grid-template-rows 520ms cubic-bezier(.2,.8,.2,1), opacity 280ms ease, margin-top 520ms cubic-bezier(.2,.8,.2,1) }
+.sessions.open { grid-template-rows:1fr; opacity:1; margin-top:14px }
+.sessions-inner { min-height:0; overflow:hidden }
+.sessions:not(.open) .sessions-inner { visibility:hidden; transition:visibility 0s 520ms }
+@media (prefers-reduced-motion:reduce) { .hall-grid,.mac-button,.mac-button svg,.sessions { transition:none } }
 @media (max-width:1100px) { .metric-grid { grid-template-columns:1fr 1fr } .dash-grid { grid-template-columns:1fr } }
 @media (max-width:600px) { .metric-grid { gap:10px } .metric-grid article { padding:14px } .metric-grid strong { font-size:20px } .shift-summary { gap:18px } .payment-grid,.detail-grid { grid-template-columns:1fr 1fr } .club-select { min-width:0; width:100% } }
 </style>
