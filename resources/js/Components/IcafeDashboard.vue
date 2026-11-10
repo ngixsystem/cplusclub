@@ -2,6 +2,7 @@
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import RevenueChart from './RevenueChart.vue';
+import ShiftTimeline, { type Day } from './ShiftTimeline.vue';
 type Club={id:number;name:string;icafe_license:number|null;icafe_currency:string;timezone:string};
 type Shift={id:string;operator:string;start:string;end:string|null;duration_seconds?:number;total:number;cash:number;card:number;qr:number};
 type Snapshot={connected:boolean;shifts?:Shift[];computers?:{name:string;online:boolean;busy:boolean}[];total_pcs?:number;online_pcs?:number;updated_at?:string|null;stale?:boolean;error?:string;period_start?:string;period_end?:string};
@@ -25,7 +26,10 @@ const shifts=computed(()=>data.value?.shifts ?? []);
 const active=computed(()=>shifts.value.filter(s=>!s.end));
 const current=computed(()=>shifts.value.find(s=>s.id===selected.value));
 const total=computed(()=>active.value.reduce((n,s)=>n+s.total,0));
-const weekly=computed(()=>{const result=new Map<string,number>();if(data.value?.period_start){const d=new Date(data.value.period_start+'T00:00:00Z');for(let i=0;i<7;i++){result.set(d.toISOString().slice(0,10),0);d.setUTCDate(d.getUTCDate()+1);}}for(const s of shifts.value){const day=s.start.slice(0,10);result.set(day,(result.get(day)??0)+s.total);}return {labels:[...result.keys()].map(k=>k.slice(8,10)+'.'+k.slice(5,7)),values:[...result.values()]};});
+// Per-day totals of the 7-day period (by shift opening date), for the day wheel.
+const weekDays=computed<Day[]>(()=>{const m=new Map<string,Day>();if(data.value?.period_start){const d=new Date(data.value.period_start+'T00:00:00Z');for(let i=0;i<7;i++){const k=d.toISOString().slice(0,10);m.set(k,{date:k,total:0,cash:0,card:0,qr:0,shifts:0});d.setUTCDate(d.getUTCDate()+1);}}
+  for(const s of shifts.value){const k=s.start.slice(0,10);const x=m.get(k)??{date:k,total:0,cash:0,card:0,qr:0,shifts:0};x.total+=s.total;x.cash+=s.cash;x.card+=s.card;x.qr+=s.qr;x.shifts++;m.set(k,x);}
+  return [...m.values()].sort((a,b)=>a.date.localeCompare(b.date));});
 const duration=(s:Shift)=>s.duration_seconds==null?'—':Math.floor(s.duration_seconds/3600)+' ч '+Math.floor(s.duration_seconds%3600/60)+' мин';
 const money=(n:number|null|undefined)=>n==null?'Нет данных':new Intl.NumberFormat('ru-RU',{maximumFractionDigits:2}).format(n)+' '+(club.value?.icafe_currency??'');
 const updated=computed(()=>data.value?.updated_at?new Intl.DateTimeFormat('ru-RU',{timeZone:club.value?.timezone,hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(new Date(data.value.updated_at)):'ещё не получены');
@@ -74,7 +78,7 @@ const detailLabels:Record<string,string>={cash_sales:'Поступления н�
   <div v-if="hallCollapsible" class="hall-toggle"><button type="button" class="mac-button" :aria-expanded="hallOpen" aria-controls="hall-grid" @click="toggleHall">{{ hallOpen ? 'Свернуть' : 'Показать все ' + (data.computers?.length ?? 0) + ' ПК' }}<svg viewBox="0 0 12 12" aria-hidden="true" :class="{ up: hallOpen }"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
 </section>
  </div>
- <section class="card"><div class="card-head"><div><h3>Смены за 7 дней</h3><p>Полные суммы смен по дате открытия, включая открытые смены</p></div></div><RevenueChart :labels="weekly.labels" :values="weekly.values" :currency="club?.icafe_currency??''"/>
+ <section class="card"><div class="card-head"><div><h3>Смены за 7 дней</h3><p>Полные суммы смен по дате открытия, включая открытые смены. Листайте дни колесом мыши или стрелками.</p></div></div><ShiftTimeline v-if="weekDays.length" :days="weekDays" :currency="club?.icafe_currency??''" :timezone="club?.timezone"/>
  <div class="table-scroll"><table><thead><tr><th>Оператор</th><th>Открытие</th><th>Закрытие</th><th>Сумма смены</th><th>Детали</th></tr></thead><tbody><template v-for="s in shifts" :key="s.id"><tr><td><b>{{s.operator}}</b><span v-if="!s.end" class="shift-open">Открыта</span></td><td>{{s.start}}<br/><small>{{duration(s)}}</small></td><td>{{s.end??'—'}}</td><td class="numeric">{{money(s.total)}}</td><td><button class="secondary" :aria-expanded="expanded===s.id" @click="expanded=expanded===s.id?'':s.id; if(expanded)choose(s.id)">{{expanded===s.id?'Скрыть':'Подробнее'}}</button></td></tr><tr v-if="expanded===s.id"><td colspan="5"><div class="payment-grid"><div><small>Наличные</small><b>{{money(s.cash)}}</b></div><div><small>Карты</small><b>{{money(s.card)}}</b></div><div><small>QR</small><b>{{money(s.qr)}}</b></div></div><div v-if="selected===s.id&&detail?.detail" class="detail-grid"><div v-for="(value,key) in detail.detail" :key="key"><small>{{detailLabels[key]??key}}</small><b>{{money(value)}}</b></div></div><p v-else>{{detail?.error??'Загрузка детализации…'}}</p></td></tr></template></tbody></table></div><p v-if="!shifts.length" class="empty">За выбранный период смен нет.</p></section>
  </template>
  </section>
