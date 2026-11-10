@@ -33,6 +33,7 @@ class RemoteAccessTest extends TestCase
         $this->assertNotSame($host->getRawOriginal('password'), $host->password, 'password is stored encrypted');
 
         $script = $this->get('/rustdesk/install.ps1')->assertOk()->getContent();
+        $this->assertStringStartsWith('#', $script, 'no BOM: irm keeps it and breaks param()');
         $this->assertStringContainsString(RustDesk::configString(), $script);
         $this->assertStringNotContainsString('__CONFIG__', $script);
         $this->assertStringNotContainsString($host->password, $script);

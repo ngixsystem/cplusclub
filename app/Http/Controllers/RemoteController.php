@@ -117,7 +117,7 @@ class RemoteController extends Controller
     {
         $ps = file_get_contents(resource_path('scripts/rustdesk-install.ps1'));
         $ps = str_replace(['__API__', '__CONFIG__'], [rtrim(config('app.url'), '/'), RustDesk::configString()], $ps);
-        return response("\u{FEFF}".$ps, 200, ['Content-Type' => 'text/plain; charset=utf-8', 'Cache-Control' => 'no-store']);
+        return response($ps, 200, ['Content-Type' => 'text/plain; charset=utf-8', 'Cache-Control' => 'no-store']);
     }
 
     /** Public API: the installer reports the RustDesk ID with its one-time token and gets the password. */
