@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Access\ClubAccess;
-use App\Domain\Remote\RustDesk;
+use App\Domain\Remote\{Presence, RustDesk};
 use App\Models\{Club, RemoteHost};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB, Gate};
@@ -44,6 +44,7 @@ class RemoteController extends Controller
         $hosts = RemoteHost::whereIn('club_id', $clubs->pluck('id'))->orderBy('name')->get()->map(fn ($h) => [
             'id' => $h->id, 'club_id' => $h->club_id, 'name' => $h->name, 'rustdesk_id' => RustDesk::formatId($h->rustdesk_id), 'hostname' => $h->hostname,
             'enrolled_at' => $h->enrolled_at, 'pending' => ! $h->rustdesk_id,
+            'online' => $h->online, 'last_seen_at' => $h->last_seen_at, 'status_changed_at' => $h->status_changed_at,
             'last' => isset($last[$h->id]) ? ['at' => $last[$h->id]->created_at, 'by' => $last[$h->id]->name] : null,
         ]);
         return Inertia::render('Remote', ['clubs' => $clubs, 'hosts' => $hosts, 'canManage' => ClubAccess::allClubs($r->user()),
@@ -102,6 +103,18 @@ class RemoteController extends Controller
         $this->manager($r);
         $h = $this->host($r, $host);
         return response()->json(['password' => $h->password]);
+    }
+
+    /** Live online status for the hosts the user can see; asks the RustDesk server at most every 10 s. */
+    public function presence(Request $r)
+    {
+        $this->operator($r);
+        $clubs = ClubAccess::filter(Club::query(), $r->user(), 'id')->pluck('id');
+        \Illuminate\Support\Facades\Cache::lock('remote-presence', 5)->get(function () {
+            if (\Illuminate\Support\Facades\Cache::add('remote-presence-fresh', 1, 10)) Presence::refresh();
+        });
+        return response()->json(['hosts' => RemoteHost::whereIn('club_id', $clubs)->whereNotNull('rustdesk_id')->get()
+            ->map(fn ($h) => ['id' => $h->id, 'online' => $h->online, 'last_seen_at' => $h->last_seen_at, 'status_changed_at' => $h->status_changed_at])]);
     }
 
     /** Status poll while the installer runs. */

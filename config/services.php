@@ -6,6 +6,9 @@ return [
     'rustdesk' => [
         'host' => env('RUSTDESK_HOST', '2.24.162.21'),
         'key' => env('RUSTDESK_KEY', 'yJM+o7ZlXkGlh5lxGx7CDFyqmVE51StTY+w5HoRKVnY='),
+        'port' => (int) env('RUSTDESK_PORT', 21116),
+        // Where the app asks hbbs for online status (defaults to host). Not loopback: hbbs treats loopback as its console.
+        'status_host' => env('RUSTDESK_STATUS_HOST'),
     ],
 
     /*

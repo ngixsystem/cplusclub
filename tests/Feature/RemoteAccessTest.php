@@ -85,4 +85,18 @@ class RemoteAccessTest extends TestCase
         $this->assertSame(RustDesk::host(), $json['host']);
         $this->assertSame(RustDesk::key(), $json['key']);
     }
+
+    public function test_presence_keeps_state_when_rustdesk_server_is_unreachable(): void
+    {
+        config(['services.rustdesk.status_host' => '127.0.0.1', 'services.rustdesk.port' => 9]); // nothing listens on :8
+        $club = Club::create(['name' => 'B', 'address' => 'x']);
+        $h = new RemoteHost();
+        $h->club_id = $club->id; $h->name = 'srv'; $h->password = 'p'; $h->rustdesk_id = '123456789'; $h->online = true;
+        $h->save();
+        $this->assertNull(\App\Domain\Remote\Presence::refresh());
+        $this->assertTrue($h->fresh()->online);
+        $owner = User::factory()->create(['role' => 'owner']);
+        $this->actingAs($owner)->getJson('/remote/presence')->assertOk()->assertJsonPath('hosts.0.online', true);
+        $this->get('/remote')->assertInertia(fn ($p) => $p->component('Remote', false)->where('hosts.0.online', true));
+    }
 }

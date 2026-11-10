@@ -53,6 +53,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/games/live',[\App\Http\Controllers\GameController::class,'live'])->middleware('throttle:live');
     Route::get('/games/stats',[\App\Http\Controllers\GameController::class,'stats'])->middleware('throttle:live');
     Route::get('/remote',[\App\Http\Controllers\RemoteController::class,'index']);
+    Route::get('/remote/presence',[\App\Http\Controllers\RemoteController::class,'presence'])->middleware('throttle:live');
     Route::post('/remote/hosts',[\App\Http\Controllers\RemoteController::class,'store']);
     Route::post('/remote/hosts/{host}',[\App\Http\Controllers\RemoteController::class,'update'])->whereNumber('host');
     Route::post('/remote/hosts/{host}/connect',[\App\Http\Controllers\RemoteController::class,'connect'])->whereNumber('host')->middleware('throttle:30,1');

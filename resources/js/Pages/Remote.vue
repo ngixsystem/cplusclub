@@ -4,14 +4,44 @@ import { computed, onUnmounted, ref, watch } from 'vue';
 import { Copy, KeyRound, MonitorSmartphone, Plus, ScreenShare, Trash2, RotateCw } from 'lucide-vue-next';
 import Shell from '../Layouts/Shell.vue';
 
-type Host = { id: number; club_id: number; name: string; rustdesk_id: string | null; hostname: string | null; enrolled_at: string | null; pending: boolean; last: { at: string; by: string | null } | null };
+type Host = { id: number; club_id: number; name: string; rustdesk_id: string | null; hostname: string | null; enrolled_at: string | null; pending: boolean; online: boolean | null; last_seen_at: string | null; status_changed_at: string | null; last: { at: string; by: string | null } | null };
 const props = defineProps<{ clubs: { id: number; name: string }[]; hosts: Host[]; canManage: boolean; server: string; installCommand: string | null; installFor: number | null }>();
 
+function ago(s: string) { const m = Math.round((Date.now() - new Date(s).getTime()) / 60000); return m < 1 ? 'только что' : m < 60 ? `${m} мин назад` : m < 1440 ? `${Math.round(m / 60)} ч назад` : new Date(s).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); }
 const KEY = 'cclub-remote-club';
 const stored = (() => { try { return Number(localStorage.getItem(KEY)) || 0; } catch { return 0; } })();
 const clubId = ref<number>(props.clubs.some((c) => c.id === stored) ? stored : (props.clubs[0]?.id ?? 0));
 watch(clubId, (v) => { try { localStorage.setItem(KEY, String(v)); } catch { /* optional */ } });
-const list = computed(() => props.hosts.filter((h) => h.club_id === clubId.value));
+/* Online status: stored by the scheduler every minute, refreshed live while the page is open. */
+type P = { online: boolean | null; last_seen_at: string | null; status_changed_at: string | null };
+const presence = ref<Record<number, P>>({});
+const st = (h: Host): P => presence.value[h.id] ?? h;
+async function pollPresence() {
+    if (document.hidden) return;
+    try {
+        const r = await fetch('/remote/presence', { headers: { Accept: 'application/json' } });
+        if (r.ok) presence.value = Object.fromEntries((await r.json()).hosts.map((x: P & { id: number }) => [x.id, x]));
+    } catch { /* keep the last known state */ }
+}
+pollPresence();
+const presenceTimer = window.setInterval(pollPresence, 15000);
+const onVisible = () => { if (!document.hidden) pollPresence(); };
+document.addEventListener('visibilitychange', onVisible);
+onUnmounted(() => { window.clearInterval(presenceTimer); document.removeEventListener('visibilitychange', onVisible); });
+const statusText = (h: Host) => {
+    const p = st(h);
+    if (h.pending) return 'Ждёт установки';
+    if (p.online === null) return 'Статус неизвестен';
+    if (p.online) return 'В сети';
+    const since = p.last_seen_at ?? p.status_changed_at;
+    return since ? `Не в сети · был ${ago(since)}` : 'Не в сети';
+};
+const statusClass = (h: Host) => h.pending ? 'wait' : st(h).online === null ? 'unknown' : st(h).online ? 'on' : 'off';
+
+const list = computed(() => props.hosts.filter((h) => h.club_id === clubId.value)
+    .slice().sort((a, b) => Number(!!st(b).online) - Number(!!st(a).online) || a.name.localeCompare(b.name, 'ru')));
+const onlineCount = computed(() => list.value.filter((h) => st(h).online).length);
+const enrolledCount = computed(() => list.value.filter((h) => !h.pending).length);
 
 const xsrf = () => decodeURIComponent((document.cookie.match(/XSRF-TOKEN=([^;]+)/) || [])[1] ?? '');
 const post = (url: string) => fetch(url, { method: 'POST', headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf() } });
@@ -64,7 +94,7 @@ watch(waiting, (id) => {
 onUnmounted(() => window.clearInterval(timer));
 watch(() => props.installFor, (id) => { const h = props.hosts.find((x) => x.id === id); if (h) clubId.value = h.club_id; }, { immediate: true });
 
-const ago = (s: string) => { const m = Math.round((Date.now() - new Date(s).getTime()) / 60000); return m < 1 ? 'только что' : m < 60 ? `${m} мин назад` : m < 1440 ? `${Math.round(m / 60)} ч назад` : new Date(s).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }); };
+
 </script>
 
 <template>
@@ -76,6 +106,7 @@ const ago = (s: string) => { const m = Math.round((Date.now() - new Date(s).getT
         <p class="muted">Подключение к серверам и ПК клубов через RustDesk. Весь трафик идёт через сервер C+CLub — открывать порты в клубе не нужно.</p>
       </div>
       <div class="rm-actions">
+        <span v-if="enrolledCount" class="rm-summary" :class="{ all: onlineCount === enrolledCount, none: onlineCount === 0 }"><span class="rm-dot" /> В сети {{ onlineCount }} из {{ enrolledCount }}</span>
         <select v-if="clubs.length" v-model.number="clubId" aria-label="Клуб" class="rm-club">
           <option v-for="c in clubs" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
@@ -110,7 +141,7 @@ const ago = (s: string) => { const m = Math.round((Date.now() - new Date(s).getT
     <div class="rm-grid">
       <article v-for="h in list" :key="h.id" class="panel rm-card" :class="{ pending: h.pending }">
         <div class="rm-top">
-          <span class="icon-tile"><ScreenShare aria-hidden="true" /></span>
+          <span class="icon-tile rm-icon"><ScreenShare aria-hidden="true" /><span class="rm-badge" :class="statusClass(h)" aria-hidden="true" /></span>
           <div class="rm-title">
             <h3>{{ h.name }}</h3>
             <p class="muted small">
@@ -119,8 +150,9 @@ const ago = (s: string) => { const m = Math.round((Date.now() - new Date(s).getT
             </p>
           </div>
         </div>
+        <p class="rm-status" :class="statusClass(h)" role="status"><span class="rm-dot" />{{ statusText(h) }}</p>
         <p class="muted small rm-last">{{ h.last ? `Последнее подключение: ${ago(h.last.at)}${h.last.by ? ', ' + h.last.by : ''}` : 'Ещё не подключались' }}</p>
-        <button type="button" class="rm-connect" :disabled="h.pending || busy === h.id" @click="connect(h)">
+        <button type="button" class="rm-connect" :class="{ secondary: st(h).online === false }" :disabled="h.pending || busy === h.id" @click="connect(h)">
           <ScreenShare aria-hidden="true" /> {{ busy === h.id ? 'Открываю…' : 'Подключиться' }}
         </button>
         <p v-if="hint === h.id" class="rm-hint" role="status">
@@ -171,6 +203,18 @@ const ago = (s: string) => { const m = Math.round((Date.now() - new Date(s).getT
 .rm-tools { display: flex; gap: 4px; flex-wrap: wrap; border-top: 1px solid var(--border, rgba(127,127,127,.2)); padding-top: 8px }
 .rm-tools button { display: inline-flex; gap: 6px; align-items: center }
 .rm-tools .danger { color: var(--red, #dc2626) }
+.rm-icon { position: relative }
+.rm-badge { position: absolute; right: -3px; bottom: -3px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--panel, var(--surface, #111)); background: var(--muted-fg, #888) }
+.rm-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: none }
+.rm-status { margin: 0; display: inline-flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 600 }
+.rm-badge.on { background: #22c55e } .rm-badge.off { background: #ef4444 } .rm-badge.wait { background: #f59e0b }
+.rm-status.on { color: #16a34a } .rm-status.off { color: #ef4444 } .rm-status.wait { color: #d97706 } .rm-status.unknown { color: var(--muted-fg, #888) }
+.rm-status.on .rm-dot, .rm-summary .rm-dot { box-shadow: 0 0 0 0 rgba(34, 197, 94, .55); animation: rm-ping 2s ease-out infinite }
+@keyframes rm-ping { 0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, .55) } 80%, 100% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0) } }
+.rm-summary { display: inline-flex; gap: 8px; align-items: center; font-size: 13px; font-weight: 600; padding: 7px 12px; border-radius: 999px; color: #d97706; background: rgba(245, 158, 11, .12) }
+.rm-summary.all { color: #16a34a; background: rgba(34, 197, 94, .12) }
+.rm-summary.none { color: #ef4444; background: rgba(239, 68, 68, .12) }
+.rm-summary.none .rm-dot { animation: none }
 @media (max-width: 640px) { .rm-club { min-width: 0; flex: 1 } .rm-cmd { flex-direction: column } }
-@media (prefers-reduced-motion: reduce) { .rm-wait .dot { animation: none } }
+@media (prefers-reduced-motion: reduce) { .rm-wait .dot, .rm-status .rm-dot, .rm-summary .rm-dot { animation: none } }
 </style>
