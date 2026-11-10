@@ -10,6 +10,17 @@ const props=defineProps<{clubs:Club[];canManage:boolean}>();
 const clubId=ref(props.clubs.find(c=>c.icafe_license)?.id ?? props.clubs[0]?.id ?? 0), selected=ref(''), expanded=ref('');
 const data=ref<Snapshot|null>(null), detail=ref<Detail|null>(null), loading=ref(false), error=ref('');
 const club=computed(()=>props.clubs.find(c=>c.id===Number(clubId.value)));
+// «Состояние зала»: the grid is folded to three rows; the choice is remembered per browser.
+const HALL_KEY='cclub-hall-open', HALL_ROWS_PX=196;
+const hallGrid=ref<HTMLElement|null>(null), hallFull=ref(0), hallOpen=ref((()=>{try{return localStorage.getItem(HALL_KEY)==='1'}catch{return false}})());
+const hallCollapsible=computed(()=>hallFull.value>HALL_ROWS_PX+24);
+const hallOnline=computed(()=>data.value?.computers?.filter(p=>p.online).length ?? 0);
+const measureHall=()=>{if(hallGrid.value)hallFull.value=hallGrid.value.scrollHeight;};
+const toggleHall=()=>{measureHall();hallOpen.value=!hallOpen.value;try{localStorage.setItem(HALL_KEY,hallOpen.value?'1':'0')}catch{/* private mode */}};
+let hallObserver:ResizeObserver|undefined;
+watch(hallGrid,el=>{hallObserver?.disconnect();if(el&&'ResizeObserver' in window){hallObserver=new ResizeObserver(measureHall);hallObserver.observe(el);}measureHall();});
+watch(()=>data.value?.computers?.length,()=>requestAnimationFrame(measureHall));
+onUnmounted(()=>hallObserver?.disconnect());
 const shifts=computed(()=>data.value?.shifts ?? []);
 const active=computed(()=>shifts.value.filter(s=>!s.end));
 const current=computed(()=>shifts.value.find(s=>s.id===selected.value));
@@ -57,7 +68,11 @@ const detailLabels:Record<string,string>={cash_sales:'Поступления н�
  <p class="chart-note">Поступления по интервалам iCafeCloud (Total), не накопительный итог. Отрицательные значения — корректировки и возвраты.</p>
  <div class="payment-grid"><div><small>Наличные</small><b>{{money(current.cash)}}</b></div><div><small>Карты</small><b>{{money(current.card)}}</b></div><div><small>QR</small><b>{{money(current.qr)}}</b></div></div>
  </template></section>
- <section class="card"><p class="eyebrow">Состояние зала</p><h3>Компьютеры</h3><p class="chart-note">Онлайн и офлайн — связь с iCafeCloud, а не занятость места.</p><div class="pc-grid"><div v-for="pc in data.computers" :key="pc.name" :class="['pc',{'pc-online':pc.online}]" :title="pc.busy?'Есть игровая сессия':'Нет игровой сессии'"><b>{{pc.name}}</b><span>{{pc.online?'Онлайн':'Офлайн'}}</span></div></div></section>
+ <section class="card hall"><p class="eyebrow">Состояние зала</p><h3>Компьютеры</h3><p class="chart-note">Онлайн и офлайн — связь с iCafeCloud, а не занятость места.</p>
+  <p class="hall-counts"><span class="dot on"></span>Онлайн {{ hallOnline }}<span class="dot off"></span>Офлайн {{ (data.computers?.length ?? 0) - hallOnline }}</p>
+  <div id="hall-grid" ref="hallGrid" class="pc-grid hall-grid" :class="{ 'is-collapsed': hallCollapsible && !hallOpen }" :style="{ '--hall-full': hallFull + 'px' }"><div v-for="pc in data.computers" :key="pc.name" :class="['pc',{'pc-online':pc.online}]" :title="pc.busy?'Есть игровая сессия':'Нет игровой сессии'"><b>{{pc.name}}</b><span>{{pc.online?'Онлайн':'Офлайн'}}</span></div></div>
+  <div v-if="hallCollapsible" class="hall-toggle"><button type="button" class="mac-button" :aria-expanded="hallOpen" aria-controls="hall-grid" @click="toggleHall">{{ hallOpen ? 'Свернуть' : 'Показать все ' + (data.computers?.length ?? 0) + ' ПК' }}<svg viewBox="0 0 12 12" aria-hidden="true" :class="{ up: hallOpen }"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+</section>
  </div>
  <section class="card"><div class="card-head"><div><h3>Смены за 7 дней</h3><p>Полные суммы смен по дате открытия, включая открытые смены</p></div></div><RevenueChart :labels="weekly.labels" :values="weekly.values" :currency="club?.icafe_currency??''"/>
  <div class="table-scroll"><table><thead><tr><th>Оператор</th><th>Открытие</th><th>Закрытие</th><th>Сумма смены</th><th>Детали</th></tr></thead><tbody><template v-for="s in shifts" :key="s.id"><tr><td><b>{{s.operator}}</b><span v-if="!s.end" class="shift-open">Открыта</span></td><td>{{s.start}}<br/><small>{{duration(s)}}</small></td><td>{{s.end??'—'}}</td><td class="numeric">{{money(s.total)}}</td><td><button class="secondary" :aria-expanded="expanded===s.id" @click="expanded=expanded===s.id?'':s.id; if(expanded)choose(s.id)">{{expanded===s.id?'Скрыть':'Подробнее'}}</button></td></tr><tr v-if="expanded===s.id"><td colspan="5"><div class="payment-grid"><div><small>Наличные</small><b>{{money(s.cash)}}</b></div><div><small>Карты</small><b>{{money(s.card)}}</b></div><div><small>QR</small><b>{{money(s.qr)}}</b></div></div><div v-if="selected===s.id&&detail?.detail" class="detail-grid"><div v-for="(value,key) in detail.detail" :key="key"><small>{{detailLabels[key]??key}}</small><b>{{money(value)}}</b></div></div><p v-else>{{detail?.error??'Загрузка детализации…'}}</p></td></tr></template></tbody></table></div><p v-if="!shifts.length" class="empty">За выбранный период смен нет.</p></section>
@@ -101,6 +116,29 @@ const detailLabels:Record<string,string>={cash_sales:'Поступления н�
 .pc span { font-size:11px; color:var(--subtle) }
 .pc-online { border-color:color-mix(in srgb,var(--chart-1) 45%,var(--border)); background:var(--success-bg) }
 .pc-online span { color:var(--success) }
+.hall-counts { display:flex; align-items:center; gap:6px; margin:10px 0 0; font-size:12.5px; color:var(--muted) }
+.hall-counts .dot { width:7px; height:7px; border-radius:50%; margin-left:8px }
+.hall-counts .dot:first-child { margin-left:0 }
+.hall-counts .on { background:var(--success) } .hall-counts .off { background:var(--subtle) }
+/* Folded to three rows with a soft fade; unfolds to the measured height. */
+.hall-grid { max-height:var(--hall-full,none); overflow:hidden; transition:max-height 320ms var(--ease-out) }
+.hall-grid.is-collapsed { max-height:196px; -webkit-mask-image:linear-gradient(#000 70%,transparent); mask-image:linear-gradient(#000 70%,transparent) }
+.hall-toggle { display:flex; justify-content:center; margin-top:12px }
+/* macOS push button: light gradient, hairline border, inner top highlight, small shadow. */
+.mac-button { display:inline-flex; align-items:center; gap:6px; height:26px; min-height:0; padding:0 12px 0 14px; border-radius:7px;
+  font:500 13px/1 -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',system-ui,sans-serif; letter-spacing:-.01em; color:#1d1d1f;
+  background:linear-gradient(#ffffff,#f4f4f6); border:.5px solid rgba(0,0,0,.2);
+  box-shadow:0 .5px 1px rgba(0,0,0,.14),0 1px 2px rgba(0,0,0,.05),inset 0 .5px 0 rgba(255,255,255,.95); cursor:default; user-select:none;
+  transition:transform 120ms var(--ease-out),background 120ms ease }
+.mac-button svg { width:12px; height:12px; color:#6e6e73; transition:transform 220ms var(--ease-out) }
+.mac-button svg.up { transform:rotate(180deg) }
+.mac-button:active { background:linear-gradient(#ececee,#e3e3e6); transform:scale(.98) }
+.mac-button:focus-visible { outline:none; box-shadow:0 0 0 3px rgba(0,122,255,.45),0 .5px 1px rgba(0,0,0,.14) }
+:root[data-theme=dark] .mac-button { color:#f5f5f7; background:linear-gradient(#5b5b60,#4d4d52); border-color:rgba(0,0,0,.55);
+  box-shadow:0 .5px 1px rgba(0,0,0,.5),inset 0 .5px 0 rgba(255,255,255,.18) }
+:root[data-theme=dark] .mac-button svg { color:#c7c7cc }
+:root[data-theme=dark] .mac-button:active { background:linear-gradient(#6a6a70,#5c5c62) }
+@media (prefers-reduced-motion:reduce) { .hall-grid,.mac-button,.mac-button svg { transition:none } }
 @media (max-width:1100px) { .metric-grid { grid-template-columns:1fr 1fr } .dash-grid { grid-template-columns:1fr } }
 @media (max-width:600px) { .metric-grid { gap:10px } .metric-grid article { padding:14px } .metric-grid strong { font-size:20px } .shift-summary { gap:18px } .payment-grid,.detail-grid { grid-template-columns:1fr 1fr } .club-select { min-width:0; width:100% } }
 </style>
