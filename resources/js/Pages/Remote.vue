@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, router, useForm } from '@inertiajs/vue3';
-import { computed, onUnmounted, ref, watch } from 'vue';
-import { Copy, KeyRound, MonitorSmartphone, Plus, ScreenShare, Trash2, RotateCw } from 'lucide-vue-next';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { Copy, Ellipsis, KeyRound, Monitor, MonitorSmartphone, Plus, Trash2, RotateCw, ArrowUpRight } from 'lucide-vue-next';
 import Shell from '../Layouts/Shell.vue';
 
 type Host = { id: number; club_id: number; name: string; rustdesk_id: string | null; hostname: string | null; enrolled_at: string | null; pending: boolean; online: boolean | null; last_seen_at: string | null; status_changed_at: string | null; last: { at: string; by: string | null } | null };
@@ -28,13 +28,24 @@ const presenceTimer = window.setInterval(pollPresence, 15000);
 const onVisible = () => { if (!document.hidden) pollPresence(); };
 document.addEventListener('visibilitychange', onVisible);
 onUnmounted(() => { window.clearInterval(presenceTimer); document.removeEventListener('visibilitychange', onVisible); });
-const STATUS = { on: 'В сети', off: 'Не в сети', wait: 'Ждёт установки', unknown: 'Нет данных' } as const;
+const STATUS = { on: 'В сети', off: 'Не в сети', wait: 'Установка', unknown: 'Нет данных' } as const;
+const hhmm = (s: string) => new Date(s).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+/* One quiet line under the name: since when it's online / when it was last seen. */
 const statusDetail = (h: Host) => {
     const p = st(h);
-    if (p.online === true && p.status_changed_at) return `в сети с ${new Date(p.status_changed_at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
-    if (p.online === false) { const since = p.last_seen_at ?? p.status_changed_at; return since ? `был в сети ${ago(since)}` : 'ещё не выходил на связь'; }
+    if (h.pending) return 'Ждёт запуска команды установки';
+    if (p.online === true) return p.status_changed_at ? `В сети с ${hhmm(p.status_changed_at)}` : '';
+    if (p.online === false) { const since = p.last_seen_at ?? p.status_changed_at; return since ? `Был ${ago(since)}` : 'Ещё не выходил на связь'; }
     return '';
 };
+const lastLine = (h: Host) => h.last ? `Подключались ${ago(h.last.at)}${h.last.by ? ' · ' + h.last.by : ''}` : 'Ещё не подключались';
+
+/* «⋯» menu with the rarely used actions. */
+const menu = ref<number | null>(null);
+const closeMenu = (e: MouseEvent) => { if (!(e.target as HTMLElement).closest?.('.rm-more')) menu.value = null; };
+const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') menu.value = null; };
+onMounted(() => { document.addEventListener('click', closeMenu); document.addEventListener('keydown', onKey); });
+onUnmounted(() => { document.removeEventListener('click', closeMenu); document.removeEventListener('keydown', onKey); });
 const statusClass = (h: Host): keyof typeof STATUS => h.pending ? 'wait' : st(h).online === null ? 'unknown' : st(h).online ? 'on' : 'off';
 
 const list = computed(() => props.hosts.filter((h) => h.club_id === clubId.value)
@@ -61,9 +72,12 @@ async function connect(h: Host) {
 }
 
 const shownPassword = ref<Record<number, string>>({});
-async function showPassword(h: Host) {
+async function copyPassword(h: Host) {
     const r = await post(`/remote/hosts/${h.id}/password`);
-    if (r.ok) shownPassword.value = { ...shownPassword.value, [h.id]: (await r.json()).password };
+    if (!r.ok) return;
+    const pw = (await r.json()).password as string;
+    shownPassword.value = { ...shownPassword.value, [h.id]: pw };
+    await copy(pw, 'pw' + h.id);
 }
 
 const copied = ref('');
@@ -136,37 +150,47 @@ watch(() => props.installFor, (id) => { const h = props.hosts.find((x) => x.id =
     <p v-else-if="!list.length" class="panel muted">В этом клубе пока нет компьютеров для удалённого доступа.<template v-if="canManage"> Нажмите «Добавить компьютер».</template></p>
 
     <TransitionGroup name="rm-move" tag="div" class="rm-grid">
-      <article v-for="h in list" :key="h.id" class="panel rm-card" :class="'is-' + statusClass(h)">
-        <span class="rm-sweep" aria-hidden="true" />
-        <div class="rm-top">
-          <span class="rm-icon" aria-hidden="true"><span class="rm-halo" /><ScreenShare /></span>
-          <div class="rm-title">
-            <h3>{{ h.name }}</h3>
-            <p class="muted small">
-              <template v-if="h.rustdesk_id">ID <b class="mono">{{ h.rustdesk_id }}</b><template v-if="h.hostname"> · {{ h.hostname }}</template></template>
-              <template v-else>ID появится после установки</template>
-            </p>
-          </div>
-        </div>
-        <div class="rm-state">
-          <span class="rm-sig" :class="statusClass(h)" role="status" :aria-label="STATUS[statusClass(h)] + (statusDetail(h) ? ', ' + statusDetail(h) : '')">
-            <span class="rm-bars" aria-hidden="true"><i v-for="n in 4" :key="n" :style="{ '--i': n - 1 }" /></span>
-            <Transition name="rm-swap" mode="out-in"><span :key="statusClass(h)" class="rm-sig-text" aria-hidden="true">{{ STATUS[statusClass(h)] }}</span></Transition>
+      <article v-for="h in list" :key="h.id" class="rm-card" :class="['is-' + statusClass(h), { 'menu-open': menu === h.id }]">
+        <header class="rm-card-head">
+          <span class="rm-glyph" aria-hidden="true"><Monitor /></span>
+          <span class="rm-state" role="status" :aria-label="STATUS[statusClass(h)]">
+            <span class="rm-dot" aria-hidden="true" />
+            <Transition name="rm-swap" mode="out-in"><span :key="statusClass(h)">{{ STATUS[statusClass(h)] }}</span></Transition>
           </span>
-          <Transition name="rm-swap" mode="out-in"><span v-if="statusDetail(h)" :key="statusDetail(h)" class="rm-detail" :class="statusClass(h)" aria-hidden="true">{{ statusDetail(h) }}</span></Transition>
+        </header>
+
+        <div class="rm-body">
+          <h3 class="rm-name">{{ h.name }}</h3>
+          <p class="rm-id"><template v-if="h.rustdesk_id"><span class="rm-num">{{ h.rustdesk_id }}</span><template v-if="h.hostname"> · {{ h.hostname }}</template></template><template v-else>ID появится после установки</template></p>
         </div>
-        <p class="muted small rm-last">{{ h.last ? `Последнее подключение: ${ago(h.last.at)}${h.last.by ? ', ' + h.last.by : ''}` : 'Ещё не подключались' }}</p>
-        <button type="button" class="rm-connect" :class="{ secondary: st(h).online === false }" :disabled="h.pending || busy === h.id" @click="connect(h)">
-          <ScreenShare aria-hidden="true" /> {{ busy === h.id ? 'Открываю…' : 'Подключиться' }}
-        </button>
+
+        <dl class="rm-meta">
+          <Transition name="rm-swap" mode="out-in"><dd :key="statusDetail(h)" :class="statusClass(h)">{{ statusDetail(h) || '\u00a0' }}</dd></Transition>
+          <dd>{{ lastLine(h) }}</dd>
+        </dl>
+
+        <footer class="rm-actions-row">
+          <button type="button" class="rm-connect" :disabled="h.pending || busy === h.id" @click="connect(h)">
+            {{ busy === h.id ? 'Открываю…' : 'Подключиться' }}<ArrowUpRight aria-hidden="true" />
+          </button>
+          <div v-if="canManage" class="rm-more">
+            <button type="button" class="rm-more-btn" :aria-expanded="menu === h.id" aria-label="Ещё" @click="menu = menu === h.id ? null : h.id"><Ellipsis aria-hidden="true" /></button>
+            <Transition name="rm-pop">
+              <div v-if="menu === h.id" class="rm-menu" role="menu">
+                <button v-if="h.rustdesk_id" type="button" role="menuitem" @click="copyPassword(h)">
+                  <KeyRound aria-hidden="true" /><span>{{ copied === 'pw' + h.id ? 'Пароль скопирован' : 'Скопировать пароль' }}<small v-if="shownPassword[h.id]">{{ shownPassword[h.id] }}</small></span>
+                </button>
+                <button type="button" role="menuitem" @click="menu = null; reinstall(h)"><RotateCw aria-hidden="true" /><span>Новая команда установки</span></button>
+                <hr />
+                <button type="button" role="menuitem" class="destructive" @click="menu = null; remove(h)"><Trash2 aria-hidden="true" /><span>Убрать</span></button>
+              </div>
+            </Transition>
+          </div>
+        </footer>
+
         <p v-if="hint === h.id" class="rm-hint" role="status">
-          RustDesk не открылся? Установите его на свой компьютер с <a href="https://rustdesk.com/download" target="_blank" rel="noopener">rustdesk.com</a> и нажмите «Подключиться» снова — настраивать сервер не нужно, он передаётся в ссылке.
+          RustDesk не открылся? Установите его с <a href="https://rustdesk.com/download" target="_blank" rel="noopener">rustdesk.com</a> и нажмите «Подключиться» снова — сервер передаётся в ссылке, настраивать ничего не нужно.
         </p>
-        <div v-if="canManage" class="rm-tools">
-          <button type="button" class="ghost small" @click="showPassword(h)"><KeyRound aria-hidden="true" /> {{ shownPassword[h.id] ? shownPassword[h.id] : 'Пароль' }}</button>
-          <button type="button" class="ghost small" title="Новая команда установки" @click="reinstall(h)"><RotateCw aria-hidden="true" /> Переустановить</button>
-          <button type="button" class="ghost small danger" @click="remove(h)"><Trash2 aria-hidden="true" /> Убрать</button>
-        </div>
       </article>
     </TransitionGroup>
   </Shell>
@@ -191,84 +215,82 @@ watch(() => props.installFor, (id) => { const h = props.hosts.find((x) => x.id =
 .rm-wait .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber, #f59e0b); animation: rm-pulse 1.2s ease-in-out infinite }
 .ok { color: var(--green, #16a34a) }
 @keyframes rm-pulse { 50% { opacity: .3 } }
-.rm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 14px }
-.rm-card { display: grid; gap: 10px; margin: 0; align-content: start }
-.rm-top { display: flex; gap: 12px; align-items: center; min-width: 0 }
-.rm-title { min-width: 0 }
-.rm-title h3 { margin: 0; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
-.rm-title p { margin: 2px 0 0 }
-.mono { font-variant-numeric: tabular-nums; letter-spacing: .02em }
 .small { font-size: 12.5px }
-.rm-last { margin: 0 }
-.rm-connect { width: 100%; justify-content: center; padding: 12px; font-size: 15px; display: inline-flex; gap: 8px; align-items: center }
-.rm-connect svg { width: 18px; height: 18px }
-.rm-hint { margin: 0; font-size: 13px; padding: 10px 12px; border-radius: 10px; background: rgba(245, 158, 11, .12) }
-.rm-tools { display: flex; gap: 4px; flex-wrap: wrap; border-top: 1px solid var(--border, rgba(127,127,127,.2)); padding-top: 8px }
-.rm-tools button { display: inline-flex; gap: 6px; align-items: center }
-.rm-tools .danger { color: var(--red, #dc2626) }
-/* ── Card status: live signal ───────────────────────────── */
-.rm-card { position: relative; overflow: hidden; isolation: isolate; --st: 120 120 128;
-  transition: border-color .6s ease, box-shadow .6s ease }
-.rm-card.is-on { --st: 34 197 94; border-color: rgb(var(--st) / .28); box-shadow: 0 0 0 1px rgb(var(--st) / .06), 0 18px 40px -24px rgb(var(--st) / .55) }
-.rm-card.is-off { --st: 239 68 68 }
-.rm-card.is-wait { --st: 245 158 11 }
-/* soft corner glow, breathing while online */
-.rm-card::after { content: ''; position: absolute; z-index: -1; inset: -40% -30% auto auto; width: 70%; aspect-ratio: 1; border-radius: 50%;
-  background: radial-gradient(closest-side, rgb(var(--st) / .22), transparent 70%); opacity: 0; transition: opacity .8s ease; pointer-events: none }
-.rm-card.is-on::after { opacity: 1; animation: rm-breathe 4.8s ease-in-out infinite }
-.rm-card.is-off::after { opacity: .45 }
-/* light sweeping along the top edge */
-.rm-sweep { position: absolute; inset: 0 0 auto; height: 2px; overflow: hidden; opacity: 0; transition: opacity .6s }
-.rm-sweep::before { content: ''; position: absolute; inset: 0; width: 45%;
-  background: linear-gradient(90deg, transparent, rgb(var(--st)), transparent); transform: translateX(-110%) }
-.rm-card.is-on .rm-sweep { opacity: 1 }
-.rm-card.is-on .rm-sweep::before { animation: rm-sweep 3.6s cubic-bezier(.45, 0, .2, 1) infinite }
+/* ── Host cards ─────────────────────────────────────────────
+   Quiet surfaces, hierarchy through type, one small status light. */
+.rm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-top: 20px }
+.rm-card { --st: 142 142 147; position: relative; display: flex; flex-direction: column; gap: 18px; padding: 20px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .04);
+  transition: transform .5s cubic-bezier(.2, .8, .2, 1), box-shadow .5s cubic-bezier(.2, .8, .2, 1), border-color .3s }
+.rm-card:hover { transform: translateY(-2px); box-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 12px 32px -12px rgba(0, 0, 0, .18) }
+:root[data-theme=dark] .rm-card:hover { box-shadow: 0 12px 32px -12px rgba(0, 0, 0, .7); border-color: var(--border-strong, #2e2e32) }
+.rm-card.menu-open { z-index: 5 }
+.rm-card.is-on { --st: 52 199 89 }       /* systemGreen */
+.rm-card.is-off { --st: 255 69 58 }      /* systemRed */
+.rm-card.is-wait { --st: 255 159 10 }    /* systemOrange */
 
-.rm-icon { position: relative; flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px;
-  color: rgb(var(--st)); background: rgb(var(--st) / .12); border: 1px solid rgb(var(--st) / .22); transition: color .6s, background .6s, border-color .6s }
-.rm-icon svg { width: 20px; height: 20px; position: relative }
-.rm-card.is-unknown .rm-icon, .rm-card.is-off .rm-icon { color: var(--muted-fg, #8a8a93); background: rgba(127, 127, 127, .1); border-color: rgba(127, 127, 127, .2) }
-.rm-halo { position: absolute; inset: -1px; border-radius: inherit; border: 1.5px solid rgb(var(--st) / .7); opacity: 0 }
-.rm-card.is-on .rm-halo { animation: rm-halo 2.4s cubic-bezier(.2, .7, .3, 1) infinite }
+.rm-card-head { display: flex; align-items: center; justify-content: space-between }
+.rm-glyph { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--surface-2); color: var(--muted) }
+.rm-glyph svg { width: 18px; height: 18px; stroke-width: 1.75 }
 
-.rm-title { flex: 1 }
-.rm-title p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
-.rm-state { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 28px }
-.rm-sig { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 11px 0 9px; border-radius: 999px; flex: none;
-  font-size: 12px; font-weight: 650; letter-spacing: .01em; color: rgb(var(--st)); background: rgb(var(--st) / .1); border: 1px solid rgb(var(--st) / .25);
-  transition: color .5s, background .5s, border-color .5s; --st: 120 120 128 }
-.rm-sig.on { --st: 34 197 94 } .rm-sig.off { --st: 239 68 68 } .rm-sig.wait { --st: 245 158 11 }
-.rm-sig.unknown { color: var(--muted-fg, #8a8a93) }
-.rm-bars { display: inline-flex; align-items: flex-end; gap: 2px; height: 12px }
-.rm-bars i { width: 3px; height: 100%; border-radius: 2px; background: currentColor; transform-origin: bottom;
-  transform: scaleY(calc(.3 + var(--i) * .233)); transition: transform .6s cubic-bezier(.34, 1.56, .64, 1) calc(var(--i) * 60ms), opacity .4s }
-/* online: an equalizer-like live wave */
-.rm-sig.on .rm-bars i { animation: rm-wave 1.25s ease-in-out infinite; animation-delay: calc(var(--i) * -.18s) }
-/* offline: signal collapses, only the first bar left */
-.rm-sig.off .rm-bars i { transform: scaleY(.22); opacity: .35 }
-.rm-sig.off .rm-bars i:first-child { opacity: 1; transform: scaleY(.45) }
-/* waiting: bars light up one by one, like a search */
-.rm-sig.wait .rm-bars i { animation: rm-scan 1.6s ease-in-out infinite; animation-delay: calc(var(--i) * .2s); opacity: .25 }
-.rm-sig.unknown .rm-bars i { opacity: .3 }
-.rm-sig-text { display: inline-block }
+.rm-state { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 500; color: var(--muted); letter-spacing: -.005em }
+.rm-dot { position: relative; width: 8px; height: 8px; border-radius: 50%; background: rgb(var(--st)); transition: background-color .6s ease }
+.rm-dot::after { content: ''; position: absolute; inset: 0; border-radius: inherit; background: rgb(var(--st)); opacity: 0 }
+.is-on .rm-dot::after { animation: rm-beacon 2.8s cubic-bezier(.2, .6, .35, 1) infinite }
+.is-wait .rm-dot { animation: rm-blink 1.6s ease-in-out infinite }
+.is-on .rm-state { color: var(--text) }
 
-.rm-detail { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12.5px; color: var(--muted-fg, #8a8a93); font-variant-numeric: tabular-nums }
-.rm-detail.off { color: rgb(239 68 68 / .85) }
+.rm-body { display: grid; gap: 4px; min-width: 0 }
+.rm-name { margin: 0; font-size: 21px; line-height: 1.15; font-weight: 600; letter-spacing: -.022em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.rm-id { margin: 0; font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.rm-num { font-variant-numeric: tabular-nums; color: var(--text); opacity: .72 }
 
-/* status text swaps with a blur-slide */
-.rm-swap-enter-active, .rm-swap-leave-active { transition: opacity .28s ease, transform .38s cubic-bezier(.16, 1, .3, 1), filter .28s ease }
-.rm-swap-enter-from { opacity: 0; transform: translateY(6px); filter: blur(4px) }
-.rm-swap-leave-to { opacity: 0; transform: translateY(-6px); filter: blur(4px) }
+.rm-meta { margin: 0; display: grid; gap: 2px; font-size: 13px; color: var(--muted) }
+.rm-meta dd { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums }
 
-.rm-move-move { transition: transform .7s cubic-bezier(.16, 1, .3, 1) }
-.rm-move-enter-active { transition: opacity .4s, transform .5s cubic-bezier(.16, 1, .3, 1) }
-.rm-move-enter-from { opacity: 0; transform: translateY(12px) scale(.98) }
+.rm-actions-row { display: flex; gap: 8px; align-items: stretch; margin-top: auto }
+.rm-connect { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 44px; border-radius: 12px;
+  font-size: 15px; font-weight: 600; letter-spacing: -.01em;
+  transition: transform .2s cubic-bezier(.2, .8, .2, 1), opacity .2s, background-color .3s }
+.rm-connect svg { width: 16px; height: 16px; transition: transform .35s cubic-bezier(.2, .8, .2, 1) }
+.rm-connect:hover:not(:disabled) svg { transform: translate(2px, -2px) }
+.rm-connect:active:not(:disabled), .rm-more-btn:active { transform: scale(.97) }
+.is-off .rm-connect, .is-wait .rm-connect { background: var(--surface-2); color: var(--text); border-color: var(--border) }
+.rm-connect:disabled { opacity: 1; color: var(--subtle, #71717a) }
+
+.rm-more { position: relative }
+.rm-more-btn { width: 44px; height: 44px; padding: 0; display: grid; place-items: center; border-radius: 12px;
+  background: var(--surface-2); color: var(--text); border-color: var(--border); transition: transform .2s cubic-bezier(.2, .8, .2, 1) }
+.rm-more-btn svg { width: 18px; height: 18px }
+.rm-menu { position: absolute; right: 0; bottom: calc(100% + 8px); min-width: 236px; padding: 6px; border-radius: 14px; z-index: 10;
+  background: var(--surface);
+  border: 1px solid var(--border); box-shadow: var(--shadow-pop, 0 16px 48px rgba(0, 0, 0, .2)); transform-origin: bottom right }
+:root[data-theme=dark] .rm-menu { background: var(--surface-2); border-color: var(--border-strong, #2e2e32) }
+.rm-menu button { width: 100%; display: flex; gap: 10px; align-items: center; justify-content: flex-start; padding: 8px 10px; border: 0; border-radius: 8px;
+  background: transparent; color: var(--text); font-size: 13.5px; font-weight: 450; text-align: left }
+.rm-menu button:hover { background: var(--hover); opacity: 1 }
+.rm-menu button svg { width: 16px; height: 16px; color: var(--muted) }
+.rm-menu button span { display: grid; gap: 1px }
+.rm-menu small { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; user-select: all }
+.rm-menu hr { margin: 5px 8px; border: 0; border-top: 1px solid var(--border) }
+.rm-menu .destructive, .rm-menu .destructive svg { color: rgb(255 69 58) }
+
+.rm-hint { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted) }
+
+/* motion */
+.rm-swap-enter-active, .rm-swap-leave-active { transition: opacity .25s ease, transform .45s cubic-bezier(.2, .8, .2, 1), filter .25s ease }
+.rm-swap-enter-from { opacity: 0; transform: translateY(4px); filter: blur(2px) }
+.rm-swap-leave-to { opacity: 0; transform: translateY(-4px); filter: blur(2px) }
+.rm-pop-enter-active { transition: opacity .18s ease, transform .32s cubic-bezier(.2, .9, .25, 1.15) }
+.rm-pop-leave-active { transition: opacity .14s ease, transform .14s ease }
+.rm-pop-enter-from, .rm-pop-leave-to { opacity: 0; transform: scale(.94) translateY(4px) }
+.rm-move-move { transition: transform .8s cubic-bezier(.2, .8, .2, 1) }
+.rm-move-enter-active { transition: opacity .45s ease, transform .6s cubic-bezier(.2, .8, .2, 1) }
+.rm-move-enter-from { opacity: 0; transform: translateY(10px) scale(.985) }
 .rm-move-leave-active { display: none }
-@keyframes rm-wave { 0%, 100% { transform: scaleY(.35) } 50% { transform: scaleY(1) } }
-@keyframes rm-scan { 0%, 100% { opacity: .25 } 40% { opacity: 1 } }
-@keyframes rm-halo { 0% { opacity: .8; transform: scale(1) } 100% { opacity: 0; transform: scale(1.45) } }
-@keyframes rm-sweep { 0% { transform: translateX(-110%) } 70%, 100% { transform: translateX(260%) } }
-@keyframes rm-breathe { 0%, 100% { transform: scale(1); opacity: .85 } 50% { transform: scale(1.12); opacity: 1 } }
+@keyframes rm-beacon { 0% { opacity: .55; transform: scale(1) } 70%, 100% { opacity: 0; transform: scale(2.6) } }
+@keyframes rm-blink { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
 @media (max-width: 640px) { .rm-club { min-width: 0; flex: 1 } .rm-cmd { flex-direction: column } }
-@media (prefers-reduced-motion: reduce) { .rm-wait .dot, .rm-bars i, .rm-halo, .rm-sweep::before, .rm-card::after { animation: none !important } .rm-sig.on .rm-bars i { transform: scaleY(calc(.3 + var(--i) * .233)) } }
+@media (prefers-reduced-motion: reduce) { .rm-wait .dot, .rm-dot, .rm-dot::after { animation: none !important } .rm-card, .rm-card:hover { transform: none } }
 </style>
