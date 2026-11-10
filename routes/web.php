@@ -12,6 +12,7 @@ Route::get('/health/ready', function () {
     return response()->json(['status' => 'ready']);
 });
 Route::get('/login', fn () => Inertia::render('Login'))->middleware('guest')->name('login');
+Route::get('/rustdesk/install.ps1', [\App\Http\Controllers\RemoteController::class, 'script'])->middleware('throttle:60,1');
 Route::post('/login', [ServiceController::class, 'login'])->middleware('throttle:login');
 Route::middleware('auth')->group(function () {
     Route::get('/connection-requests',[\App\Http\Controllers\ConnectionRequestController::class,'index']);
@@ -51,6 +52,12 @@ Route::middleware('auth')->group(function () {
     Route::post('/integrations/deliveries/{id}/retry',[\App\Http\Controllers\IntegrationController::class,'retry']);
     Route::get('/games/live',[\App\Http\Controllers\GameController::class,'live'])->middleware('throttle:live');
     Route::get('/games/stats',[\App\Http\Controllers\GameController::class,'stats'])->middleware('throttle:live');
+    Route::get('/remote',[\App\Http\Controllers\RemoteController::class,'index']);
+    Route::post('/remote/hosts',[\App\Http\Controllers\RemoteController::class,'store']);
+    Route::post('/remote/hosts/{host}',[\App\Http\Controllers\RemoteController::class,'update'])->whereNumber('host');
+    Route::post('/remote/hosts/{host}/connect',[\App\Http\Controllers\RemoteController::class,'connect'])->whereNumber('host')->middleware('throttle:30,1');
+    Route::post('/remote/hosts/{host}/password',[\App\Http\Controllers\RemoteController::class,'password'])->whereNumber('host')->middleware('throttle:20,1');
+    Route::get('/remote/hosts/{host}/status',[\App\Http\Controllers\RemoteController::class,'status'])->whereNumber('host')->middleware('throttle:live');
     Route::get('/monitoring',[\App\Http\Controllers\MonitoringController::class,'index']);
     Route::get('/monitoring/latency',[\App\Http\Controllers\LatencyController::class,'index']);
     Route::get('/monitoring/latency/export',[\App\Http\Controllers\LatencyController::class,'export']);

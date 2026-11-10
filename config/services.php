@@ -2,6 +2,11 @@
 
 return [
     'telegram' => ['transport' => env('TELEGRAM_TRANSPORT', 'fake')],
+    // Self-hosted RustDesk (hbbs/hbbr on the VPS). The key is the server's public key, not a secret.
+    'rustdesk' => [
+        'host' => env('RUSTDESK_HOST', '2.24.162.21'),
+        'key' => env('RUSTDESK_KEY', 'yJM+o7ZlXkGlh5lxGx7CDFyqmVE51StTY+w5HoRKVnY='),
+    ],
 
     /*
     |--------------------------------------------------------------------------

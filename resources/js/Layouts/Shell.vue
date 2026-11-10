@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch, type Component 
 import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     Activity, Bell, BookOpen, Building2, CalendarCheck, ChartColumn, Inbox, LayoutDashboard, LogOut,
-    Map as MapIcon, Monitor, PanelLeft, Plug, RefreshCw, Search, Settings, Ticket, TriangleAlert, Users, X,
+    Map as MapIcon, Monitor, PanelLeft, Plug, RefreshCw, ScreenShare, Search, Settings, Ticket, TriangleAlert, Users, X,
 } from 'lucide-vue-next';
 import ThemeToggle from '../Components/ThemeToggle.vue';
 import BrandLogo from '../Components/BrandLogo.vue';
@@ -28,6 +28,7 @@ const groups = computed<{ title: string; items: NavItem[] }[]>(() => {
         ] },
         { title: 'Контроль', items: [
             { href: '/monitoring', title: 'Мониторинг', icon: Activity },
+            ...(role.value !== 'representative' ? [{ href: '/remote', title: 'Удалённый доступ', icon: ScreenShare }] : []),
             { href: '/updates', title: 'Обновления', icon: RefreshCw },
             { href: '/reports', title: 'Отчёты', icon: ChartColumn },
             { href: '/knowledge', title: 'База знаний', icon: BookOpen },

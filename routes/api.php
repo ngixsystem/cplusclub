@@ -6,3 +6,4 @@ Route::post('/v1/latency',[\App\Http\Controllers\LatencyController::class,'inges
 Route::post('/v1/local-version',[\App\Http\Controllers\UpdatesController::class,'local'])->middleware('throttle:agent');
 
 \Illuminate\Support\Facades\Route::post('/connection-requests', [\App\Http\Controllers\ConnectionRequestController::class,'store'])->middleware('throttle:leads');
+Route::post('/v1/remote/enroll',[\App\Http\Controllers\RemoteController::class,'enroll'])->middleware('throttle:10,1');
