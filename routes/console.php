@@ -52,3 +52,28 @@ Schedule::call(function () {
     foreach (\App\Models\Club::whereNotNull('icafe_license')->whereNotNull('icafe_token')->pluck('id') as $id) \App\Jobs\SyncIcafeGames::dispatch($id);
 })->name('icafe-games')->hourlyAt(23)->withoutOverlapping();
 Schedule::call(fn () => \App\Domain\Remote\Presence::refresh())->name('remote-presence')->everyMinute()->withoutOverlapping();
+
+// Owner insights: shifts kept locally, cash control, hall occupancy, morning digest.
+Schedule::call(function () {
+    foreach (\App\Models\Club::whereNotNull('icafe_license')->whereNotNull('icafe_token')->get() as $club) {
+        try {
+            app(\App\Domain\Icafe\ShiftSync::class)->sync($club);
+            app(\App\Domain\Icafe\CashControl::class)->evaluate($club);
+        } catch (\Throwable $e) { report($e); }
+    }
+})->name('icafe-shifts')->everyFifteenMinutes()->withoutOverlapping();
+Schedule::call(function () {
+    foreach (\App\Models\Club::whereNotNull('icafe_license')->whereNotNull('icafe_token')->get() as $club) {
+        try { app(\App\Domain\Icafe\Occupancy::class)->sample($club); } catch (\Throwable $e) { report($e); }
+    }
+})->name('hall-occupancy')->everyFiveMinutes()->withoutOverlapping();
+Schedule::call(function () {
+    foreach (\App\Models\Club::get() as $club) {
+        $local = now($club->timezone ?: 'Asia/Tashkent');
+        if ((int) $local->format('G') !== 9) continue;
+        $day = \Carbon\CarbonImmutable::parse($local->toDateString(), $local->getTimezone())->subDay();
+        $d = app(\App\Domain\Reports\DailyDigest::class)->build($club, $day);
+        app(\App\Domain\Monitoring\EvaluateSample::class)->event($club->id, 'daily_digest', 'daily-digest:'.$club->id.':'.$d['date'],
+            ['date' => $d['date'], 'message' => \App\Domain\Reports\DailyDigest::telegram($d)]);
+    }
+})->name('daily-digest')->hourlyAt(2)->withoutOverlapping();

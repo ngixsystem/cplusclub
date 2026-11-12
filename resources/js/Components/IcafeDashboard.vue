@@ -3,6 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import RevenueChart from './RevenueChart.vue';
 import ShiftTimeline, { type Day } from './ShiftTimeline.vue';
+import OccupancyHeatmap from './OccupancyHeatmap.vue';
 type Club={id:number;name:string;icafe_license:number|null;icafe_currency:string;timezone:string};
 type Shift={id:string;operator:string;start:string;end:string|null;duration_seconds?:number;total:number;cash:number;card:number;qr:number};
 type Snapshot={connected:boolean;shifts?:Shift[];computers?:{name:string;online:boolean;busy:boolean}[];total_pcs?:number;online_pcs?:number;updated_at?:string|null;stale?:boolean;error?:string;period_start?:string;period_end?:string};
@@ -83,6 +84,7 @@ const detailLabels:Record<string,string>={cash_sales:'Поступления н�
   <div v-if="hallCollapsible" class="hall-toggle"><button type="button" class="mac-button" :aria-expanded="hallOpen" aria-controls="hall-grid" @click="toggleHall">{{ hallOpen ? 'Свернуть' : 'Показать все ' + (data.computers?.length ?? 0) + ' ПК' }}<svg viewBox="0 0 12 12" aria-hidden="true" :class="{ up: hallOpen }"><path d="M3 4.5 6 7.5 9 4.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
 </section>
  </div>
+ <OccupancyHeatmap v-if="clubId" :club-id="clubId"/>
  </template>
  </section>
 </template>

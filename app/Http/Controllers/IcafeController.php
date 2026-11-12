@@ -23,6 +23,12 @@ final class IcafeController extends Controller
         return response()->json(['connected' => true, ...$dashboard->snapshot($club)])->header('Cache-Control', 'no-store');
     }
 
+    public function occupancy(Request $request, Club $club, \App\Domain\Icafe\Occupancy $occupancy)
+    {
+        $this->authorizeFinance($request, $club);
+        return response()->json($occupancy->heatmap($club))->header('Cache-Control', 'no-store');
+    }
+
     public function shift(Request $request, Club $club, string $shift, Dashboard $dashboard)
     {
         $this->authorizeFinance($request, $club);

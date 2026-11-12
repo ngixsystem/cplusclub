@@ -28,6 +28,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/profile/password', [\App\Http\Controllers\ProfileController::class,'password'])->middleware('throttle:password');
     Route::get('/clubs/{club}/dashboard', [\App\Http\Controllers\IcafeController::class, 'data'])->middleware('throttle:live');
     Route::get('/clubs/{club}/dashboard/shifts/{shift}', [\App\Http\Controllers\IcafeController::class, 'shift'])->where('shift', '-?[0-9]+')->middleware('throttle:live');
+    Route::get('/clubs/{club}/occupancy', [\App\Http\Controllers\IcafeController::class, 'occupancy'])->middleware('throttle:live');
     Route::post('/clubs/{club}/icafe', [\App\Http\Controllers\IcafeController::class, 'save']);
     Route::get('/users',[\App\Http\Controllers\AdminController::class,'index']);
     Route::post('/users',[\App\Http\Controllers\AdminController::class,'store']);
@@ -48,6 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/integrations/channels',[\App\Http\Controllers\IntegrationController::class,'store']);
     Route::post('/integrations/telegram/chats',[\App\Http\Controllers\IntegrationController::class,'chats'])->middleware('throttle:avatar');
     Route::post('/integrations/channels/{channel}/test',[\App\Http\Controllers\IntegrationController::class,'test']);
+    Route::post('/integrations/channels/{channel}/kinds',[\App\Http\Controllers\IntegrationController::class,'kinds']);
     Route::post('/integrations/channels/{channel}/toggle',[\App\Http\Controllers\IntegrationController::class,'toggle']);
     Route::post('/integrations/deliveries/{id}/retry',[\App\Http\Controllers\IntegrationController::class,'retry']);
     Route::get('/games/live',[\App\Http\Controllers\GameController::class,'live'])->middleware('throttle:live');
