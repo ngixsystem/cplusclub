@@ -52,6 +52,30 @@ class OwnerInsightsTest extends TestCase
         $this->assertEquals(120000, (float) $s->total);
     }
 
+    public function test_sync_skips_corrupted_amounts_and_drops_replaced_open_shift(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-12 05:00:00'));
+        Http::fake(fn ($req) => Http::response(['code' => 200, 'data' => [
+            ['shift_id' => 1401412, 'shift_staff_name' => 'op', 'shift_start_time' => '2026-11-11 20:00:00', 'shift_end_time' => '2026-11-12 08:00:00', 'total_amount' => '2765917.6', 'cash' => '2765917.6', 'credit_card' => '0', 'qr' => '0'],
+            ['shift_id' => 1397572, 'shift_staff_name' => 'op', 'shift_start_time' => '2026-11-10 20:00:00', 'shift_end_time' => '2026-11-11 08:00:00', 'total_amount' => '1.0000000000044E+18', 'cash' => '1.0000000000044E+18', 'credit_card' => '0', 'qr' => '0'],
+        ]]));
+        $this->shift('-7347738462', '2026-11-11 20:00:00', null, 100);   // the same shift while it was open
+        $this->assertSame(1, app(ShiftSync::class)->sync($this->club));
+        $this->assertSame(['1401412'], DB::table('icafe_shifts')->pluck('shift_id')->all());
+    }
+
+    public function test_parallel_operator_account_is_judged_against_its_own_shifts(): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-11-12 10:00:00'));
+        foreach (range(2, 8) as $i) {
+            $d = CarbonImmutable::parse('2026-11-12', 'Asia/Tashkent')->subDays($i)->toDateString();
+            $this->shift("main$i", "$d 08:00:00", "$d 20:00:00", 3500000, 'operator1');
+            $this->shift("side$i", "$d 07:00:00", CarbonImmutable::parse($d)->addDay()->toDateString().' 07:00:00', 20000, 'operator_02');
+        }
+        $this->shift('side-new', '2026-11-11 07:00:00', '2026-11-12 06:58:00', 30000, 'operator_02');
+        $this->assertSame([], app(CashControl::class)->evaluate($this->club));
+    }
+
     public function test_cash_control_flags_low_total_short_shift_and_refunds_once(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-11-12 10:00:00'));

@@ -59,12 +59,17 @@ final class CashControl
     {
         $start = CarbonImmutable::parse($s->started_at);
         $hour = (int) $start->tz($tz)->format('G');
-        // Usual shifts: closed, started within ±1 h of the same local hour, previous 28 days.
-        $base = DB::table('icafe_shifts')->where('club_id', $club->id)->whereNotNull('ended_at')->where('id', '<>', $s->id)
+        // Usual shifts: closed, started within ±1 h of the same local hour, previous 28 days —
+        // by the same operator account when it has enough history (clubs run parallel accounts
+        // with very different takings), otherwise across the club.
+        $usual = fn (bool $sameOperator) => DB::table('icafe_shifts')->where('club_id', $club->id)->whereNotNull('ended_at')->where('id', '<>', $s->id)
+            ->when($sameOperator, fn ($q) => $q->where('operator', $s->operator))
             ->where('started_at', '>=', $start->subDays(28))->where('started_at', '<', $start->subHours(1))
             ->whereRaw('abs(((extract(hour from started_at at time zone ?)::int - ? + 36) % 24) - 12) <= 1', [$tz, $hour])
             ->selectRaw('percentile_cont(0.5) within group (order by total) as total, percentile_cont(0.5) within group (order by extract(epoch from ended_at - started_at)) as secs, count(*) as n')
             ->first();
+        $base = $usual(true);
+        if (! $base || (int) $base->n < self::MIN_BASELINE) $base = $usual(false);
         $reasons = [];
         $secs = CarbonImmutable::parse($s->ended_at)->getTimestamp() - $start->getTimestamp();
         if ($base && (int) $base->n >= self::MIN_BASELINE) {
