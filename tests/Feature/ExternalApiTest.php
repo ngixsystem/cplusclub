@@ -82,12 +82,15 @@ class ExternalApiTest extends TestCase
         $this->assertSame('ali', $pc2['session']['member_account']);
         $this->assertFalse($pc2['session']['guest']);
         $this->assertSame('2026-11-22T15:10:00+05:00', $pc2['session']['started_at']);
-        $this->assertSame(95, $pc2['session']['minutes_left']);
+        $this->travelTo(CarbonImmutable::parse('2026-11-22 10:30:00'));   // 15:30 in Tashkent
+        $pc2 = $this->api($this->token(), '/pcs')->json('data.1');
+        $this->assertSame(100, $pc2['session']['minutes_left']);         // until 17:10
         $this->assertSame('free', $res->json('data.0.status'));
         $this->assertNull($res->json('data.0.session'));
-        $this->assertSame('offline', $res->json('data.2.status'));
+        $this->assertSame('free', $res->json('data.2.status'));          // switched off but free
+        $this->assertFalse($res->json('data.2.online'));
         $this->assertSame('console', $res->json('data.3.type'));
-        $this->assertSame(['total' => 4, 'busy' => 1, 'free' => 2, 'offline' => 1], array_intersect_key($res->json('meta'), array_flip(['total', 'busy', 'free', 'offline'])));
+        $this->assertSame(['total' => 4, 'busy' => 1, 'free' => 3, 'disabled' => 0, 'online' => 2], array_intersect_key($res->json('meta'), array_flip(['total', 'busy', 'free', 'disabled', 'online'])));
     }
 
     public function test_shifts_range_status_and_own_club_only(): void

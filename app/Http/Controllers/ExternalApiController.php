@@ -38,7 +38,7 @@ class ExternalApiController extends Controller
             'scopes' => $c->scopes, 'rate_limit_per_minute' => ExternalApi::PER_MINUTE, 'server_time' => now($tz)->toIso8601String()]);
     }
 
-    /** Live state of every seat: PC or console, free/busy/offline, who sits and since when. Cached 15 s. */
+    /** Live state of every seat: PC or console, busy/free (switched-off PCs are free), who sits and since when. Cached 15 s. */
     public function pcs(Request $r, Client $icafe)
     {
         $club = $this->club($r);
@@ -55,32 +55,37 @@ class ExternalApiController extends Controller
         } catch (\Throwable) {
             return ExternalApi::error('upstream_unavailable', 'iCafeCloud сейчас не отвечает, повторите позже.', 503);
         }
-        $rows = array_map(function ($p) use ($data, $tz) {
+        $now = CarbonImmutable::now();
+        $rows = array_map(function ($p) use ($data, $tz, $now) {
             $busy = (bool) ($p['pc_in_using'] ?? false);
             $online = in_array($p['pc_name'], $data['online'], true);
             $console = (int) ($p['pc_console_type'] ?? 0) !== 0;
+            $enabled = (bool) ($p['pc_enabled'] ?? true);
+            $ends = self::iso($p['status_disconnect_time_local'] ?? null, $tz, true);
             return [
                 'id' => (string) $p['pc_name'],
                 'name' => (string) $p['pc_name'],
                 'type' => $console ? 'console' : 'pc',
                 'zone' => ($p['pc_area_name'] ?? '') !== '' ? $p['pc_area_name'] : null,
                 'group_id' => isset($p['pc_group_id']) ? (int) $p['pc_group_id'] : null,
-                'enabled' => (bool) ($p['pc_enabled'] ?? true),
-                'status' => $busy ? 'busy' : ($online || $console ? 'free' : 'offline'),
+                'enabled' => $enabled,
+                // A diskless club keeps unused PCs switched off: that is still a free seat. Power/link is `online`.
+                'status' => $busy ? 'busy' : ($enabled ? 'free' : 'disabled'),
                 'online' => $console ? null : $online,
                 'session' => $busy ? [
                     'member_id' => isset($p['status_member_id']) && (int) $p['status_member_id'] > 0 ? (int) $p['status_member_id'] : null,
                     'member_account' => ($p['status_member_account'] ?? '') !== '' ? $p['status_member_account'] : null,
                     'guest' => empty($p['status_member_id']) || (int) $p['status_member_id'] <= 0,
                     'started_at' => self::iso($p['status_connect_time_local'] ?? null, $tz, true),
-                    'ends_at' => self::iso($p['status_disconnect_time_local'] ?? null, $tz, true),
-                    'minutes_left' => isset($p['status_connect_time_left']) && is_numeric($p['status_connect_time_left']) ? (int) $p['status_connect_time_left'] : null,
+                    'ends_at' => $ends,
+                    'minutes_left' => $ends ? max(0, (int) floor(($now->diffInSeconds(CarbonImmutable::parse($ends), false)) / 60)) : null,
                 ] : null,
             ];
         }, $data['pcs']);
         usort($rows, fn ($a, $b) => strnatcasecmp($a['name'], $b['name']));
         $count = fn ($s) => count(array_filter($rows, fn ($x) => $x['status'] === $s));
-        return self::json(['data' => $rows, 'meta' => ['total' => count($rows), 'busy' => $count('busy'), 'free' => $count('free'), 'offline' => $count('offline'),
+        return self::json(['data' => $rows, 'meta' => ['total' => count($rows), 'busy' => $count('busy'), 'free' => $count('free'), 'disabled' => $count('disabled'),
+            'online' => count(array_filter($rows, fn ($x) => $x['online'] === true)),
             'fetched_at' => self::iso($data['fetched_at'], $tz)]]);
     }
 

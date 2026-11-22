@@ -61,8 +61,8 @@ curl -H "Authorization: Bearer ccx_..." https://admin.cplusclub.tech/api/ext/v1/
 | `zone` | string \| null | зона (`Standard`, `VIP`, …) |
 | `group_id` | int \| null | группа в iCafeCloud |
 | `enabled` | bool | место включено в iCafeCloud |
-| `status` | `busy` \| `free` \| `offline` | занят / свободен / ПК не на связи |
-| `online` | bool \| null | клиент iCafe на ПК на связи (у приставок `null`) |
+| `status` | `busy` \| `free` \| `disabled` | занят / свободен / отключён в iCafeCloud |
+| `online` | bool \| null | ПК включён и клиент iCafe на связи (у приставок `null`). Выключенный ПК без сессии — это свободное место |
 | `session` | object \| null | только для занятых мест |
 | `session.member_id` | int \| null | id клиента в iCafeCloud (`null` — гость) |
 | `session.member_account` | string \| null | логин клиента |
@@ -81,7 +81,7 @@ curl -H "Authorization: Bearer ccx_..." https://admin.cplusclub.tech/api/ext/v1/
       "session": { "member_id": 77, "member_account": "ali", "guest": false,
                    "started_at": "2026-11-22T15:10:00+05:00", "ends_at": "2026-11-22T17:10:00+05:00", "minutes_left": 95 } }
   ],
-  "meta": { "total": 139, "busy": 41, "free": 90, "offline": 8, "fetched_at": "2026-11-22T16:30:05+05:00" }
+  "meta": { "total": 139, "busy": 41, "free": 98, "disabled": 0, "online": 52, "fetched_at": "2026-11-22T16:30:05+05:00" }
 }
 ```
 
@@ -123,8 +123,10 @@ curl -H "Authorization: Bearer ccx_..." https://admin.cplusclub.tech/api/ext/v1/
 }
 ```
 
-Совет: чтобы держать смены в актуальном состоянии, раз в 15 минут запрашивайте последние 2 суток и обновляйте
-записи по `id` — открытая смена закрывается и получает итоговые суммы.
+**Важно про открытые смены.** iCafeCloud выдаёт открытой смене временный номер, а при закрытии — постоянный.
+Поэтому закрытая смена приходит новой записью (другие `id` и `shift_id`), а временная запись исчезает.
+Самый простой способ синхронизации: раз в 15 минут запрашивайте последние 2 суток и **заменяйте целиком**
+все свои записи за этот период. Закрытые смены (`status: closed`) после этого не меняются.
 
 ---
 
