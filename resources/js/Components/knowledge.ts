@@ -38,6 +38,6 @@ export function useKnowledgeNotes() {
   const list = checks.value[id] || [];
   checks.value[id] = list.includes(index) ? list.filter(x => x !== index) : [...list, index];
  };
- return { saved, checks, storageAvailable, toggleSaved, toggleCheck, savedCount: computed(() => saved.value.length) };
+ return { saved, checks, storageAvailable, ready, toggleSaved, toggleCheck, savedCount: computed(() => saved.value.length) };
 }
 export const normalizeSearch = (value: string) => value.toLocaleLowerCase('ru').replaceAll('ё', 'е').replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
