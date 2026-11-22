@@ -2,7 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch, type Component } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import {
-    Activity, Bell, BookOpen, Building2, CalendarCheck, ChartColumn, Inbox, LayoutDashboard, LogOut,
+    Activity, Bell, BookOpen, Building2, CalendarCheck, ChartColumn, Inbox, KeyRound, LayoutDashboard, LogOut,
     Map as MapIcon, Monitor, PanelLeft, Plug, RefreshCw, ScreenShare, Search, Settings, Ticket, TriangleAlert, Users, X,
 } from 'lucide-vue-next';
 import ThemeToggle from '../Components/ThemeToggle.vue';
@@ -35,7 +35,7 @@ const groups = computed<{ title: string; items: NavItem[] }[]>(() => {
         ] },
         ...(admin ? [{ title: 'Администрирование', items: [
             { href: '/connection-requests', title: 'Запросы на подключение', icon: Inbox },
-            ...(role.value === 'owner' ? [{ href: '/users', title: 'Пользователи и доступ', icon: Users }] : []),
+            ...(role.value === 'owner' ? [{ href: '/users', title: 'Пользователи и доступ', icon: Users }, { href: '/api-access', title: 'API для внешних систем', icon: KeyRound }] : []),
             { href: '/integrations', title: 'Интеграции', icon: Plug },
         ] }] : []),
     ];
