@@ -14,6 +14,7 @@ class ExternalApiTest extends TestCase
 
     private Club $club;
     private Club $other;
+    private ?array $online = null;
 
     protected function setUp(): void
     {
@@ -23,7 +24,7 @@ class ExternalApiTest extends TestCase
         $this->club->icafe_license = 555001; $this->club->icafe_token = 't'; $this->club->timezone = 'Asia/Tashkent'; $this->club->save();
         $this->other = Club::create(['name' => 'TeamPro', 'address' => 'y']);
         Http::fake(function ($req) {
-            if (str_contains($req->url(), 'onlinePcList')) return Http::response(['code' => 200, 'data' => [
+            if (str_contains($req->url(), 'onlinePcList')) return Http::response(['code' => 200, 'data' => $this->online ?? [
                 ['pc_name' => 'PC001', 'is_connected' => 1], ['pc_name' => 'PC002', 'is_connected' => 1], ['pc_name' => 'PC003', 'is_connected' => 0],
             ]]);
             if (str_contains($req->url(), '/pcs')) return Http::response(['code' => 200, 'data' => [
@@ -91,6 +92,15 @@ class ExternalApiTest extends TestCase
         $this->assertFalse($res->json('data.2.online'));
         $this->assertSame('console', $res->json('data.3.type'));
         $this->assertSame(['total' => 4, 'busy' => 1, 'free' => 3, 'disabled' => 0, 'online' => 2], array_intersect_key($res->json('meta'), array_flip(['total', 'busy', 'free', 'disabled', 'online'])));
+    }
+
+    public function test_empty_online_list_means_unknown_not_off(): void
+    {
+        $this->online = [];
+        $res = $this->api($this->token(), '/pcs')->assertOk();
+        $this->assertNull($res->json('data.0.online'));
+        $this->assertNull($res->json('meta.online'));
+        $this->assertSame('busy', $res->json('data.1.status'));
     }
 
     public function test_shifts_range_status_and_own_club_only(): void

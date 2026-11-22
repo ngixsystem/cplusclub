@@ -62,7 +62,7 @@ curl -H "Authorization: Bearer ccx_..." https://admin.cplusclub.tech/api/ext/v1/
 | `group_id` | int \| null | группа в iCafeCloud |
 | `enabled` | bool | место включено в iCafeCloud |
 | `status` | `busy` \| `free` \| `disabled` | занят / свободен / отключён в iCafeCloud |
-| `online` | bool \| null | ПК включён и клиент iCafe на связи (у приставок `null`). Выключенный ПК без сессии — это свободное место |
+| `online` | bool \| null | ПК включён и клиент iCafe на связи. `null` — у приставок и когда iCafeCloud не прислал список ПК на связи. Выключенный ПК без сессии — это свободное место |
 | `session` | object \| null | только для занятых мест |
 | `session.member_id` | int \| null | id клиента в iCafeCloud (`null` — гость) |
 | `session.member_account` | string \| null | логин клиента |

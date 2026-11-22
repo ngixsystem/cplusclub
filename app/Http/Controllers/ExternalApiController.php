@@ -56,9 +56,11 @@ class ExternalApiController extends Controller
             return ExternalApi::error('upstream_unavailable', 'iCafeCloud сейчас не отвечает, повторите позже.', 503);
         }
         $now = CarbonImmutable::now();
-        $rows = array_map(function ($p) use ($data, $tz, $now) {
+        // iCafeCloud sometimes returns an empty online list (and always does for some clubs): that is "unknown", not "all off".
+        $known = $data['online'] !== [];
+        $rows = array_map(function ($p) use ($data, $tz, $now, $known) {
             $busy = (bool) ($p['pc_in_using'] ?? false);
-            $online = in_array($p['pc_name'], $data['online'], true);
+            $online = $known ? in_array((string) $p['pc_name'], array_map('strval', $data['online']), true) : null;
             $console = (int) ($p['pc_console_type'] ?? 0) !== 0;
             $enabled = (bool) ($p['pc_enabled'] ?? true);
             $ends = self::iso($p['status_disconnect_time_local'] ?? null, $tz, true);
@@ -85,7 +87,7 @@ class ExternalApiController extends Controller
         usort($rows, fn ($a, $b) => strnatcasecmp($a['name'], $b['name']));
         $count = fn ($s) => count(array_filter($rows, fn ($x) => $x['status'] === $s));
         return self::json(['data' => $rows, 'meta' => ['total' => count($rows), 'busy' => $count('busy'), 'free' => $count('free'), 'disabled' => $count('disabled'),
-            'online' => count(array_filter($rows, fn ($x) => $x['online'] === true)),
+            'online' => $known ? count(array_filter($rows, fn ($x) => $x['online'] === true)) : null,
             'fetched_at' => self::iso($data['fetched_at'], $tz)]]);
     }
 
