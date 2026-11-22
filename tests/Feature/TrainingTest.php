@@ -42,7 +42,7 @@ class TrainingTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'specialist']);
         $other = User::factory()->create(['role' => 'specialist']);
-        $this->actingAs($user)->postJson('/knowledge/first-start/progress', ['checked' => [2, 0, 0, 99]])
+        $this->actingAs($user)->postJson('/knowledge/first-start/progress', ['checked' => [2, 0, 0, 9]])
             ->assertOk()->assertJson(['checked' => [0, 2], 'completed' => false]);
         $this->get('/knowledge/first-start')->assertInertia(fn (Assert $p) => $p->where('progress', [0, 2]));
         $this->actingAs($other)->get('/knowledge/first-start')->assertInertia(fn (Assert $p) => $p->where('progress', []));
