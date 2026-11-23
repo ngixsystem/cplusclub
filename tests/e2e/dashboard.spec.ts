@@ -27,7 +27,7 @@ test('dashboard refresh, shift detail, stale data and mobile layout', async ({ p
   await expect(page.getByRole('alert')).toContainText('Источник недоступен');
   await page.setViewportSize({width:390,height:844});
   await expect(page.getByRole('heading',{name:'Дашборд клуба'})).toBeVisible();
-  expect(await overflowing(page)).toEqual([]);
+  await expect.poll(()=>overflowing(page)).toEqual([]);
   await page.evaluate(()=>window.scrollTo(0,0));
   await page.screenshot({path:'test-results/dashboard-mobile.png',fullPage:true});
   await page.setViewportSize({width:1440,height:1000});
