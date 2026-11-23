@@ -2,7 +2,8 @@
 
 namespace App\Domain\Knowledge;
 
-use App\Models\{KnowledgeProgress, QuizAttempt, TrainingEnrollment, User};
+use App\Domain\Training\Practice;
+use App\Models\{KnowledgeProgress, QuizAttempt, TrainingEnrollment, TrainingRun, User};
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -24,7 +25,7 @@ final class Training
 
     private ?array $tracks = null;
 
-    public function __construct(private readonly Library $library, private readonly Quizzes $quizzes) {}
+    public function __construct(private readonly Library $library, private readonly Quizzes $quizzes, private readonly Practice $practice) {}
 
     public function tracks(): array
     {
@@ -135,7 +136,7 @@ final class Training
     {
         $track = $this->trackFor($user, $trackId);
         abort_unless($track && isset($track['exam']), 404);
-        $state = $this->trackState($track, $this->progressFor($user), $this->enrollmentsFor($user)->get($trackId), $this->examsFor($user)->get($trackId, collect()));
+        $state = $this->trackState($track, $this->progressFor($user), $this->enrollmentsFor($user)->get($trackId), $this->examsFor($user)->get($trackId, collect()), TrainingRun::where('user_id', $user->id)->get());
         $exam = $state['exam'];
         if ($exam['in_progress_id']) {
             return QuizAttempt::findOrFail($exam['in_progress_id']);
@@ -198,8 +199,9 @@ final class Training
         $progress = $this->progressFor($user);
         $enrollments = $this->enrollmentsFor($user);
         $exams = $this->examsFor($user);
+        $runs = TrainingRun::where('user_id', $user->id)->get();
 
-        return array_map(fn ($track) => $this->trackState($track, $progress, $enrollments->get($track['id']), $exams->get($track['id'], collect())), $this->tracksFor($user->role));
+        return array_map(fn ($track) => $this->trackState($track, $progress, $enrollments->get($track['id']), $exams->get($track['id'], collect()), $runs), $this->tracksFor($user->role));
     }
 
     /** Progress of the people the reviewer is responsible for. Empty for roles without a team scope. */
@@ -214,19 +216,22 @@ final class Training
         $progress = KnowledgeProgress::whereIn('user_id', $ids)->get()->groupBy('user_id');
         $enrollments = TrainingEnrollment::whereIn('user_id', $ids)->get()->groupBy('user_id');
         $exams = QuizAttempt::whereIn('user_id', $ids)->where('kind', 'exam')->get()->groupBy('user_id');
+        $runs = TrainingRun::whereIn('user_id', $ids)->get()->groupBy('user_id');
 
-        return $users->map(function (User $user) use ($progress, $enrollments, $exams) {
+        return $users->map(function (User $user) use ($progress, $enrollments, $exams, $runs) {
             $rows = ($progress[$user->id] ?? collect())->keyBy('article_id');
             $userEnrollments = ($enrollments[$user->id] ?? collect())->keyBy('track_id');
             $userExams = ($exams[$user->id] ?? collect())->groupBy('subject');
-            $tracks = array_map(function ($track) use ($rows, $userEnrollments, $userExams) {
-                $s = $this->trackState($track, $rows, $userEnrollments->get($track['id']), $userExams->get($track['id'], collect()));
+            $userRuns = $runs[$user->id] ?? collect();
+            $tracks = array_map(function ($track) use ($rows, $userEnrollments, $userExams, $userRuns) {
+                $s = $this->trackState($track, $rows, $userEnrollments->get($track['id']), $userExams->get($track['id'], collect()), $userRuns);
                 $quizzes = collect($s['chapters'])->pluck('quiz.best_percent')->filter(fn ($v) => $v !== null);
 
                 return [
                     'id' => $s['id'], 'title' => $s['title'], 'done' => $s['done'], 'total' => $s['total'],
                     'enrollment' => $s['enrollment'], 'quiz_average' => $quizzes->isNotEmpty() ? (int) round($quizzes->avg()) : null,
                     'exam' => $s['exam'] ? ['best' => $s['exam']['best'], 'attempts' => $s['exam']['attempts'], 'max_points' => $s['exam']['max_points']] : null,
+                    'practice' => $s['practice'] ? ['passed' => $s['practice']['passed'], 'total' => $s['practice']['total'], 'average' => $s['practice']['average']] : null,
                 ];
             }, $this->tracksFor($user->role));
             $activity = collect([$rows->max('updated_at'), ($userExams->flatten()->max('finished_at'))])->filter()->max();
@@ -235,7 +240,7 @@ final class Training
         })->values()->all();
     }
 
-    private function trackState(array $track, Collection $progress, ?TrainingEnrollment $enrollment, Collection $exams): array
+    private function trackState(array $track, Collection $progress, ?TrainingEnrollment $enrollment, Collection $exams, ?Collection $runs = null): array
     {
         $chapters = [];
         foreach ($track['chapters'] as $id) {
@@ -260,6 +265,7 @@ final class Training
         }
         $next = collect($chapters)->first(fn ($c) => !$c['done']);
         $doneCount = count(array_filter($chapters, fn ($c) => $c['done']));
+        $practice = $this->practice->programState($track, $runs ?? collect());
 
         return [
             'id' => $track['id'], 'title' => $track['title'], 'summary' => $track['summary'],
@@ -270,11 +276,12 @@ final class Training
                 'completed_at' => $enrollment->completed_at?->toIso8601String(),
                 'duration_seconds' => (int) $enrollment->started_at->diffInSeconds($enrollment->completed_at ?? now()),
             ] : null,
-            'exam' => isset($track['exam']) ? $this->examState($track['exam'], $exams, $enrollment, $doneCount === count($chapters)) : null,
+            'practice' => $practice,
+            'exam' => isset($track['exam']) ? $this->examState($track['exam'], $exams, $enrollment, $doneCount === count($chapters), !$practice || $practice['passed'] === $practice['total']) : null,
         ];
     }
 
-    private function examState(array $config, Collection $attempts, ?TrainingEnrollment $enrollment, bool $chaptersDone): array
+    private function examState(array $config, Collection $attempts, ?TrainingEnrollment $enrollment, bool $chaptersDone, bool $practiceDone = true): array
     {
         $finished = $attempts->whereNotNull('finished_at')->sortByDesc('finished_at');
         $best = $finished->sortByDesc('points')->first();
@@ -285,6 +292,7 @@ final class Training
         $reason = match (true) {
             !$enrollment => 'Сначала начните программу.',
             !$chaptersDone => 'Экзамен откроется, когда все главы программы будут изучены: чек-лист и тест в каждой.',
+            !$practiceDone => 'Экзамен откроется после практикума: каждую учебную заявку нужно закрыть минимум на '.Practice::PASS_SCORE.' баллов.',
             (bool) $passed => 'Экзамен уже сдан.',
             $retakeAt && $retakeAt->isFuture() => 'Повторная попытка будет доступна '.$retakeAt->timezone('Asia/Tashkent')->format('d.m H:i').'. Повторите главы, где были ошибки.',
             default => null,

@@ -68,6 +68,27 @@ final class TrainingController extends Controller
         return redirect()->route('training.exam', $attempt);
     }
 
+    /** Opens a practice incident as a ticket assigned to the trainee and sends him to it. */
+    public function practiceStart(string $scenario, Request $request, Training $training, \App\Domain\Training\Practice $practice)
+    {
+        Gate::authorize('viewAny', Article::class);
+        $user = $request->user();
+        abort_unless(in_array($scenario, $practice->allowedFor($user, $training->tracksFor($user->role)), true), 404);
+        $run = $practice->start($user, $scenario);
+
+        return redirect('/tickets/'.$run->ticket_id)->with('success', 'Учебная заявка открыта. Работайте с ней как с настоящей.');
+    }
+
+    /** A diagnostic action on the simulated site; the finding appears in the ticket's training panel. */
+    public function practiceCheck(\App\Models\TrainingRun $run, Request $request, \App\Domain\Training\Practice $practice)
+    {
+        Gate::authorize('viewAny', Article::class);
+        $data = $request->validate(['check' => 'required|string|max:64']);
+        $check = $practice->check($request->user(), $run, $data['check']);
+
+        return back()->with('success', 'Проверка выполнена: '.$check['label'].'.');
+    }
+
     private function own(QuizAttempt $attempt, Request $request): void
     {
         Gate::authorize('viewAny', Article::class);

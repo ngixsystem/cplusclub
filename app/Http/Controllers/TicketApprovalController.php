@@ -17,6 +17,7 @@ class TicketApprovalController extends Controller
             'amount_minor' => 'required|integer|min:0|max:100000000000', 'currency' => 'required|string|regex:/^[A-Z]{3}$/',
             'expected_duration' => 'required|string|max:255']);
         $service->propose($r->user(), $ticket->id, $d['version'], $d);
+        app(\App\Domain\Training\Practice::class)->afterChange($ticket->fresh());
         return back()->with('success', 'Предложение отправлено владельцу клуба.');
     }
 

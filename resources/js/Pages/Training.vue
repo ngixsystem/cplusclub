@@ -10,8 +10,11 @@ type Enrollment = { started_at: string; completed_at: string | null; duration_se
 type Best = { points: number; max_points: number; percent: number; passed: boolean; finished_at: string; duration_seconds: number } | null;
 type Exam = { questions: number; points_per_answer: number; max_points: number; pass_percent: number; pass_points: number; retake_minutes: number;
  available: boolean; locked_reason: string | null; attempts: number; in_progress_id: number | null; best: Best; passed_at: string | null } | null;
-type Track = { id: string; title: string; summary: string; chapters: Chapter[]; done: number; total: number; next: { id: string; title: string } | null; enrollment: Enrollment; exam: Exam };
-type MemberTrack = { id: string; title: string; done: number; total: number; enrollment: Enrollment; quiz_average: number | null; exam: { best: Best; attempts: number; max_points: number } | null };
+type Scenario = { id: string; title: string; summary: string; level: string; target_minutes: number; chapters: { id: string; title: string }[];
+ attempts: number; best: { score: number; passed: boolean; run_id: number; ticket_id: number; duration_seconds: number } | null; active_ticket_id: number | null };
+type PracticeBlock = { pass_score: number; scenarios: Scenario[]; passed: number; total: number; average: number | null } | null;
+type Track = { id: string; title: string; summary: string; chapters: Chapter[]; done: number; total: number; next: { id: string; title: string } | null; enrollment: Enrollment; practice: PracticeBlock; exam: Exam };
+type MemberTrack = { id: string; title: string; done: number; total: number; enrollment: Enrollment; quiz_average: number | null; practice: { passed: number; total: number; average: number | null } | null; exam: { best: Best; attempts: number; max_points: number } | null };
 type Member = { id: number; name: string; role: string; tracks: MemberTrack[]; last_activity: string | null };
 const props = defineProps<{ tracks: Track[]; team: Member[] | null; chapterPassPercent: number }>();
 const page = usePage<{ errors: Record<string, string> }>();
@@ -39,6 +42,10 @@ function startTrack(track: Track) {
 function startExam(track: Track) {
  busy.value = track.id;
  router.post(`/training/${track.id}/exam`, {}, { onFinish: () => { busy.value = null; } });
+}
+function startPractice(id: string) {
+ busy.value = id;
+ router.post(`/training/practice/${id}`, {}, { onFinish: () => { busy.value = null; } });
 }
 function chapterStatus(c: Chapter) {
  if (c.done) return 'Изучено ' + date(c.completed_at);
@@ -69,7 +76,8 @@ function chapterStatus(c: Chapter) {
       <li><b>Читаете главу.</b> Каждая глава — реальная рабочая инструкция: порядок проверки, диагностика, что записать в заявку.</li>
       <li><b>Выполняете «Проверку результата».</b> В конце главы — чек-лист из 4 пунктов. Отмечайте пункты, которые поняли и можете выполнить на объекте.</li>
       <li><b>Сдаёте тест по главе.</b> 5 вопросов, нужно не меньше {{chapterPassPercent}}% правильных. После проверки увидите правильные ответы с пояснениями. Пересдавать можно без ограничений.</li>
-      <li v-if="track.exam"><b>Сдаёте итоговый экзамен.</b> Он откроется, когда все главы будут изучены. {{track.exam.questions}} вопросов из всех глав программы, {{track.exam.points_per_answer}} баллов за каждый правильный ответ, максимум {{track.exam.max_points}}. Экзамен сдан при {{track.exam.pass_points}} баллах и выше ({{track.exam.pass_percent}}%). Правильные ответы на экзамене не показываются — только главы, где были ошибки. Повторная попытка — через {{track.exam.retake_minutes}} минут.</li>
+      <li v-if="track.practice"><b>Проходите практикум в C+CLub.</b> {{track.practice.total}} учебные заявки с имитацией реальных инцидентов: заявка приходит от «клиента», вы принимаете её, диагностируете на объекте, при необходимости согласуете платные работы, заполняете причину, решение и проверку и сдаёте клиенту. Всё — в настоящем интерфейсе заявок, но на учебном клубе: клиентам и в отчёты ничего не уходит. Каждая заявка оценивается в 100 баллов (зачёт от {{track.practice.pass_score}}) с разбором и эталонным решением.</li>
+      <li v-if="track.exam"><b>Сдаёте итоговый экзамен.</b> Он откроется, когда все главы будут изучены<template v-if="track.practice"> и практикум сдан</template>. {{track.exam.questions}} вопросов из всех глав программы, {{track.exam.points_per_answer}} баллов за каждый правильный ответ, максимум {{track.exam.max_points}}. Экзамен сдан при {{track.exam.pass_points}} баллах и выше ({{track.exam.pass_percent}}%). Правильные ответы на экзамене не показываются — только главы, где были ошибки. Повторная попытка — через {{track.exam.retake_minutes}} минут.</li>
       <li v-else><b>Программа завершена,</b> когда все главы изучены: чек-лист и тест в каждой.</li>
      </ol>
      <h3>Сроки и результаты</h3>
@@ -101,6 +109,21 @@ function chapterStatus(c: Chapter) {
        </li>
       </ol>
 
+      <div v-if="track.practice" class="tr-practice">
+       <h3>Практикум: учебные заявки в C+CLub <span>{{track.practice.passed}} из {{track.practice.total}} зачтено<template v-if="track.practice.average !== null"> · средний балл {{track.practice.average}}</template></span></h3>
+       <p>Инцидент приходит как настоящая заявка на «Учебный клуб». Работайте с ней обычными кнопками: примите, переведите в работу, проведите диагностику, запишите трудозатраты, при необходимости согласуйте платные работы, заполните результат и переведите в «Решена». Клиент в симуляции ответит сам. Зачёт — от {{track.practice.pass_score}} баллов из 100.</p>
+       <article v-for="s in track.practice.scenarios" :key="s.id" class="tr-scenario" :class="{ passed: s.best?.passed }">
+        <div>
+         <span class="tr-eyebrow">{{s.level}} · ~{{s.target_minutes}} мин<template v-if="s.attempts"> · попыток {{s.attempts}}</template></span>
+         <b>{{s.title}}</b>
+         <small>{{s.summary}}</small>
+         <small v-if="s.best">Лучший результат: <span :class="s.best.passed ? 'tr-ok' : 'tr-warn'">{{s.best.score}} / 100</span> · <Link :href="'/tickets/'+s.best.ticket_id">разбор</Link></small>
+        </div>
+        <Link v-if="s.active_ticket_id" :href="'/tickets/'+s.active_ticket_id" class="kb-source-button">Продолжить заявку →</Link>
+        <button v-else type="button" class="kb-source-button" :disabled="busy===s.id" @click="startPractice(s.id)">{{ s.attempts ? 'Пройти ещё раз' : 'Получить заявку' }}</button>
+       </article>
+      </div>
+
       <div v-if="track.exam" class="tr-exam" :class="{ passed: track.exam.passed_at }">
        <div>
         <h3>Итоговый экзамен</h3>
@@ -122,17 +145,18 @@ function chapterStatus(c: Chapter) {
    <p v-if="!members.length" class="panel">Нет активных сотрудников с этой ролью.</p>
    <div v-else class="kb-diagnostics tr-table" role="region" aria-label="Прогресс сотрудников" tabindex="0">
     <table>
-     <thead><tr><th scope="col">Сотрудник</th><th scope="col">Программа и главы</th><th scope="col">Тесты глав</th><th scope="col">Экзамен</th><th scope="col">Срок обучения</th></tr></thead>
+     <thead><tr><th scope="col">Сотрудник</th><th scope="col">Программа и главы</th><th scope="col">Тесты глав</th><th scope="col">Практикум</th><th scope="col">Экзамен</th><th scope="col">Срок обучения</th></tr></thead>
      <tbody>
       <template v-for="member in members" :key="member.id">
        <tr v-for="(t, i) in member.tracks" :key="t.id">
         <th v-if="i===0" scope="row" :rowspan="member.tracks.length">{{member.name}}<small>{{roles[member.role] || member.role}}</small><small>Активность: {{date(member.last_activity)}}</small></th>
         <td><span class="tr-cell-title">{{t.title}}</span><span class="kb-bar" aria-hidden="true"><i :style="{width: percent(t.done, t.total)+'%'}"></i></span><small>{{t.done}} из {{t.total}} глав</small></td>
         <td>{{ t.quiz_average !== null ? 'в среднем ' + t.quiz_average + '%' : '—' }}</td>
+        <td><template v-if="t.practice"><b :class="{ 'tr-ok': t.practice.passed === t.practice.total }">{{t.practice.passed}} / {{t.practice.total}}</b><small>{{ t.practice.average !== null ? 'средний балл ' + t.practice.average : 'не начат' }}</small></template><template v-else>—</template></td>
         <td><template v-if="t.exam?.best"><b :class="{ 'tr-ok': t.exam.best.passed }">{{t.exam.best.points}} / {{t.exam.best.max_points}}</b><small>{{t.exam.best.passed ? 'сдан' : 'не сдан'}} · попыток {{t.exam.attempts}}</small></template><template v-else-if="t.exam">не сдавал</template><template v-else>без экзамена</template></td>
         <td><template v-if="t.enrollment"><b v-if="t.enrollment.completed_at" class="tr-ok">{{duration(t.enrollment.duration_seconds)}}</b><span v-else>идёт {{duration(t.enrollment.duration_seconds)}}</span><small>{{date(t.enrollment.started_at)}} → {{t.enrollment.completed_at ? date(t.enrollment.completed_at) : '…'}}</small></template><template v-else>не начато</template></td>
        </tr>
-       <tr v-if="!member.tracks.length"><th scope="row">{{member.name}}<small>{{roles[member.role] || member.role}}</small></th><td colspan="4">—</td></tr>
+       <tr v-if="!member.tracks.length"><th scope="row">{{member.name}}<small>{{roles[member.role] || member.role}}</small></th><td colspan="5">—</td></tr>
       </template>
      </tbody>
     </table>
@@ -176,11 +200,21 @@ function chapterStatus(c: Chapter) {
 .tr-exam-ok{font-weight:600}
 .tr-exam-lock{color:var(--warning)!important}
 .tr-exam .kb-source-button{margin:0}
+.tr-practice{margin-top:22px}
+.tr-practice h3{margin:0 0 6px;font-size:15px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.tr-practice h3 span{font-size:12px;font-weight:400;color:var(--muted)}
+.tr-practice>p{margin:0 0 12px;font-size:12px;line-height:1.7;color:var(--muted);max-width:860px}
+.tr-scenario{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:14px 16px;margin-top:8px;border:1px solid var(--border);border-radius:7px}
+.tr-scenario.passed{border-color:var(--accent-text)}
+.tr-scenario b{display:block;font-size:14px;margin-bottom:4px}
+.tr-scenario small{display:block;color:var(--muted);font-size:12px;line-height:1.6}
+.tr-scenario .kb-source-button{margin:0;flex-shrink:0}
+.tr-warn{color:var(--warning)}
 .tr-team-head{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:14px}
 .tr-team-head h2{margin:0;font-size:19px}
-.tr-table table{table-layout:auto;min-width:760px}
+.tr-table table{table-layout:auto;min-width:860px}
 .tr-table th small,.tr-table td small{display:block;color:var(--muted);font-weight:400;font-size:11px}
 .tr-table td .kb-bar{display:block;margin:6px 0 4px;max-width:260px}
 .tr-cell-title{font-weight:600}
-@media(max-width:760px){.tr-intro{padding:18px}.tr-track-head{padding:16px}.tr-chapters{padding:16px}.tr-chapters li{flex-direction:column;gap:2px}.tr-percent{font-size:19px}}
+@media(max-width:760px){.tr-scenario{flex-direction:column;align-items:stretch}.tr-intro{padding:18px}.tr-track-head{padding:16px}.tr-chapters{padding:16px}.tr-chapters li{flex-direction:column;gap:2px}.tr-percent{font-size:19px}}
 </style>
