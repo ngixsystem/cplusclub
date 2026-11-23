@@ -12,8 +12,16 @@ type Exam = { questions: number; points_per_answer: number; max_points: number; 
  available: boolean; locked_reason: string | null; attempts: number; in_progress_id: number | null; best: Best; passed_at: string | null } | null;
 type Track = { id: string; title: string; summary: string; chapters: Chapter[]; done: number; total: number; next: { id: string; title: string } | null; enrollment: Enrollment; exam: Exam };
 type MemberTrack = { id: string; title: string; done: number; total: number; enrollment: Enrollment; quiz_average: number | null; exam: { best: Best; attempts: number; max_points: number } | null };
-type Member = { id: number; name: string; role: string; tracks: MemberTrack[]; last_activity: string | null };
-const props = defineProps<{ tracks: Track[]; team: Member[] | null; chapterPassPercent: number }>();
+type PracticeScenario = { id: string; title: string; difficulty: string; minutes_target: number; demo_done: boolean; open_demo: number | null; open_exam: number | null;
+ attempts: number; best: number | null; best_run: number | null; passed_at: string | null; last_run: number | null };
+type Practice = { scenarios: PracticeScenario[]; passed: number; total: number; pass_points: number; started_at: string | null; completed_at: string | null; duration_seconds: number | null };
+type Member = { id: number; name: string; role: string; tracks: MemberTrack[]; last_activity: string | null; practice: Practice | null };
+const props = defineProps<{ tracks: Track[]; team: Member[] | null; chapterPassPercent: number; practice: Practice | null }>();
+const practiceOpen = ref(!props.practice?.started_at || (props.practice.passed < props.practice.total));
+function practiceStart(id: string, mode: 'demo' | 'exam') {
+ busy.value = id + mode;
+ router.post(`/training/practice/${id}/start`, { mode }, { onFinish: () => { busy.value = null; } });
+}
 const page = usePage<{ errors: Record<string, string> }>();
 
 const roles: Record<string, string> = { owner: 'Владелец', lead: 'Технический руководитель', specialist: 'Выездной специалист', representative: 'Представитель клуба' };
@@ -54,6 +62,42 @@ function chapterStatus(c: Chapter) {
  <Shell>
   <div class="kb-heading"><div><h1>Обучение</h1><p>Программы по вашей роли собраны из глав базы знаний: чтение, практическая проверка, тест по каждой главе и итоговый экзамен.</p></div><Link href="/knowledge" class="kb-source-button">База знаний →</Link></div>
   <p v-if="page.props.errors.exam" class="error" role="alert">{{page.props.errors.exam}}</p>
+
+  <section v-if="practice" class="tr-track tr-practice" aria-labelledby="practice-title">
+   <div class="tr-intro">
+    <span class="tr-eyebrow">Обязательно для инженеров · {{practice.passed}} из {{practice.total}} испытаний пройдено<template v-if="practice.duration_seconds !== null"> · {{ practice.completed_at ? 'пройдено за ' : 'идёт ' }}{{duration(practice.duration_seconds)}}</template></span>
+    <h2 id="practice-title">Практикум: работа с заявками в C+CLub</h2>
+    <p class="tr-summary">Главный навык инженера — довести заявку от сообщения клуба до закрытия так, чтобы клуб был доволен, а следующий инженер всё понял из заявки. В практикуме учебный клуб присылает сообщение об инциденте, вы оформляете заявку и ведёте её по тем же статусам и с теми же полями, что в настоящем C+CLub.</p>
+    <button type="button" class="tr-toggle" :aria-expanded="practiceOpen" @click="practiceOpen = !practiceOpen">{{ practiceOpen ? 'Скрыть, как это работает' : 'Как это работает' }}</button>
+    <div v-if="practiceOpen" class="tr-practice-rules">
+     <ol class="tr-steps">
+      <li><b>Оформите заявку</b> из сообщения клуба: оборудование, категория, описание, приоритет по масштабу сбоя.</li>
+      <li><b>Ведите по статусам:</b> Новая → Принята → В работе → Решена → Закрыта. Платные работы — сначала «Предложение работ» на согласование клубу.</li>
+      <li><b>Работайте на объекте:</b> выбирайте действия диагностики, устранения и проверки. Каждое даёт результат — как в жизни. Есть и вредные действия: они бьют по клубу и по оценке.</li>
+      <li><b>Закройте как положено:</b> трудозатраты, выполненные работы, проверка, причина и решение. Если причина не устранена, клуб вернёт заявку на доработку.</li>
+     </ol>
+     <table class="tr-criteria"><caption>Оценка испытания — 100 баллов, проходной {{practice.pass_points}}</caption><tbody>
+      <tr><th>Оформление заявки</th><td>20</td><th>Проверка результата после исправления</th><td>10</td></tr>
+      <tr><th>Диагностика: ключевые проверки до исправления</th><td>25</td><th>Верная причина</th><td>10</td></tr>
+      <tr><th>Устранение причины</th><td>10</td><th>Поля закрытия и трудозатраты</th><td>10</td></tr>
+      <tr><th>Согласование платных работ</th><td>5</td><th>Без возврата на доработку · в норму времени</th><td>5 + 5</td></tr>
+     </tbody></table>
+     <p class="tr-facts-note">Каждое вредное действие — минус 10 баллов, и испытание с ним не засчитывается. <b>Демо</b> показывает подсказки на каждом шаге и не оценивается — начните с него. <b>Испытание</b> без подсказок, результат и время видят владелец и технический руководитель. Учебные заявки живут отдельно: они не попадают в настоящие заявки, отчёты, статистику и Telegram клубов.</p>
+    </div>
+    <ul class="tr-scenarios">
+     <li v-for="sc in practice.scenarios" :key="sc.id" :class="{ passed: sc.passed_at }">
+      <div><b>{{sc.title}}</b><small>{{sc.difficulty}} · норма {{sc.minutes_target}} мин<template v-if="sc.attempts"> · лучший результат {{sc.best}} из 100 · попыток {{sc.attempts}}</template><template v-if="sc.passed_at"> · пройдено {{date(sc.passed_at)}} ✓</template><template v-else-if="sc.demo_done"> · демо пройдено</template></small></div>
+      <div class="tr-scenario-buttons">
+       <Link v-if="sc.open_demo" :href="'/training/practice/run/'+sc.open_demo" class="button secondary">Продолжить демо</Link>
+       <button v-else type="button" class="secondary" :disabled="busy===sc.id+'demo'" @click="practiceStart(sc.id, 'demo')">Демо</button>
+       <Link v-if="sc.open_exam" :href="'/training/practice/run/'+sc.open_exam" class="button">Продолжить испытание</Link>
+       <button v-else type="button" :disabled="busy===sc.id+'exam'" @click="practiceStart(sc.id, 'exam')">{{ sc.attempts ? 'Пройти ещё раз' : 'Испытание' }}</button>
+       <Link v-if="sc.last_run" :href="'/training/practice/run/'+sc.last_run" class="tr-link">Разбор</Link>
+      </div>
+     </li>
+    </ul>
+   </div>
+  </section>
 
   <section aria-label="Мои программы" class="tr-tracks">
    <p v-if="!tracks.length" class="panel">Для вашей роли программ пока нет.</p>
@@ -122,7 +166,7 @@ function chapterStatus(c: Chapter) {
    <p v-if="!members.length" class="panel">Нет активных сотрудников с этой ролью.</p>
    <div v-else class="kb-diagnostics tr-table" role="region" aria-label="Прогресс сотрудников" tabindex="0">
     <table>
-     <thead><tr><th scope="col">Сотрудник</th><th scope="col">Программа и главы</th><th scope="col">Тесты глав</th><th scope="col">Экзамен</th><th scope="col">Срок обучения</th></tr></thead>
+     <thead><tr><th scope="col">Сотрудник</th><th scope="col">Программа и главы</th><th scope="col">Тесты глав</th><th scope="col">Экзамен</th><th scope="col">Срок обучения</th><th scope="col">Практикум по заявкам</th></tr></thead>
      <tbody>
       <template v-for="member in members" :key="member.id">
        <tr v-for="(t, i) in member.tracks" :key="t.id">
@@ -131,8 +175,9 @@ function chapterStatus(c: Chapter) {
         <td>{{ t.quiz_average !== null ? 'в среднем ' + t.quiz_average + '%' : '—' }}</td>
         <td><template v-if="t.exam?.best"><b :class="{ 'tr-ok': t.exam.best.passed }">{{t.exam.best.points}} / {{t.exam.best.max_points}}</b><small>{{t.exam.best.passed ? 'сдан' : 'не сдан'}} · попыток {{t.exam.attempts}}</small></template><template v-else-if="t.exam">не сдавал</template><template v-else>без экзамена</template></td>
         <td><template v-if="t.enrollment"><b v-if="t.enrollment.completed_at" class="tr-ok">{{duration(t.enrollment.duration_seconds)}}</b><span v-else>идёт {{duration(t.enrollment.duration_seconds)}}</span><small>{{date(t.enrollment.started_at)}} → {{t.enrollment.completed_at ? date(t.enrollment.completed_at) : '…'}}</small></template><template v-else>не начато</template></td>
+        <td v-if="i===0" :rowspan="member.tracks.length"><template v-if="member.practice"><b :class="{ 'tr-ok': member.practice.passed === member.practice.total }">{{member.practice.passed}} из {{member.practice.total}}</b><small v-for="sc in member.practice.scenarios" :key="sc.id">{{sc.title}}: {{ sc.attempts ? sc.best + ' б.' + (sc.passed_at ? ' ✓' : '') + ' · попыток ' + sc.attempts : (sc.demo_done ? 'только демо' : '—') }}</small><small v-if="member.practice.duration_seconds !== null">{{ member.practice.completed_at ? 'за ' : 'идёт ' }}{{duration(member.practice.duration_seconds)}}</small></template><template v-else>—</template></td>
        </tr>
-       <tr v-if="!member.tracks.length"><th scope="row">{{member.name}}<small>{{roles[member.role] || member.role}}</small></th><td colspan="4">—</td></tr>
+       <tr v-if="!member.tracks.length"><th scope="row">{{member.name}}<small>{{roles[member.role] || member.role}}</small></th><td colspan="5">—</td></tr>
       </template>
      </tbody>
     </table>
@@ -178,7 +223,22 @@ function chapterStatus(c: Chapter) {
 .tr-exam .kb-source-button{margin:0}
 .tr-team-head{display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:14px}
 .tr-team-head h2{margin:0;font-size:19px}
-.tr-table table{table-layout:auto;min-width:760px}
+.tr-table table{table-layout:auto;min-width:900px}
+.tr-practice{margin-bottom:14px;border-color:var(--accent-text)}
+.tr-toggle{background:transparent;border:0;padding:0;margin-top:12px;color:var(--accent-text);font-weight:400;height:auto;min-height:0}
+.tr-practice-rules{margin-top:10px}
+.tr-criteria{margin:18px 0 8px;border-collapse:collapse;font-size:12px;width:100%;max-width:820px}
+.tr-criteria caption{text-align:left;font-weight:600;font-size:13px;margin-bottom:8px}
+.tr-criteria th{font-weight:400;text-align:left;padding:6px 8px;border-top:1px solid var(--border);color:var(--muted)}
+.tr-criteria td{padding:6px 8px;border-top:1px solid var(--border);font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.tr-facts-note{font-size:12px;line-height:1.7;color:var(--muted);max-width:820px}
+.tr-scenarios{list-style:none;margin:18px 0 0;padding:0;display:grid;gap:8px}
+.tr-scenarios li{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;padding:12px 14px;border:1px solid var(--border);border-radius:7px;background:var(--surface-2)}
+.tr-scenarios li.passed{border-color:var(--accent-text)}
+.tr-scenarios b{display:block;font-size:14px}
+.tr-scenarios small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.tr-scenario-buttons{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tr-link{font-size:12px}
 .tr-table th small,.tr-table td small{display:block;color:var(--muted);font-weight:400;font-size:11px}
 .tr-table td .kb-bar{display:block;margin:6px 0 4px;max-width:260px}
 .tr-cell-title{font-weight:600}
