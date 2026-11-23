@@ -21,6 +21,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/clubs/{club}/map/status', [\App\Http\Controllers\ClubMapController::class, 'status'])->middleware('throttle:live');
     Route::get('/knowledge', [\App\Http\Controllers\KnowledgeController::class, 'index'])->name('knowledge.index');
     Route::get('/knowledge/{article}', [\App\Http\Controllers\KnowledgeController::class, 'show'])->where('article', '[a-z0-9-]+')->name('knowledge.show');
+    Route::post('/knowledge/{article}/progress', [\App\Http\Controllers\KnowledgeController::class, 'progress'])->where('article', '[a-z0-9-]+')->middleware('throttle:120,1');
+    Route::get('/training', [\App\Http\Controllers\TrainingController::class, 'index'])->name('training.index');
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class,'index']);
     Route::get('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'image']);
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'avatar'])->middleware('throttle:avatar');
