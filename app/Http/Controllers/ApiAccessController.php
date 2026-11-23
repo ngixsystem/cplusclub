@@ -49,6 +49,18 @@ class ApiAccessController extends Controller
         return back()->with(['success' => 'Токен создан. Скопируйте его сейчас — повторно он не показывается.', 'newToken' => ['id' => $client->id, 'token' => $token]]);
     }
 
+    /** Change what an existing token may read (the token itself stays the same). */
+    public function scopes(Request $r, ApiClient $client)
+    {
+        $this->owner($r);
+        abort_if($client->revoked_at, 409, 'Токен отозван.');
+        $d = $r->validate(['scopes' => 'required|array|min:1', 'scopes.*' => [Rule::in(ApiClient::SCOPES)]]);
+        $client->scopes = array_values(array_unique($d['scopes']));
+        $client->save();
+        DB::table('audit_logs')->insert(['actor_id' => $r->user()->id, 'club_id' => $client->club_id, 'action' => 'api_client.scopes', 'subject' => (string) $client->id]);
+        return back()->with('success', 'Доступ токена обновлён.');
+    }
+
     public function revoke(Request $r, ApiClient $client)
     {
         $this->owner($r);

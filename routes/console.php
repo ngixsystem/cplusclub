@@ -77,3 +77,6 @@ Schedule::call(function () {
             ['date' => $d['date'], 'message' => \App\Domain\Reports\DailyDigest::telegram($d)]);
     }
 })->name('daily-digest')->hourlyAt(2)->withoutOverlapping();
+Schedule::call(function () {
+    foreach (\App\Models\Club::whereNotNull('icafe_license')->whereNotNull('icafe_token')->pluck('id') as $id) \App\Jobs\SyncBillingLogs::dispatch($id);
+})->name('icafe-billing-logs')->everyMinute()->withoutOverlapping();

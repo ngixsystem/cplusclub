@@ -117,4 +117,45 @@ class ExternalApiController extends Controller
         return self::json(['data' => $rows, 'meta' => ['from' => $from->toIso8601String(), 'to' => $to->toIso8601String(), 'count' => count($rows),
             'note' => 'Открытые смены обновляются каждые 15 минут; итог смены окончательный после её закрытия.']]);
     }
+
+    /**
+     * Raw billing events, one by one, as in the iCafeCloud CSV export. Cursor: pass the last
+     * `id` you received as `since`. Older history loaded later gets higher ids too, so a
+     * consumer that follows the cursor receives every event exactly once.
+     */
+    public function billingLogs(Request $r)
+    {
+        $v = \Illuminate\Support\Facades\Validator::make($r->query(), ['since' => 'nullable|integer|min:0', 'limit' => 'nullable|integer|min:1|max:1000',
+            'from' => 'nullable|date', 'to' => 'nullable|date', 'event' => 'nullable|string|max:400']);
+        if ($v->fails()) return ExternalApi::error('bad_request', $v->errors()->first(), 422);
+        $d = $v->validated();
+        $club = $this->club($r); $tz = $club->timezone ?: 'Asia/Tashkent';
+        $since = (int) ($d['since'] ?? 0); $limit = (int) ($d['limit'] ?? 500);
+        $events = isset($d['event']) ? array_values(array_filter(array_map(fn ($e) => strtoupper(trim($e)), explode(',', $d['event'])))) : [];
+        $q = DB::table('icafe_billing_logs')->where('club_id', $club->id)->where('id', '>', $since)
+            ->when(isset($d['from']), fn ($q) => $q->where('occurred_at', '>=', CarbonImmutable::parse($d['from'], $tz)->utc()))
+            ->when(isset($d['to']), fn ($q) => $q->where('occurred_at', '<=', CarbonImmutable::parse($d['to'], $tz)->utc()))
+            ->when($events, fn ($q) => $q->whereIn('event', $events))
+            ->orderBy('id')->limit($limit + 1);
+        $rows = $q->get();
+        $more = $rows->count() > $limit;
+        $rows = $rows->take($limit);
+        $cur = $club->icafe_currency ?: 'UZS';
+        $data = $rows->map(fn ($e) => [
+            'id' => $e->id, 'log_id' => (string) $e->log_id, 'occurred_at' => self::iso($e->occurred_at, $tz), 'event' => $e->event,
+            'member_account' => $e->member_account, 'pc_name' => $e->pc_name,
+            'money' => (float) $e->money, 'spend' => (float) $e->spend, 'card' => (float) $e->card, 'bonus' => (float) $e->bonus, 'coin' => (float) $e->coin,
+            'used_seconds' => $e->used_seconds !== null ? (int) $e->used_seconds : null,
+            'details' => $e->details, 'staff_name' => $e->staff_name, 'package' => $e->package, 'currency' => $cur,
+        ])->values()->all();
+        $state = DB::table('icafe_billing_sync')->where('club_id', $club->id)->first();
+        return self::json(['data' => $data, 'meta' => [
+            'count' => count($data), 'next_since' => $data ? end($data)['id'] : $since, 'has_more' => $more,
+            'sync' => [
+                'live_at' => $state?->live_at ? self::iso($state->live_at, $tz) : null,
+                'history_complete' => (bool) ($state?->backfill_done_at),
+                'history_from' => $state?->oldest_day,
+            ],
+        ]]);
+    }
 }

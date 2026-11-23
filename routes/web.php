@@ -43,6 +43,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/clubs/{club}/icafe', [\App\Http\Controllers\IcafeController::class, 'save']);
     Route::get('/api-access',[\App\Http\Controllers\ApiAccessController::class,'index']);
     Route::post('/api-access',[\App\Http\Controllers\ApiAccessController::class,'store']);
+    Route::post('/api-access/{client}/scopes',[\App\Http\Controllers\ApiAccessController::class,'scopes'])->whereNumber('client');
     Route::post('/api-access/{client}/revoke',[\App\Http\Controllers\ApiAccessController::class,'revoke'])->whereNumber('client');
     Route::get('/users',[\App\Http\Controllers\AdminController::class,'index']);
     Route::post('/users',[\App\Http\Controllers\AdminController::class,'store']);

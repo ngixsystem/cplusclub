@@ -13,4 +13,5 @@ Route::prefix('ext/v1')->group(function () {
     Route::get('/me', [\App\Http\Controllers\ExternalApiController::class, 'me'])->middleware(\App\Http\Middleware\ExternalApi::class);
     Route::get('/pcs', [\App\Http\Controllers\ExternalApiController::class, 'pcs'])->middleware(\App\Http\Middleware\ExternalApi::class.':pcs');
     Route::get('/shifts', [\App\Http\Controllers\ExternalApiController::class, 'shifts'])->middleware(\App\Http\Middleware\ExternalApi::class.':shifts');
+    Route::get('/billing-logs', [\App\Http\Controllers\ExternalApiController::class, 'billingLogs'])->middleware(\App\Http\Middleware\ExternalApi::class.':billing');
 });

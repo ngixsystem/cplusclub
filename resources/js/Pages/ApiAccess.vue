@@ -8,9 +8,12 @@ type ApiClientRow = { id: number; name: string; club: string | null; hint: strin
 type LogRow = { id: number; name: string; method: string; path: string; status: number; ip: string | null; ms: number; created_at: string };
 const props = defineProps<{ clients: ApiClientRow[]; log: LogRow[]; clubs: { id: number; name: string }[]; scopes: string[]; baseUrl: string; newToken: { id: number; token: string } | null }>();
 
-const SCOPE_LABEL: Record<string, string> = { pcs: 'Статус ПК', shifts: 'Смены и касса' };
+const SCOPE_LABEL: Record<string, string> = { pcs: 'Статус ПК', shifts: 'Смены и касса', billing: 'Логи биллинга' };
 const form = useForm({ name: '', club_id: props.clubs[0]?.id ?? 0, allowed_ips: '', scopes: [...props.scopes] });
 const create = () => form.post('/api-access', { preserveScroll: true, onSuccess: () => form.reset('name', 'allowed_ips') });
+const editing = ref<number | null>(null), editScopes = ref<string[]>([]);
+const startEdit = (c: ApiClientRow) => { editing.value = c.id; editScopes.value = [...c.scopes]; };
+const saveScopes = (c: ApiClientRow) => router.post(`/api-access/${c.id}/scopes`, { scopes: editScopes.value }, { preserveScroll: true, onSuccess: () => { editing.value = null; } });
 const revoke = (c: ApiClientRow) => { if (window.confirm(`Отозвать токен «${c.name}»? Внешняя система сразу потеряет доступ.`)) router.post(`/api-access/${c.id}/revoke`, {}, { preserveScroll: true }); };
 
 const copied = ref('');
@@ -39,7 +42,7 @@ const when = (s: string | null) => s ? new Date(s).toLocaleString('ru-RU', { day
         <p class="eyebrow">Адрес API</p>
         <div class="api-copy"><code>{{ baseUrl }}</code><button type="button" class="secondary" @click="copy(baseUrl, 'url')"><Copy aria-hidden="true" />{{ copied === 'url' ? 'Скопировано' : 'Копировать' }}</button></div>
       </div>
-      <p class="muted small">Заголовок <code>Authorization: Bearer &lt;токен&gt;</code>. Эндпоинты: <code>GET /me</code>, <code>GET /pcs</code>, <code>GET /shifts</code>. Лимит — 120 запросов в минуту.</p>
+      <p class="muted small">Заголовок <code>Authorization: Bearer &lt;токен&gt;</code>. Эндпоинты: <code>GET /me</code>, <code>GET /pcs</code>, <code>GET /shifts</code>, <code>GET /billing-logs</code>. Лимит — 120 запросов в минуту.</p>
     </section>
 
     <form class="panel form-grid api-form" @submit.prevent="create">
@@ -64,7 +67,13 @@ const when = (s: string | null) => s ? new Date(s).toLocaleString('ru-RU', { day
             <tr v-for="c in clients" :key="c.id" :class="{ revoked: c.revoked_at }">
               <td><strong>{{ c.name }}</strong><br /><span class="muted small mono">{{ c.hint }}</span></td>
               <td>{{ c.club ?? '—' }}</td>
-              <td>{{ c.scopes.map(s => SCOPE_LABEL[s] ?? s).join(', ') }}</td>
+              <td>
+                <template v-if="editing === c.id">
+                  <label v-for="s in scopes" :key="s" class="check api-scope"><input v-model="editScopes" type="checkbox" :value="s" />{{ SCOPE_LABEL[s] ?? s }}</label>
+                  <span class="api-edit-actions"><button type="button" class="small" :disabled="!editScopes.length" @click="saveScopes(c)">Сохранить</button><button type="button" class="ghost small" @click="editing = null">Отмена</button></span>
+                </template>
+                <template v-else>{{ c.scopes.map(s => SCOPE_LABEL[s] ?? s).join(', ') }}<button v-if="!c.revoked_at" type="button" class="ghost small api-edit" @click="startEdit(c)">Изменить</button></template>
+              </td>
               <td class="mono small">{{ c.ips.length ? c.ips.join(', ') : 'любые' }}</td>
               <td>{{ when(c.last_used_at) }}<br v-if="c.last_ip" /><span v-if="c.last_ip" class="muted small mono">{{ c.last_ip }}</span></td>
               <td class="mono">{{ c.requests_24h }}<span v-if="c.errors_24h" class="api-err"> · {{ c.errors_24h }} ош.</span></td>
@@ -115,5 +124,8 @@ tr.revoked td { opacity: .55 }
 .api-status.ok { color: rgb(52 199 89) }
 .api-status.bad { color: rgb(255 69 58) }
 .danger { color: rgb(255 69 58) }
+.api-scope { display: flex; gap: 6px; align-items: center; white-space: nowrap; font-size: 13.5px }
+.api-edit-actions { display: flex; gap: 6px; margin-top: 6px }
+.api-edit { margin-left: 6px }
 @media (max-width: 640px) { .api-copy { flex-direction: column } }
 </style>

@@ -235,6 +235,10 @@ return [
                 'connection' => 'redis', 'queue' => ['reports'], 'balance' => false,
                 'maxProcesses' => 1, 'tries' => 3, 'timeout' => 60, 'memory' => 128,
             ],
+            'billing' => [
+                'connection' => 'redis', 'queue' => ['billing'], 'balance' => false,
+                'maxProcesses' => 1, 'tries' => 1, 'timeout' => 85, 'memory' => 192,
+            ],
         ],
 
     ],

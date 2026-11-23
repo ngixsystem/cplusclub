@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 
 class ApiClient extends Model
 {
-    public const SCOPES = ['pcs', 'shifts'];
+    public const SCOPES = ['pcs', 'shifts', 'billing'];
 
     protected $hidden = ['token_hash'];
     protected $casts = ['scopes' => 'array', 'last_used_at' => 'datetime', 'revoked_at' => 'datetime'];
