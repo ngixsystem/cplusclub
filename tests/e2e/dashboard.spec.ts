@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { overflowing } from './layout';
 
 test('dashboard refresh, shift detail, stale data and mobile layout', async ({ page }) => {
   const shift = {id:'-12',operator:'Test operator',start:'2026-09-30 07:00:00',end:null,total:100,cash:80,card:15,qr:5};
@@ -19,12 +20,14 @@ test('dashboard refresh, shift detail, stale data and mobile layout', async ({ p
   await expect.poll(()=>polls,{timeout:22000}).toBeGreaterThan(1);
   await expect(page.getByText('150 UZS',{exact:true}).first()).toBeVisible();
   expect(navigations).toHaveLength(0);
-  await page.getByRole('button',{name:'Подробнее',exact:true}).click();
+  // Shift sessions are folded behind the card toggle since the 7-day shifts card redesign.
+  await page.locator('.sessions-toggle button').click();
+  await page.locator('#shift-sessions').getByRole('button',{name:'Подробнее',exact:true}).click();
   await expect(page.getByText('Возвраты наличными',{exact:true})).toBeVisible();
   await expect(page.getByRole('alert')).toContainText('Источник недоступен');
   await page.setViewportSize({width:390,height:844});
   await expect(page.getByRole('heading',{name:'Дашборд клуба'})).toBeVisible();
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+  expect(await overflowing(page)).toEqual([]);
   await page.evaluate(()=>window.scrollTo(0,0));
   await page.screenshot({path:'test-results/dashboard-mobile.png',fullPage:true});
   await page.setViewportSize({width:1440,height:1000});

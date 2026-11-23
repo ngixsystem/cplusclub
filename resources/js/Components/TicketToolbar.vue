@@ -53,14 +53,14 @@ const num = (v: string) => v === '' ? null : Number(v);
       <label class="search"><Search aria-hidden="true" /><span class="sr-only">Поиск по заявкам</span>
         <input id="ticket-search" v-model="f.search" type="search" placeholder="№ заявки, ПК или текст" autocomplete="off" @input="typed" @keydown.enter.prevent="apply()" />
       </label>
-      <select v-if="clubs.length > 1" id="ticket-club" aria-label="Клуб" :value="f.club ?? ''" @change="apply({ club: num(($event.target as HTMLSelectElement).value) })">
+      <select v-if="clubs.length > 1" id="ticket-club" aria-label="Фильтр: клуб" :value="f.club ?? ''" @change="apply({ club: num(($event.target as HTMLSelectElement).value) })">
         <option value="">Все клубы</option><option v-for="c in clubs" :key="c.id" :value="c.id">{{ c.name }}</option>
       </select>
-      <select id="ticket-assignee" aria-label="Исполнитель" :value="f.assignee ?? ''" @change="apply({ assignee: (v => v === 'me' || v === 'none' || v === '' ? (v || null) : Number(v))(($event.target as HTMLSelectElement).value) })">
+      <select id="ticket-assignee" aria-label="Фильтр: исполнитель" :value="f.assignee ?? ''" @change="apply({ assignee: (v => v === 'me' || v === 'none' || v === '' ? (v || null) : Number(v))(($event.target as HTMLSelectElement).value) })">
         <option value="">Все исполнители</option><option value="me">Мои заявки</option><option value="none">Без исполнителя</option>
         <option v-for="a in options.assignees" :key="a.id" :value="a.id">{{ a.name }}</option>
       </select>
-      <select v-if="options.categories.length > 1" id="ticket-category" aria-label="Категория" :value="f.category ?? ''" @change="apply({ category: ($event.target as HTMLSelectElement).value || null })">
+      <select v-if="options.categories.length > 1" id="ticket-category" aria-label="Фильтр: категория" :value="f.category ?? ''" @change="apply({ category: ($event.target as HTMLSelectElement).value || null })">
         <option value="">Все категории</option><option v-for="c in options.categories" :key="c" :value="c">{{ c }}</option>
       </select>
       <select id="ticket-period" aria-label="Период" :value="f.period ?? ''" @change="apply({ period: num(($event.target as HTMLSelectElement).value) })">
@@ -72,7 +72,7 @@ const num = (v: string) => v === '' ? null : Number(v);
     </div>
 
     <div class="filters-row">
-      <div class="prio" role="group" aria-label="Приоритет">
+      <div class="prio" role="group" aria-label="Фильтр: приоритет">
         <button v-for="[key, label] in priorities" :key="key" type="button" class="prio-chip" :data-p="key" :aria-pressed="f.priority.includes(key)" @click="togglePriority(key)">
           <i aria-hidden="true"></i>{{ label }}
         </button>

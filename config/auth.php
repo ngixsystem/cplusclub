@@ -114,4 +114,12 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    | Login attempts per minute: per account+IP and per IP. Raised only in the isolated E2E stack.
+    */
+    'login_rate' => [
+        'per_account' => (int) env('LOGIN_RATE_PER_MINUTE', 5),
+        'per_ip' => (int) env('LOGIN_RATE_PER_IP_PER_MINUTE', 30),
+    ],
+
 ];

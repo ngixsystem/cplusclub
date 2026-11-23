@@ -1,4 +1,5 @@
 import {test,expect} from '@playwright/test';
+import {overflowing} from './layout';
 test('PC icons show thermal states, refresh without reload and fit mobile',async({page})=>{
  let polls=0;
  await page.route('**/monitoring/clubs/*',route=>{polls++;return route.fulfill({json:{pcs:[
@@ -12,6 +13,6 @@ test('PC icons show thermal states, refresh without reload and fit mobile',async
  await expect(page.locator('.pc-tile.normal')).toHaveCount(1);await expect(page.locator('.pc-tile.warning')).toHaveCount(1);await expect(page.locator('.pc-tile.critical')).toHaveCount(1);await expect(page.locator('.pc-tile.offline')).toContainText('Нет данных');
  await expect.poll(()=>polls,{timeout:22000}).toBeGreaterThan(1);await expect(page.locator('.pc-tile.critical')).toContainText('85 °C');
  await page.getByRole('combobox',{name:'Показать',exact:true}).selectOption('critical');await expect(page.locator('.pc-tile')).toHaveCount(1);await page.getByRole('combobox',{name:'Показать',exact:true}).selectOption('all');
- await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();await page.screenshot({path:'test-results/monitoring-mobile.png',fullPage:true});
+ await page.setViewportSize({width:390,height:844});expect(await overflowing(page)).toEqual([]);await page.screenshot({path:'test-results/monitoring-mobile.png',fullPage:true});
  await page.setViewportSize({width:1440,height:1000});await page.evaluate(()=>window.scrollTo(0,0));await page.screenshot({path:'test-results/monitoring-desktop.png',fullPage:true});
 });
