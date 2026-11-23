@@ -33,7 +33,7 @@ class BillingLogsTest extends TestCase
             $all = [];
             foreach ($this->days as $events) foreach ($events as $e) {
                 $t = CarbonImmutable::parse($e['log_date_local'], 'Asia/Tashkent');
-                if ($t->greaterThanOrEqualTo($from) && $t->lessThanOrEqualTo($to->addMinute())) $all[] = $e;
+                if ($t->greaterThanOrEqualTo($from) && $t->lessThan($to->addMinute())) $all[] = $e;   // the end minute is inclusive
             }
             usort($all, fn ($a, $b) => $b['log_id'] <=> $a['log_id']);
             $page = (int) ($q['page'] ?? 1);

@@ -59,7 +59,8 @@ final class BillingLogSync
         $oldest = $s->oldest_day;
         $stored = 0;
         for ($n = 0; $n < self::PAGES_PER_RUN; $n++) {
-            [$rows, $pages] = $this->page($club, $day, $day->addDay(), $page);
+            // The end minute is inclusive in iCafeCloud (00:00–23:59 returns 23:59:59 too): no overlap with the next day.
+            [$rows, $pages] = $this->page($club, $day, $day->setTime(23, 59), $page);
             $stored += $this->store($club, $rows);
             if ($rows) { $empty = 0; $oldest = $day->toDateString(); }
             if ($rows && $page < $pages) { $page++; continue; }
