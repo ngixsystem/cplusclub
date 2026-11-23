@@ -45,7 +45,7 @@ class TicketPracticeTest extends TestCase
     private function intake(TrainingTicketRun $run, array $sc): void
     {
         $this->ok($run, 'create', [
-            'equipment_id' => $sc['expected']['equipment'], 'category' => $sc['expected']['category'], 'priority' => $sc['expected']['priority'][0],
+            'equipment_id' => $sc['expected']['equipment'], 'category' => ((array) $sc['expected']['category'])[0], 'priority' => $sc['expected']['priority'][0],
             'description' => 'Клуб сообщает: '.implode(', ', $sc['expected']['keywords']).'. Подробное описание симптома, масштаба и уже выполненных действий.',
         ]);
         $this->ok($run, 'transition', ['to' => 'accepted']);
@@ -90,7 +90,7 @@ class TicketPracticeTest extends TestCase
     {
         $library = new Library;
         $practice = app(TicketPractice::class);
-        $this->assertGreaterThanOrEqual(3, count($practice->scenarios()));
+        $this->assertGreaterThanOrEqual(7, count($practice->scenarios()));
         foreach ($practice->scenarios() as $sc) {
             $actions = collect($sc['actions']);
             $ids = $actions->pluck('id');
@@ -100,7 +100,14 @@ class TicketPracticeTest extends TestCase
             $this->assertNotEmpty($actions->where('role', 'harmful'), $sc['id']);
             $this->assertNotEmpty($actions->filter(fn ($a) => !empty($a['required']) && $a['group'] === 'verify'), $sc['id']);
             $this->assertCount(1, collect($sc['causes'])->where('correct', true), $sc['id']);
-            $this->assertContains($sc['expected']['category'], TicketPractice::CATEGORIES);
+            foreach ((array) $sc['expected']['category'] as $category) {
+                $this->assertNotSame('', $category);
+            }
+            $this->assertContains(((array) $sc['expected']['category'])[0], TicketPractice::CATEGORIES);
+            if ($sc['approval']) {
+                $this->assertNotEmpty($sc['hints']['approval'] ?? null, "$sc[id] approval hint");
+                $this->assertTrue($actions->contains(fn ($a) => !empty($a['needs_approval'])), $sc['id']);
+            }
             foreach ($sc['chapters'] as $chapter) {
                 $this->assertNotNull($library->find($chapter), $chapter);
             }
@@ -132,7 +139,8 @@ class TicketPracticeTest extends TestCase
         $this->assertSame(0, Ticket::count());
         $this->assertSame(0, DB::table('ticket_events')->count() + DB::table('work_logs')->count() + DB::table('outbox_events')->count());
 
-        $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('practice.passed', 3)->where('practice.total', 3)
+        $total = count(app(TicketPractice::class)->scenarios());
+        $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('practice.passed', $total)->where('practice.total', $total)
             ->whereNot('practice.completed_at', null)->where('practice.scenarios.0.best', 100));
     }
 

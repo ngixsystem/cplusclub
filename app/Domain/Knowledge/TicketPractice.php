@@ -24,7 +24,7 @@ final class TicketPractice
 
     public const ROLES = ['owner', 'lead', 'specialist'];
 
-    public const CATEGORIES = ['Диагностика', 'Ремонт', 'Чистка ПК'];
+    public const CATEGORIES = ['Диагностика', 'Ремонт', 'Чистка ПК', 'Обслуживание'];
 
     private ?array $content = null;
 
@@ -231,14 +231,15 @@ final class TicketPractice
 
         // 1. Intake (20)
         $equipmentOk = in_array($t['equipment_id'] ?? null, $expected['equipment_ok'] ?? [$expected['equipment']], true);
-        $categoryOk = mb_strtolower(trim($t['category'] ?? '')) === mb_strtolower($expected['category']);
+        $categories = (array) $expected['category'];
+        $categoryOk = in_array(mb_strtolower(trim($t['category'] ?? '')), array_map('mb_strtolower', $categories), true);
         $priorityOk = in_array($t['priority'] ?? null, $expected['priority'], true);
         $desc = mb_strtolower($t['description'] ?? '');
         $keywords = collect($expected['keywords'])->filter(fn ($k) => str_contains($desc, mb_strtolower($k)))->count();
         $descPoints = mb_strlen($desc) >= 40 && $keywords > 0 ? 5 : (mb_strlen($desc) >= 20 ? 2 : 0);
         $add('Оформление заявки', ($equipmentOk ? 5 : 0) + ($categoryOk ? 5 : 0) + ($priorityOk ? 5 : 0) + $descPoints, 20, implode(' · ', [
             $equipmentOk ? 'оборудование верно' : 'неверная привязка к оборудованию',
-            $categoryOk ? 'категория верна' : 'категория: ожидалась «'.$expected['category'].'»',
+            $categoryOk ? 'категория верна' : 'категория: ожидалась «'.$categories[0].'»',
             $priorityOk ? 'приоритет верен' : 'приоритет не соответствует масштабу',
             $descPoints === 5 ? 'описание содержательное' : 'описание без деталей (текст ошибки, масштаб, что делали)',
         ]));
