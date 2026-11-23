@@ -27,6 +27,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/training', [\App\Http\Controllers\TrainingController::class, 'index'])->name('training.index');
     Route::post('/training/{track}/start', [\App\Http\Controllers\TrainingController::class, 'start'])->where('track', '[a-z0-9-]+')->middleware('throttle:training');
     Route::post('/training/{track}/exam', [\App\Http\Controllers\TrainingController::class, 'examStart'])->where('track', '[a-z0-9-]+')->middleware('throttle:training');
+    Route::post('/training/practice/{scenario}', [\App\Http\Controllers\TrainingController::class, 'practiceStart'])->where('scenario', '[a-z0-9-]+')->middleware('throttle:training');
+    Route::post('/training/practice/run/{run}/check', [\App\Http\Controllers\TrainingController::class, 'practiceCheck'])->whereNumber('run')->middleware('throttle:training');
     Route::get('/training/exam/{attempt}', [\App\Http\Controllers\TrainingController::class, 'exam'])->whereNumber('attempt')->name('training.exam');
     Route::post('/training/exam/{attempt}', [\App\Http\Controllers\TrainingController::class, 'examSubmit'])->whereNumber('attempt')->middleware('throttle:training');
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class,'index']);

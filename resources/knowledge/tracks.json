@@ -9,6 +9,7 @@
    "owner"
   ],
   "chapters": [
+   "cplusclub-tickets",
    "daily-operations",
    "support-package",
    "first-start",
@@ -27,6 +28,15 @@
    "points_per_answer": 5,
    "pass_percent": 80,
    "retake_minutes": 30
+  },
+  "practice": {
+   "scenarios": [
+    "pc-no-ip",
+    "windows-logo-update",
+    "game-gamefix",
+    "pc-overheat"
+   ],
+   "pass_score": 70
   }
  },
  {

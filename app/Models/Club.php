@@ -10,4 +10,10 @@ class Club extends Model
     protected function casts(): array { return ['icafe_token' => 'encrypted', 'map_layout' => 'array']; }
     protected $fillable = ['name', 'address', 'timezone', 'contacts', 'specialist_id', 'support_hours', 'status', 'notes'];
     public function members() { return $this->belongsToMany(User::class); }
+
+    /** The hidden training club (ticket practice) never appears in lists, reports or access checks. */
+    protected static function booted(): void
+    {
+        static::addGlobalScope('real', fn (\Illuminate\Database\Eloquent\Builder $q) => $q->where('clubs.is_training', false));
+    }
 }

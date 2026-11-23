@@ -40,6 +40,32 @@ class TrainingTest extends TestCase
         $this->postJson("/knowledge/quiz/$attempt", ['answers' => $this->answers($attempt)])->assertOk()->assertJson(['passed' => true]);
     }
 
+    /** Works every practice ticket of the program to full marks through the real ticket endpoints. */
+    private function completePractice(array $track): void
+    {
+        $practice = app(\App\Domain\Training\Practice::class);
+        foreach ($track['practice']['scenarios'] as $id) {
+            $scenario = $practice->scenario($id);
+            $this->post("/training/practice/$id")->assertRedirect();
+            $run = \App\Models\TrainingRun::where('scenario_id', $id)->where('status', 'active')->firstOrFail();
+            $ticket = fn () => \App\Models\Ticket::findOrFail($run->ticket_id);
+            foreach (['accepted', 'working'] as $status) {
+                $this->post("/tickets/{$run->ticket_id}/transition", ['status' => $status, 'version' => $ticket()->version])->assertSessionHasNoErrors();
+            }
+            foreach (collect($scenario['checks'])->where('key', true) as $check) {
+                $this->post("/training/practice/run/{$run->id}/check", ['check' => $check['id']])->assertSessionHasNoErrors();
+            }
+            if ($scenario['approval']) {
+                $this->post("/tickets/{$run->ticket_id}/proposal", ['version' => $ticket()->version, 'description' => 'Работы', 'amount_minor' => 100, 'currency' => 'USD', 'expected_duration' => '1 день']);
+            }
+            $this->post("/tickets/{$run->ticket_id}/work", ['minutes' => 10, 'cost_minor' => 0, 'currency' => 'USD', 'actions' => 'Работы']);
+            $m = $scenario['model'];
+            $this->post("/tickets/{$run->ticket_id}/transition", ['status' => 'resolved', 'version' => $ticket()->version,
+                'work_result' => $m['work'], 'verification_result' => $m['verification'], 'cause' => $m['cause'], 'solution' => $m['solution']])->assertSessionHasNoErrors();
+            $this->assertTrue($run->fresh()->passed, $id);
+        }
+    }
+
     public function test_content_tracks_and_question_bank_are_consistent(): void
     {
         $library = new Library;
@@ -114,15 +140,15 @@ class TrainingTest extends TestCase
 
         // The checklist alone does not complete a chapter that has a test.
         $this->postJson('/knowledge/first-start/progress', ['checked' => [0, 1, 2, 3]])->assertOk();
-        $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('tracks.0.chapters.2.id', 'first-start')
-            ->where('tracks.0.chapters.2.checklist_done', true)->where('tracks.0.chapters.2.done', false)->where('tracks.0.done', 0));
+        $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('tracks.0.chapters.3.id', 'first-start')
+            ->where('tracks.0.chapters.3.checklist_done', true)->where('tracks.0.chapters.3.done', false)->where('tracks.0.done', 0));
 
         $retry = $this->postJson('/knowledge/first-start/quiz')->json('attempt');
         $this->postJson("/knowledge/quiz/$retry", ['answers' => $this->answers($retry)])->assertOk()
             ->assertJson(['correct' => 5, 'percent' => 100, 'passed' => true, 'quiz' => ['best_percent' => 100, 'passed' => true, 'attempts' => 2]]);
         $this->assertNotNull(KnowledgeProgress::where('user_id', $user->id)->value('quiz_passed_at'));
-        $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('tracks.0.chapters.2.done', true)->where('tracks.0.done', 1)
-            ->where('tracks.0.next.id', 'daily-operations'));
+        $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('tracks.0.chapters.3.done', true)->where('tracks.0.done', 1)
+            ->where('tracks.0.next.id', 'cplusclub-tickets'));
 
         // Someone else's attempt is invisible; unknown answers count as wrong.
         $this->actingAs(User::factory()->create(['role' => 'specialist']))->postJson("/knowledge/quiz/$retry", ['answers' => []])->assertNotFound();
@@ -174,7 +200,10 @@ class TrainingTest extends TestCase
         foreach ($track['chapters'] as $chapter) {
             $this->study($chapter);
         }
-        $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('tracks.0.done', 12)->where('tracks.0.exam.available', true)
+        $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('tracks.0.done', 13)->where('tracks.0.exam.available', false)
+            ->where('tracks.0.exam.locked_reason', fn ($r) => str_contains($r, 'практикум')));
+        $this->completePractice($track);
+        $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('tracks.0.practice.passed', 4)->where('tracks.0.exam.available', true)
             ->where('tracks.0.enrollment.completed_at', null));
 
         // Exam: 20 questions covering every chapter, no answers on the page; starting again resumes the same attempt.
@@ -194,7 +223,7 @@ class TrainingTest extends TestCase
         $this->post("/training/exam/{$exam->id}", ['answers' => $this->answers($exam->id, false, 5)])->assertRedirect("/training/exam/{$exam->id}");
         $this->get("/training/exam/{$exam->id}")->assertInertia(fn (Assert $p) => $p->where('questions', null)
             ->where('result.points', 75)->where('result.max_points', 100)->where('result.passed', false)
-            ->where('result.duration_seconds', 720)->has('result.chapters', 12)->missing('result.review'));
+            ->where('result.duration_seconds', 720)->has('result.chapters', 13)->missing('result.review'));
         $this->post("/training/exam/{$exam->id}", ['answers' => []])->assertRedirect("/training/exam/{$exam->id}"); // no regrade
         $this->assertSame(75, $exam->fresh()->points);
         $this->post('/training/engineer-start/exam')->assertSessionHasErrors('exam');
@@ -262,6 +291,6 @@ class TrainingTest extends TestCase
     public function test_knowledge_index_shows_my_tracks(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'lead']))->get('/knowledge')->assertOk()
-            ->assertInertia(fn (Assert $p) => $p->has('training', 2)->where('training.0.next.id', 'daily-operations'));
+            ->assertInertia(fn (Assert $p) => $p->has('training', 2)->where('training.0.next.id', 'cplusclub-tickets'));
     }
 }

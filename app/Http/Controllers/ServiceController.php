@@ -163,6 +163,7 @@ class ServiceController extends Controller
             'canEdit' => Gate::allows('update', $ticket),
             'canAttach' => Gate::allows('attach', $ticket),
             'canDecide' => Gate::allows('decide', $ticket),
+            'training' => $ticket->isTraining() ? app(\App\Domain\Training\Practice::class)->forTicket($ticket) : null,
             'proposals' => DB::table('ticket_proposals as p')->join('users as a', 'a.id', '=', 'p.author_id')
                 ->leftJoin('users as d', 'd.id', '=', 'p.decided_by')->where('p.ticket_id', $ticket->id)
                 ->orderByDesc('p.id')->get(['p.*', 'a.name as author_name', 'd.name as decision_name']),
@@ -182,6 +183,7 @@ class ServiceController extends Controller
             'cause' => 'nullable|string|max:10000', 'solution' => 'nullable|string|max:10000', 'comment' => 'nullable|string|max:5000',
         ]);
         $service->execute($request->user(), $ticket->id, TicketStatus::from($data['status']), $data['version'], $data);
+        app(\App\Domain\Training\Practice::class)->afterChange($ticket->fresh());
         return back()->with('success', 'Статус изменён, запись добавлена в историю.');
     }
 

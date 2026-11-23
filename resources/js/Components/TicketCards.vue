@@ -3,7 +3,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import { Clock, Cpu } from 'lucide-vue-next';
 
-type Item = { id: number; description?: string; status: string; priority?: string; category?: string; created_at?: string; updated_at?: string; first_responded_at?: string | null; resolved_at?: string | null; closed_at?: string | null; club?: { name: string }; equipment?: { id: number; name: string; workstation_number?: string | null } | null; assignee?: { name: string } | null };
+type Item = { id: number; training_user_id?: number | null; description?: string; status: string; priority?: string; category?: string; created_at?: string; updated_at?: string; first_responded_at?: string | null; resolved_at?: string | null; closed_at?: string | null; club?: { name: string }; equipment?: { id: number; name: string; workstation_number?: string | null } | null; assignee?: { name: string } | null };
 const props = withDefaults(defineProps<{ items: Item[]; view?: 'cards' | 'list'; loading?: boolean }>(), { view: 'cards', loading: false });
 
 const statuses: Record<string, string> = { new: 'Новая', accepted: 'Принята', working: 'В работе', approval: 'Согласование', parts: 'Ждёт запчасти', resolved: 'Решена', closed: 'Закрыта' };
@@ -54,8 +54,8 @@ const pc = (t: Item) => t.equipment ? t.equipment.name + (t.equipment.workstatio
           <span class="badge" :data-status="t.status">{{ statuses[t.status] ?? t.status }}</span>
           <span class="t-prio" :data-p="t.priority"><i aria-hidden="true"></i>{{ priorities[t.priority ?? 'normal'] }}</span>
         </header>
-        <p class="t-where"><span>{{ t.club?.name ?? 'Клуб не указан' }}</span>
-          <template v-if="pc(t)"><span aria-hidden="true">·</span><Link :href="'/equipment/' + t.equipment!.id" class="t-pc"><Cpu aria-hidden="true" />{{ pc(t) }}</Link></template>
+        <p class="t-where"><span v-if="t.training_user_id" class="t-training">Учебная</span><span>{{ t.club?.name ?? 'Клуб не указан' }}</span>
+          <template v-if="pc(t) && t.training_user_id"><span aria-hidden="true">·</span><span class="t-pc"><Cpu aria-hidden="true" />{{ pc(t) }}</span></template><template v-else-if="pc(t)"><span aria-hidden="true">·</span><Link :href="'/equipment/' + t.equipment!.id" class="t-pc"><Cpu aria-hidden="true" />{{ pc(t) }}</Link></template>
           <template v-else><span aria-hidden="true">·</span><span class="muted">общая заявка</span></template>
         </p>
         <h3><Link :href="'/tickets/' + t.id" class="t-title">{{ firstLine(t.description) }}</Link></h3>
@@ -79,7 +79,7 @@ const pc = (t: Item) => t.equipment ? t.equipment.name + (t.equipment.workstatio
     <template v-else>
       <Link v-for="t in items" :key="t.id" :href="'/tickets/' + t.id" class="t-row" :data-priority="t.priority">
         <span class="t-id tabular">#{{ t.id }}</span>
-        <span class="t-row-main"><b>{{ firstLine(t.description) }}</b><small>{{ t.club?.name }}<template v-if="pc(t)"> · {{ pc(t) }}</template></small></span>
+        <span class="t-row-main"><b>{{ firstLine(t.description) }}</b><small><template v-if="t.training_user_id">Учебная · </template>{{ t.club?.name }}<template v-if="pc(t)"> · {{ pc(t) }}</template></small></span>
         <span class="badge" :data-status="t.status">{{ statuses[t.status] ?? t.status }}</span>
         <span class="age" :data-tone="age(t).tone"><Clock aria-hidden="true" />{{ age(t).text }}</span>
         <span class="t-avatar" :class="{ unassigned: !t.assignee }" :title="t.assignee?.name ?? 'Не назначен'">{{ t.assignee ? initials(t.assignee.name) : '?' }}</span>
@@ -110,6 +110,7 @@ const pc = (t: Item) => t.equipment ? t.equipment.name + (t.equipment.workstatio
 .t-pc svg { width:13px; height:13px; color:var(--muted) }
 .t-pc:hover { text-decoration:underline; text-underline-offset:3px }
 .t-card h3 { margin:0; font-size:15.5px; font-weight:600; line-height:1.4; letter-spacing:-.01em }
+.t-training { font-size:10px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; color:var(--accent-text); border:1px solid currentColor; border-radius:4px; padding:0 5px; margin-right:6px }
 .t-title { color:var(--text); display:-webkit-box; -webkit-line-clamp:2; line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; overflow-wrap:anywhere }
 .t-title:after { content:""; position:absolute; inset:0; z-index:0 }
 .t-pc,.t-foot { position:relative; z-index:1 }
