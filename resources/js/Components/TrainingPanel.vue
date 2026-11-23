@@ -110,11 +110,11 @@ const nextStep = computed(() => ({
 .tp-score{font-size:14px;margin:14px 0}
 .tp-score b{font-size:34px;color:var(--warning)}
 .tp-score.ok b{color:var(--accent-text)}
-.tp-table{width:100%;border-collapse:collapse;font-size:13px}
+.tp-table{width:100%;min-width:0;border-collapse:collapse;font-size:13px;table-layout:fixed}
 .tp-table th,.tp-table td{text-align:left;padding:10px 8px;border-bottom:1px solid var(--border);vertical-align:top}
-.tp-table th{font-weight:600}
+.tp-table th{font-weight:600;white-space:normal;overflow-wrap:anywhere}
 .tp-table th small{display:block;font-weight:400;color:var(--muted);font-size:12px;line-height:1.6;margin-top:2px}
-.tp-table td{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--accent-text);width:80px}
+.tp-table td{white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--accent-text);width:72px;text-align:right}
 .tp-table tr.miss td{color:var(--warning)}
 .tp-model{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;font-size:13px;line-height:1.6;margin:0}
 .tp-model dt{color:var(--muted)}
