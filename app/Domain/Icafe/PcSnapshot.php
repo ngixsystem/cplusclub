@@ -12,8 +12,10 @@ use Illuminate\Support\Facades\{Cache, Log};
  */
 class PcSnapshot
 {
-    /** A snapshot older than this is refreshed live by the request itself (background refresh stalled). */
-    public const MAX_AGE = 45;
+    /** Younger than this: served as is. */
+    public const FRESH = 20;
+    /** Up to this age: served at once and refreshed right after the response is sent. Older: fetched live. */
+    public const MAX_STALE = 300;
 
     public function __construct(private Client $icafe) {}
 
@@ -23,7 +25,12 @@ class PcSnapshot
     public function get(Club $club): array
     {
         $s = Cache::get(self::key($club->id));
-        if (is_array($s) && CarbonImmutable::parse($s['fetched_at'])->diffInSeconds(now(), true) <= self::MAX_AGE) return $s;
+        $age = is_array($s) ? CarbonImmutable::parse($s['fetched_at'])->diffInSeconds(now(), true) : null;
+        if ($age !== null && $age <= self::FRESH) return $s;
+        if ($age !== null && $age <= self::MAX_STALE) {
+            app()->terminating(fn () => $this->refreshOnce($club));
+            return $s;
+        }
         return $this->fetch($club);
     }
 
@@ -36,6 +43,13 @@ class PcSnapshot
         $s = ['pcs' => $pcs, 'online' => $online, 'fetched_at' => now()->toIso8601String()];
         Cache::put(self::key($club->id), $s, 120);
         return $s;
+    }
+
+    /** Background refresh after the response; one at a time per club. */
+    public function refreshOnce(Club $club): void
+    {
+        try { Cache::lock('ext:pcs-refresh:'.$club->id, 30)->get(fn () => $this->fetch($club)); }
+        catch (\Throwable $e) { Log::warning('pc snapshot refresh failed', ['club' => $club->id, 'error' => $e->getMessage()]); }
     }
 
     /** Refreshes only clubs that have an active API client allowed to read PCs. */

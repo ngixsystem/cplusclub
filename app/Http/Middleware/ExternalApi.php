@@ -23,7 +23,7 @@ class ExternalApi
         if (! $client) return self::error('unauthorized', 'Нет токена или токен недействителен.', 401);
         $response = $this->guarded($request, $next, $client, $scope);
         DB::table('api_requests')->insert(['api_client_id' => $client->id, 'method' => $request->method(), 'path' => mb_substr('/'.$request->path(), 0, 200),
-            'status' => $response->getStatusCode(), 'ip' => $request->ip(), 'ms' => (int) round((microtime(true) - $started) * 1000), 'created_at' => now()]);
+            'status' => $response->getStatusCode(), 'query' => $request->getQueryString() !== null ? mb_substr($request->getQueryString(), 0, 500) : null, 'ip' => $request->ip(), 'ms' => (int) round((microtime(true) - $started) * 1000), 'created_at' => now()]);
         if ($response->getStatusCode() < 400) DB::table('api_clients')->where('id', $client->id)->update(['last_used_at' => now(), 'last_ip' => $request->ip()]);
         $response->headers->set('Cache-Control', 'no-store');
         return $response;
