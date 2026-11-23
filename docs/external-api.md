@@ -5,6 +5,7 @@
 
 ## Подключение
 
+- **Разделы токена:** `pcs` (статус мест), `shifts` (смены), `billing` (логи биллинга)
 - **Базовый адрес:** `https://admin.cplusclub.tech/api/ext/v1`
 - **Авторизация:** заголовок `Authorization: Bearer <токен>` (токен начинается с `ccx_`)
 - **Формат:** JSON, UTF-8
@@ -128,12 +129,60 @@ curl -H "Authorization: Bearer ccx_..." https://admin.cplusclub.tech/api/ext/v1/
 Самый простой способ синхронизации: раз в 15 минут запрашивайте последние 2 суток и **заменяйте целиком**
 все свои записи за этот период. Закрытые смены (`status: closed`) после этого не меняются.
 
+## GET /billing-logs — события биллинга по одному
+
+Раздел `billing`. Сырые события из логов биллинга iCafeCloud — те же поля, что в его CSV-выгрузке.
+C+CLub забирает новые события каждую минуту и хранит их у себя без ограничения по сроку
+(сам iCafeCloud хранит около 6 недель; всё, что у него было на момент подключения, загружено в историю).
+
+| Параметр | По умолчанию | Описание |
+|---|---|---|
+| `since` | 0 | курсор: `id` последнего полученного события; вернутся события с `id` больше него |
+| `limit` | 500 | 1–1000 |
+| `from`, `to` | — | фильтр по времени события (`2026-11-01` или `2026-11-01T08:00:00`, время клуба) |
+| `event` | все | типы через запятую: `TOPUP,CHECKOUT,BUYOFFER` |
+
+Сортировка по `id`. **Как синхронизироваться:** сохраните `meta.next_since` и раз в 1–2 минуты
+запрашивайте `?since=<сохранённое>`; пока `meta.has_more = true`, запрашивайте следующую порцию сразу.
+Так вы получите каждое событие ровно один раз. Старая история, догруженная позже, тоже получает новые `id`
+и придёт через тот же курсор, поэтому для хронологии сортируйте по `occurred_at`.
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `id` | int | уникальный id в C+CLub, курсор |
+| `log_id` | string | id события в iCafeCloud |
+| `occurred_at` | string | время события |
+| `event` | string | тип: `TOPUP`, `CHECKOUT`, `LOGIN`, `PRICECALC`, `BUYOFFER`, `OFFER`, `OFFER_END`, `POINTS`, `POSTPAID`, `PREPAID`, `SHIFTSTART`, `SHIFTEND`, `ACCOUNTADD`, `ACCOUNTDELETE`, `DELETEOFFER`, `MOVEOFFER`, `MOVEPOSTPAID`, `MOVEPREPAID`, `CLIENTREQUEST`, `EXPORTBILLINGLOGS` и другие |
+| `member_account` | string \| null | логин клиента |
+| `pc_name` | string \| null | номер ПК |
+| `money`, `spend`, `card`, `bonus`, `coin` | number | суммы, как в колонках CSV |
+| `used_seconds` | int \| null | использованное время в секундах |
+| `details` | string \| null | описание события от iCafeCloud |
+| `staff_name` | string \| null | оператор |
+| `package` | string \| null | пакет / тариф |
+| `currency` | string | валюта клуба |
+
+```json
+{
+  "data": [
+    { "id": 120431, "log_id": "649625972", "occurred_at": "2026-11-23T13:43:26+05:00", "event": "TOPUP",
+      "member_account": "ali", "pc_name": "007", "money": 10000, "spend": 0, "card": 0, "bonus": 0, "coin": 0,
+      "used_seconds": null, "details": "topup from cafe", "staff_name": "operator_01", "package": null, "currency": "UZS" },
+    { "id": 120432, "log_id": "649626192", "occurred_at": "2026-11-23T13:46:46+05:00", "event": "CHECKOUT",
+      "member_account": "ali", "pc_name": "114", "money": 0, "spend": 500, "card": 0, "bonus": 0, "coin": 0,
+      "used_seconds": 300, "details": "Balance checked out by auto and used 0.00 bonus", "staff_name": "operator_02",
+      "package": null, "currency": "UZS" }
+  ],
+  "meta": { "count": 2, "next_since": 120432, "has_more": false,
+            "sync": { "live_at": "2026-11-23T14:00:05+05:00", "history_complete": true, "history_from": "2026-10-09" } }
+}
+```
+
 ---
 
 ## Дальше
 
 | Раздел | Статус |
 |---|---|
-| Логи биллинга по событиям (`/billing-logs`, курсор `since`, история за 3 месяца) | в разработке |
 | Чеки бара (`/bar-receipts`, позиции, отменённые и возвратные) | в разработке |
 | Вебхуки (POST на ваш URL при событии) | после логов биллинга |
