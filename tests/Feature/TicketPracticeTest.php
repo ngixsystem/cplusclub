@@ -204,6 +204,9 @@ class TicketPracticeTest extends TestCase
         $this->assertTrue($run->fresh()->state['fix']['unapproved']);
         $this->act($run, 'proposal', ['description' => '', 'amount' => 'x', 'expected_duration' => ''])->assertSessionHasErrors(['description', 'amount', 'expected_duration']);
 
+        $this->assertSame($run->id, $this->startRun('writeback-ssd')->id); // an unfinished trial is resumed, not restarted
+
+        $this->actingAs(User::factory()->create(['role' => 'lead']));
         $good = $this->startRun('writeback-ssd');
         $this->assertNotSame($run->id, $good->id);
         $this->intake($good, $sc);
