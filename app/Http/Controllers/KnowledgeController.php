@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\Knowledge\{Article, Library, Training};
+use App\Domain\Knowledge\{Article, Library, Quizzes, Training};
+use App\Models\QuizAttempt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\{Inertia, Response};
@@ -49,6 +50,7 @@ final class KnowledgeController extends Controller
             'category' => collect($library->content()['categories'])->firstWhere('id', $entry->data['category']),
             'related' => array_values(array_map($compact, array_slice($related, 0, 6))),
             'progress' => $entry->data['kind'] === 'guide' ? $training->checkedFor($request->user(), $entry) : [],
+            'quiz' => $entry->data['kind'] === 'guide' && Gate::allows('track', $entry) ? $training->quizState($request->user(), $entry) : null,
         ]);
     }
 
@@ -65,5 +67,30 @@ final class KnowledgeController extends Controller
             'checked' => $row?->checked ?? [],
             'completed' => (bool) $row?->completed_at,
         ]);
+    }
+
+    /** Starts a chapter test: questions with shuffled options, no answers. */
+    public function quizStart(string $article, Library $library, Training $training, Quizzes $quizzes, Request $request)
+    {
+        $entry = $library->find($article);
+        abort_unless($entry, 404);
+        Gate::authorize('track', $entry);
+        abort_unless($quizzes->has($article), 404);
+        $attempt = $training->startChapterQuiz($request->user(), $entry);
+
+        return response()->json(['attempt' => $attempt->id, 'questions' => $quizzes->present($attempt)]);
+    }
+
+    /** Grades a chapter test; the review shows the right answers with explanations. */
+    public function quizSubmit(QuizAttempt $attempt, Training $training, Library $library, Request $request)
+    {
+        abort_unless($attempt->user_id === $request->user()->id && $attempt->kind === 'chapter', 404);
+        $entry = $library->find($attempt->subject);
+        abort_unless($entry, 404);
+        Gate::authorize('track', $entry);
+        abort_if((bool) $attempt->finished_at, 409, 'Тест уже проверен. Начните новую попытку.');
+        $data = $request->validate(['answers' => 'present|array|max:20', 'answers.*' => 'nullable|integer|min:0|max:9']);
+
+        return response()->json($training->submitChapterQuiz($request->user(), $attempt, $data['answers']));
     }
 }

@@ -21,8 +21,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/clubs/{club}/map/status', [\App\Http\Controllers\ClubMapController::class, 'status'])->middleware('throttle:live');
     Route::get('/knowledge', [\App\Http\Controllers\KnowledgeController::class, 'index'])->name('knowledge.index');
     Route::get('/knowledge/{article}', [\App\Http\Controllers\KnowledgeController::class, 'show'])->where('article', '[a-z0-9-]+')->name('knowledge.show');
-    Route::post('/knowledge/{article}/progress', [\App\Http\Controllers\KnowledgeController::class, 'progress'])->where('article', '[a-z0-9-]+')->middleware('throttle:120,1');
+    Route::post('/knowledge/{article}/progress', [\App\Http\Controllers\KnowledgeController::class, 'progress'])->where('article', '[a-z0-9-]+')->middleware('throttle:training');
+    Route::post('/knowledge/{article}/quiz', [\App\Http\Controllers\KnowledgeController::class, 'quizStart'])->where('article', '[a-z0-9-]+')->middleware('throttle:training');
+    Route::post('/knowledge/quiz/{attempt}', [\App\Http\Controllers\KnowledgeController::class, 'quizSubmit'])->whereNumber('attempt')->middleware('throttle:training');
     Route::get('/training', [\App\Http\Controllers\TrainingController::class, 'index'])->name('training.index');
+    Route::post('/training/{track}/start', [\App\Http\Controllers\TrainingController::class, 'start'])->where('track', '[a-z0-9-]+')->middleware('throttle:training');
+    Route::post('/training/{track}/exam', [\App\Http\Controllers\TrainingController::class, 'examStart'])->where('track', '[a-z0-9-]+')->middleware('throttle:training');
+    Route::get('/training/exam/{attempt}', [\App\Http\Controllers\TrainingController::class, 'exam'])->whereNumber('attempt')->name('training.exam');
+    Route::post('/training/exam/{attempt}', [\App\Http\Controllers\TrainingController::class, 'examSubmit'])->whereNumber('attempt')->middleware('throttle:training');
     Route::get('/profile', [\App\Http\Controllers\ProfileController::class,'index']);
     Route::get('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'image']);
     Route::post('/profile/avatar', [\App\Http\Controllers\ProfileController::class,'avatar'])->middleware('throttle:avatar');
