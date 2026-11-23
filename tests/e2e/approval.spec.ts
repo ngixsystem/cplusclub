@@ -1,4 +1,5 @@
 import {test,expect,Page} from '@playwright/test';
+import {overflowing} from './layout';
 
 async function login(page:Page,email:string){
  await page.goto('/login');await page.getByLabel('Email',{exact:true}).fill(email);
@@ -34,7 +35,7 @@ test('club owner approves a quote and accepts completed work',async({page,browse
  await expect(page.locator('option[value="closed"]')).toHaveCount(0);
  await client.reload();await client.setViewportSize({width:390,height:844});
  await expect(client.getByRole('button',{name:'Принять результат и закрыть',exact:true})).toBeVisible();
- expect(await client.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+ await expect.poll(()=>overflowing(client)).toEqual([]);
  await client.screenshot({path:'test-results/approval-mobile.png',fullPage:true});
  await client.getByRole('button',{name:'Принять результат и закрыть',exact:true}).click();
  await expect(client.getByText('Решена → Закрыта',{exact:true})).toBeVisible();
@@ -47,7 +48,7 @@ test('club owner approves a quote and accepts completed work',async({page,browse
  const csvUrl=await client.getByRole('link',{name:'Скачать CSV',exact:true}).getAttribute('href');
  expect(csvUrl).toContain('club_id=');
  const csv=await client.request.get(csvUrl!);expect(csv.ok()).toBeTruthy();expect(await csv.text()).toContain('Approval E2E');
- expect(await client.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
+ await expect.poll(()=>overflowing(client)).toEqual([]);
  await client.screenshot({path:'test-results/reports-mobile.png',fullPage:true});
  await client.setViewportSize({width:1440,height:1000});await client.screenshot({path:'test-results/reports-desktop.png',fullPage:true});
  await client.getByRole('button',{name:'Трудозатраты и расходы',exact:true}).click();

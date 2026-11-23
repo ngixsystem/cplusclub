@@ -29,9 +29,13 @@ class AppServiceProvider extends ServiceProvider
         $who = fn ($r) => (string) ($r->user()?->getAuthIdentifier() ?? $r->ip());
         // Login: 5 tries per account per IP, plus a looser per-IP cap. Club staff often
         // share one NAT address, so the IP-only cap must allow several people at once.
+        // The isolated browser E2E stack logs in as one account a dozen times in a few minutes,
+        // so it raises these through LOGIN_RATE_PER_MINUTE; production keeps the defaults.
+        $perAccount = (int) config('auth.login_rate.per_account', 5);
+        $perIp = (int) config('auth.login_rate.per_ip', 30);
         \Illuminate\Support\Facades\RateLimiter::for('login', fn ($r) => [
-            $limit::perMinute(5)->by('login|'.mb_strtolower((string) $r->input('email')).'|'.$r->ip()),
-            $limit::perMinute(30)->by('login-ip|'.$r->ip()),
+            $limit::perMinute($perAccount)->by('login|'.mb_strtolower((string) $r->input('email')).'|'.$r->ip()),
+            $limit::perMinute($perIp)->by('login-ip|'.$r->ip()),
         ]);
         \Illuminate\Support\Facades\RateLimiter::for('password', fn ($r) => $limit::perMinute(5)->by('password|'.$who($r)));
         \Illuminate\Support\Facades\RateLimiter::for('avatar', fn ($r) => $limit::perMinute(10)->by('avatar|'.$who($r)));

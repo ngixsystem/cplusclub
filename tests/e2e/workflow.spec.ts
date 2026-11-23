@@ -32,7 +32,7 @@ test('club → PC → ticket → assignment → work → close → history',asyn
   await expect(page.getByRole('button',{name:'Сохранить переход',exact:true})).toHaveCount(0);
   await expect(page.getByRole('button',{name:'Добавить запись',exact:true})).toHaveCount(0);
   await expect(page.locator('input[type="file"]')).toHaveCount(0);
-  const ticketUrl=page.url();const equipmentUrl=await page.getByRole('link',{name:'PC-01',exact:true}).getAttribute('href');await page.goto(equipmentUrl!);await expect(page.locator(`a[href="${new URL(ticketUrl).pathname}"]`)).toBeVisible();await expect(page.getByText('Закрыта',{exact:false})).toBeVisible();await page.goto(ticketUrl);
+  const ticketUrl=page.url();const equipmentUrl=await page.getByRole('link',{name:'PC-01',exact:true}).getAttribute('href');await page.goto(equipmentUrl!);await expect(page.locator(`a[href="${new URL(ticketUrl).pathname}"]`).first()).toBeVisible();await expect(page.getByText('Закрыта',{exact:false}).first()).toBeVisible();await page.goto(ticketUrl);
   await page.setViewportSize({width:390,height:844});await expect(page.getByRole('heading',{name:'История',exact:true})).toBeVisible();
   await page.goto('/equipment');await page.getByRole('button',{name:'+ Добавить'}).click();await page.getByRole('combobox',{name:'Клуб',exact:true}).selectOption({label:name});await page.getByLabel('Название',{exact:true}).fill('Boot server');await page.getByRole('combobox',{name:'Тип',exact:true}).selectOption('server');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await expect(page.getByText('Оборудование добавлено.',{exact:true})).toBeVisible();
   await page.goto('/tickets');await page.getByRole('button',{name:'+ Добавить'}).click();await page.getByRole('combobox',{name:'Клуб',exact:true}).selectOption({label:name});await page.getByRole('combobox',{name:'Оборудование клуба',exact:true}).selectOption({label:'Boot server · Сервер'});await page.getByLabel('Описание',{exact:true}).fill('E2E: server issue');await page.getByRole('button',{name:'Сохранить',exact:true}).click();await expect(page.getByRole('heading',{name:/Заявка #/})).toBeVisible();
@@ -43,13 +43,13 @@ test('club → PC → ticket → assignment → work → close → history',asyn
   await page.setViewportSize({width:1440,height:1000});
   await page.screenshot({path:'test-results/equipment-desktop.png',fullPage:true});
   await page.goBack();
-  const serverTicketUrl=page.url();await page.getByRole('link',{name:'Boot server',exact:true}).click();await expect(page.locator(`a[href="${new URL(serverTicketUrl).pathname}"]`)).toBeVisible();
+  const serverTicketUrl=page.url();await page.getByRole('link',{name:'Boot server',exact:true}).click();await expect(page.locator(`a[href="${new URL(serverTicketUrl).pathname}"]`).first()).toBeVisible();
   await page.goto('/tickets');
-  await expect(page.locator('.ticket-card').first()).toContainText('Boot server');
-  await expect(page.locator('.ticket-card').first()).toContainText('Не назначен');
+  await expect(page.locator('.t-card').first()).toContainText('Boot server');
+  await expect(page.locator('.t-card').first()).toContainText('Не назначен');
   await page.screenshot({path:'test-results/tickets-desktop.png',fullPage:true});
   await page.setViewportSize({width:390,height:844});
   await expect.poll(()=>page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBeTruthy();
   await page.screenshot({path:'test-results/tickets-mobile.png',fullPage:true});
-  await page.locator('.ticket-card').first().getByRole('link',{name:/Открыть заявку/}).click();
+  await page.locator('.t-card').first().locator('a.t-title').click();
   await expect(page.getByRole('heading',{name:/Заявка #/})).toBeVisible();});

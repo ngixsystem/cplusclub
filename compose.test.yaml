@@ -28,6 +28,8 @@ services:
       SESSION_DRIVER: redis
       CACHE_STORE: redis
       TELEGRAM_TRANSPORT: fake
+      LOGIN_RATE_PER_MINUTE: "1000"
+      LOGIN_RATE_PER_IP_PER_MINUTE: "1000"
     depends_on:
       postgres: {condition: service_healthy}
   nginx:
