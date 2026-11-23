@@ -21,10 +21,10 @@ test('ticket practice demo: message → ticket → diagnostics → fix → close
  await expect(page.getByText(/PXE-E51: No DHCP/).first()).toBeVisible();
 
  // Ticket intake with the same fields as the real form.
- await page.getByLabel('Оборудование клуба', { exact: true }).selectOption({ label: 'PC-07 · место 07 · Standard' });
- await page.getByLabel('Категория', { exact: true }).fill('Диагностика');
+ await page.getByRole('combobox', { name: 'Оборудование клуба', exact: true }).selectOption({ label: 'PC-07 · место 07 · Standard' });
+ await page.getByRole('combobox', { name: 'Категория', exact: true }).fill('Диагностика');
  await page.getByLabel('Описание', { exact: true }).fill('Место 7, PC-07: PXE-E51, не получает IP по DHCP. Перезагрузка дважды не помогла, остальные ПК работают.');
- await page.getByLabel('Приоритет', { exact: true }).selectOption('normal');
+ await page.getByRole('combobox', { name: 'Приоритет', exact: true }).selectOption('normal');
  await page.getByRole('button', { name: 'Сохранить', exact: true }).click();
  await expect(page.getByText('Новая', { exact: true })).toBeVisible();
  await page.getByRole('button', { name: 'Принять', exact: true }).click();
@@ -47,7 +47,7 @@ test('ticket practice demo: message → ticket → diagnostics → fix → close
  await page.getByRole('button', { name: 'Решена…', exact: true }).click();
  await page.getByLabel('Выполненные работы', { exact: true }).fill('Заменён повреждённый патч-корд PC-07, кабель проложен вне ножек кресла.');
  await page.getByLabel('Проверка', { exact: true }).fill('Холодная загрузка: IP 192.168.10.57, рабочий стол за 38 с; Dota 2 запускается.');
- await page.getByLabel('Основная причина', { exact: true }).selectOption({ label: 'Повреждён патч-корд — нет линка на сетевой карте клиента' });
+ await page.getByRole('combobox', { name: 'Основная причина', exact: true }).selectOption({ label: 'Повреждён патч-корд — нет линка на сетевой карте клиента' });
  await page.getByLabel('Причина (подробно)', { exact: true }).fill('Патч-корд пережат ножкой кресла, коннектор надломлен — нет линка.');
  await page.getByLabel('Решение', { exact: true }).fill('Замена патч-корда и прокладка кабеля вне зоны кресел.');
  await page.getByRole('button', { name: 'Сохранить переход', exact: true }).click();
