@@ -29,10 +29,10 @@ test('practice ticket: intro, real ticket workflow, diagnostics, simulated clien
  await expect(panel.getByRole('button', { name: scenario.checks[0].label })).toBeDisabled();
 
  const save = page.getByRole('button', { name: 'Сохранить переход', exact: true });
- await page.getByLabel('Следующий статус', { exact: true }).selectOption({ label: 'Принята' });
+ await page.getByRole('combobox', { name: 'Следующий статус', exact: true }).selectOption('accepted');
  await save.click();
  await expect(page.locator('.badge').filter({ hasText: 'Принята' })).toBeVisible();
- await page.getByLabel('Следующий статус', { exact: true }).selectOption({ label: 'В работе' });
+ await page.getByRole('combobox', { name: 'Следующий статус', exact: true }).selectOption('working');
  await save.click();
  await expect(page.locator('.badge').filter({ hasText: 'В работе' })).toBeVisible();
 
@@ -40,15 +40,15 @@ test('practice ticket: intro, real ticket workflow, diagnostics, simulated clien
   await panel.getByRole('button', { name: check.label }).click();
   await expect(panel.locator('.tp-findings').getByText(check.finding)).toBeVisible();
  }
- await page.getByLabel('Выполненные действия', { exact: true }).fill('Диагностика PXE, проверка VLAN, исправление порта');
+ await page.getByRole('textbox', { name: 'Выполненные действия', exact: true }).fill('Диагностика PXE, проверка VLAN, исправление порта');
  await page.getByRole('button', { name: 'Добавить запись', exact: true }).click();
  await expect(page.getByText('Время и стоимость записаны.', { exact: true })).toBeVisible();
 
- await page.getByLabel('Выполненные работы', { exact: true }).fill(scenario.model.work);
- await page.getByLabel('Результат проверки', { exact: true }).fill(scenario.model.verification);
- await page.getByLabel('Причина', { exact: true }).fill(scenario.model.cause);
- await page.getByLabel('Решение', { exact: true }).fill(scenario.model.solution);
- await page.getByLabel('Следующий статус', { exact: true }).selectOption({ label: 'Решена' });
+ await page.getByRole('textbox', { name: 'Выполненные работы', exact: true }).fill(scenario.model.work);
+ await page.getByRole('textbox', { name: 'Результат проверки', exact: true }).fill(scenario.model.verification);
+ await page.getByRole('textbox', { name: 'Причина', exact: true }).fill(scenario.model.cause);
+ await page.getByRole('textbox', { name: 'Решение', exact: true }).fill(scenario.model.solution);
+ await page.getByRole('combobox', { name: 'Следующий статус', exact: true }).selectOption('resolved');
  await save.click();
 
  // The simulated client accepts the work, the run is graded with a breakdown and the model answer.
