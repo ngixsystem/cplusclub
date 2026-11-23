@@ -38,20 +38,14 @@ class ExternalApiController extends Controller
             'scopes' => $c->scopes, 'rate_limit_per_minute' => ExternalApi::PER_MINUTE, 'server_time' => now($tz)->toIso8601String()]);
     }
 
-    /** Live state of every seat: PC or console, busy/free (switched-off PCs are free), who sits and since when. Cached 15 s. */
-    public function pcs(Request $r, Client $icafe)
+    /** Live state of every seat: PC or console, busy/free (switched-off PCs are free), who sits and since when. Served from a snapshot refreshed every 15 s in the background. */
+    public function pcs(Request $r, \App\Domain\Icafe\PcSnapshot $snap)
     {
         $club = $this->club($r);
         if (! $club->icafe_license || ! $club->icafe_token) return ExternalApi::error('not_connected', 'Клуб не подключён к iCafeCloud.', 409);
         $tz = $club->timezone ?: 'Asia/Tashkent';
         try {
-            $data = Cache::remember('ext:pcs:'.$club->id, 15, function () use ($icafe, $club) {
-                $pcs = array_values(array_filter($icafe->get($club->icafe_license, $club->icafe_token, 'pcs'),
-                    fn ($p) => (int) ($p['pc_icafe_id'] ?? 0) === (int) $club->icafe_license));
-                $online = collect($icafe->get($club->icafe_license, $club->icafe_token, 'onlinePcList'))
-                    ->filter(fn ($p) => (int) ($p['is_connected'] ?? 0) === 1)->pluck('pc_name')->all();
-                return ['pcs' => $pcs, 'online' => $online, 'fetched_at' => now()->toIso8601String()];
-            });
+            $data = $snap->get($club);
         } catch (\Throwable) {
             return ExternalApi::error('upstream_unavailable', 'iCafeCloud сейчас не отвечает, повторите позже.', 503);
         }

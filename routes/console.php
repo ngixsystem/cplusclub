@@ -80,3 +80,5 @@ Schedule::call(function () {
 Schedule::call(function () {
     foreach (\App\Models\Club::whereNotNull('icafe_license')->whereNotNull('icafe_token')->pluck('id') as $id) \App\Jobs\SyncBillingLogs::dispatch($id);
 })->name('icafe-billing-logs')->everyMinute()->withoutOverlapping();
+// Keeps /api/ext/v1/pcs answering from memory (data at most ~15 s old).
+Schedule::call(fn () => app(\App\Domain\Icafe\PcSnapshot::class)->refreshActive())->name('pc-snapshot')->everyFifteenSeconds()->withoutOverlapping();

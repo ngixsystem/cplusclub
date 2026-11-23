@@ -160,4 +160,20 @@ class ExternalApiTest extends TestCase
         $this->actingAs($owner)->post("/api-access/{$client->id}/revoke")->assertSessionHasNoErrors();
         $this->api($token, '/me')->assertStatus(401);
     }
+
+    public function test_pcs_served_from_background_snapshot(): void
+    {
+        $token = $this->token();
+        ApiClient::issue(['name' => 'без pcs', 'club_id' => $this->other->id, 'scopes' => ['shifts']]);
+        app(\App\Domain\Icafe\PcSnapshot::class)->refreshActive();
+        $this->assertNotNull(\Illuminate\Support\Facades\Cache::get('ext:pcs:'.$this->club->id));
+        $this->assertNull(\Illuminate\Support\Facades\Cache::get('ext:pcs:'.$this->other->id));
+        $calls = count(Http::recorded());
+        $this->api($token, '/pcs')->assertOk()->assertJsonPath('meta.total', 4);
+        $this->assertSame($calls, count(Http::recorded()), 'warm snapshot must not call iCafeCloud');
+        // A stale snapshot (background refresh stalled) is refreshed by the request itself.
+        $this->travel(2)->minutes();
+        \Illuminate\Support\Facades\Cache::put('ext:pcs:'.$this->club->id, ['pcs' => [], 'online' => [], 'fetched_at' => now()->subMinute()->toIso8601String()], 120);
+        $this->api($token, '/pcs')->assertOk()->assertJsonPath('meta.total', 4);
+    }
 }
