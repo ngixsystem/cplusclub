@@ -3,21 +3,85 @@
   "id": "engineer-start",
   "title": "Инженер: первая неделя",
   "summary": "Минимум для выездного специалиста: как принимать и оформлять заявки, как устроена загрузка ПК и как разбирать типовые сбои в зале.",
-  "roles": ["specialist", "lead", "owner"],
-  "chapters": ["daily-operations", "support-package", "first-start", "network-plan", "client-card", "dhcp-pxe", "tftp-timeout", "windows-logo", "games-update", "gamefix-diagnostics", "performance", "bsod-triage"]
+  "roles": [
+   "specialist",
+   "lead",
+   "owner"
+  ],
+  "chapters": [
+   "daily-operations",
+   "support-package",
+   "first-start",
+   "network-plan",
+   "client-card",
+   "dhcp-pxe",
+   "tftp-timeout",
+   "windows-logo",
+   "games-update",
+   "gamefix-diagnostics",
+   "performance",
+   "bsod-triage"
+  ],
+  "exam": {
+   "questions": 20,
+   "points_per_answer": 5,
+   "pass_percent": 80,
+   "retake_minutes": 30
+  }
  },
  {
   "id": "lead-server",
   "title": "Старший инженер: сервер и образы",
   "summary": "Проектирование и сопровождение сервера клуба: ресурсы, диски, сеть, образы Windows, обновления, резервные копии и откат.",
-  "roles": ["lead", "owner"],
-  "chapters": ["server-planning", "hardware-baseline", "x520-compatibility", "disk-layout", "external-dhcp", "uefi-readiness", "settings-baseline", "server-controls", "create-image", "driver-rollout", "super-client", "windows-maintenance", "restore-image", "backup-rehearsal", "cache-tuning", "writeback", "hybrid-pilot", "faceit", "applications", "license", "ccproxy"]
+  "roles": [
+   "lead",
+   "owner"
+  ],
+  "chapters": [
+   "server-planning",
+   "hardware-baseline",
+   "x520-compatibility",
+   "disk-layout",
+   "external-dhcp",
+   "uefi-readiness",
+   "settings-baseline",
+   "server-controls",
+   "create-image",
+   "driver-rollout",
+   "super-client",
+   "windows-maintenance",
+   "restore-image",
+   "backup-rehearsal",
+   "cache-tuning",
+   "writeback",
+   "hybrid-pilot",
+   "faceit",
+   "applications",
+   "license",
+   "ccproxy"
+  ],
+  "exam": {
+   "questions": 25,
+   "points_per_answer": 4,
+   "pass_percent": 80,
+   "retake_minutes": 30
+  }
  },
  {
   "id": "club-admin",
   "title": "Администратор клуба: базовый минимум",
   "summary": "Что проверить в зале самостоятельно и как оформить обращение, чтобы инженер сразу начал работу.",
-  "roles": ["representative", "owner"],
-  "chapters": ["daily-operations", "support-package", "games-update", "windows-logo", "dhcp-pxe", "license"]
+  "roles": [
+   "representative",
+   "owner"
+  ],
+  "chapters": [
+   "daily-operations",
+   "support-package",
+   "games-update",
+   "windows-logo",
+   "dhcp-pxe",
+   "license"
+  ]
  }
 ]

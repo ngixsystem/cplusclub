@@ -41,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\RateLimiter::for('avatar', fn ($r) => $limit::perMinute(10)->by('avatar|'.$who($r)));
         // Live widgets (dashboard, map, monitoring) poll; each endpoint gets its own budget.
         \Illuminate\Support\Facades\RateLimiter::for('live', fn ($r) => $limit::perMinute(60)->by('live|'.$r->route()?->uri().'|'.$who($r)));
+        \Illuminate\Support\Facades\RateLimiter::for('training', fn ($r) => $limit::perMinute(120)->by('training|'.$who($r)));
         \Illuminate\Support\Facades\RateLimiter::for('leads', fn ($r) => $limit::perMinute(20)->by('leads|'.$r->ip()));
         \Laravel\Horizon\Horizon::auth(fn ($request) => $request->user()?->active && $request->user()?->role === 'owner');
     }
