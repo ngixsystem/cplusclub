@@ -17,7 +17,7 @@ final class UpdateHandler
 {
     private const MAX_PHOTO = 10 * 1024 * 1024;
 
-    public function __construct(private TelegramApi $api, private LinkFollowups $followups, private OpenTicket $open) {}
+    public function __construct(private TelegramApi $api, private LinkFollowups $followups, private OpenTicket $open, private PersonalLink $personal) {}
 
     public function handle(string $token, array $u): void
     {
@@ -29,7 +29,7 @@ final class UpdateHandler
                 ['token_hash', 'chat_id'], ['title', 'type', 'seen_at']);
         }
         if (isset($u['callback_query'])) $this->callback($token, $hash, $u['callback_query']);
-        elseif (isset($u['message'])) $this->message($token, $hash, $u['message']);
+        elseif (isset($u['message']) && ! $this->personal->handle($token, $hash, $u['message'])) $this->message($token, $hash, $u['message']);
     }
 
     /** @return Collection<int,TelegramChannel> */

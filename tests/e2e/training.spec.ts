@@ -61,3 +61,29 @@ test('intro, start, chapter test with review and retake, mobile fit', async ({ p
  await page.setViewportSize({ width: 1440, height: 1000 });
  expect(errors).toEqual([]);
 });
+
+test('telegram reminders code and assigning a program with a deadline', async ({ page }) => {
+ const errors: string[] = [];
+ page.on('pageerror', e => errors.push(e.message));
+ await page.goto('/login');
+ await page.getByLabel('Email', { exact: true }).fill('e2e@example.test');
+ await page.getByLabel('Пароль', { exact: true }).fill('Isolated-E2E-Password-2026');
+ await page.getByRole('button', { name: 'Войти', exact: true }).click();
+ await expect(page.getByRole('heading', { name: 'Дашборд клуба', exact: true })).toBeVisible();
+
+ await page.goto('/training');
+ await page.getByRole('button', { name: 'Подключить Telegram', exact: true }).click();
+ await expect(page.locator('.tr-tg-code code')).toHaveText(/^\/start [A-Z2-9]{8}$/);
+
+ const form = page.getByRole('form', { name: 'Назначить программу' });
+ await form.getByRole('combobox', { name: 'Сотрудник' }).selectOption({ label: 'E2E Club Owner · Представитель клуба' });
+ await form.getByRole('combobox', { name: 'Программа' }).selectOption({ index: 1 });
+ const due = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+ await form.getByLabel('Срок', { exact: true }).fill(due);
+ await form.getByRole('button', { name: 'Назначить', exact: true }).click();
+ await expect(page.getByText(/Программа назначена: E2E Club Owner/)).toBeVisible();
+ await expect(page.locator('.tr-due').first()).toContainText(/осталось \d+ дн\./);
+ await page.getByRole('button', { name: /Снять назначение: E2E Club Owner/ }).click();
+ await expect(page.getByText('Назначение снято.', { exact: true })).toBeVisible();
+ expect(errors).toEqual([]);
+});

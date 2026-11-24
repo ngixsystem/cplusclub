@@ -2,7 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Domain\Knowledge\{Article, Labs, Quizzes, TicketPractice, Training};
+use App\Domain\Knowledge\{Article, Labs, Quizzes, TicketPractice, Training, TrainingAssignments};
+use App\Domain\Telegram\PersonalLink;
 use App\Models\QuizAttempt;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
@@ -10,7 +11,7 @@ use Inertia\{Inertia, Response};
 
 final class TrainingController extends Controller
 {
-    public function index(Request $request, Training $training, TicketPractice $practice, Labs $labs): Response
+    public function index(Request $request, Training $training, TicketPractice $practice, Labs $labs, TrainingAssignments $assignments, PersonalLink $telegram): Response
     {
         Gate::authorize('viewAny', Article::class);
         $user = $request->user();
@@ -22,12 +23,16 @@ final class TrainingController extends Controller
                 : null], $team);
             $labRows = $labs->teamRows(collect($team)->filter(fn ($row) => in_array($row['role'], Labs::ROLES, true))->pluck('id'));
             $team = array_map(fn ($row) => $row + ['labs' => $labRows[$row['id']] ?? null], $team);
+            $assigned = $assignments->states(collect($team)->pluck('id'));
+            $team = array_map(fn ($row) => $row + ['assignments' => (object) ($assigned[$row['id']] ?? []), 'assignable' => $row['id'] !== $user->id], $team);
         }
 
         return Inertia::render('Training', [
             'tracks' => $training->summary($user),
             'practice' => $practice->summary($user),
             'labs' => $labs->summary($user),
+            'assignments' => (object) $assignments->forUser($user),
+            'telegram' => $telegram->state($user),
             'chapterPassPercent' => Quizzes::CHAPTER_PASS_PERCENT,
             'team' => $team,
         ]);
