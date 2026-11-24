@@ -34,3 +34,47 @@ test('cisco course: intro, start, lesson page with player area, locked test, cer
  await page.setViewportSize({ width: 1440, height: 1000 });
  expect(errors).toEqual([]);
 });
+
+test('cisco practice: subnet trainer, IOS trainer and Packet Tracer labs', async ({ page }) => {
+ const errors: string[] = [];
+ page.on('pageerror', e => errors.push(e.message));
+ await page.goto('/login');
+ await page.getByLabel('Email', { exact: true }).fill('e2e@example.test');
+ await page.getByLabel('Пароль', { exact: true }).fill('Isolated-E2E-Password-2026');
+ await page.getByRole('button', { name: 'Войти', exact: true }).click();
+ await expect(page.getByRole('heading', { name: 'Дашборд клуба', exact: true })).toBeVisible();
+
+ await page.goto('/training');
+ const labs = page.locator('.tr-labs');
+ await expect(labs.getByRole('heading', { name: 'Практика Cisco', exact: true })).toBeVisible();
+ await labs.getByRole('link', { name: /Тренажёр подсетей/ }).click();
+ await expect(page.getByRole('heading', { name: 'Тренажёр подсетей', exact: true })).toBeVisible();
+ await page.getByRole('button', { name: 'Начать тренировку', exact: true }).click();
+ const fields = page.locator('.lab-field input');
+ await expect(fields).toHaveCount(10);
+ await fields.first().fill('10.0.0.0');
+ await page.getByRole('button', { name: 'Проверить ответы', exact: true }).click();
+ await expect(page.getByRole('heading', { name: /Не зачтено: \d+ из 10/ })).toBeVisible();
+ await expect(page.getByText(/правильно:/).first()).toBeVisible();
+
+ await page.goto('/training/ios');
+ await expect(page.getByRole('heading', { name: 'Тренажёр команд IOS', exact: true })).toBeVisible();
+ await page.getByRole('button', { name: /Базовая настройка коммутатора/ }).click();
+ await page.getByLabel('Команды', { exact: true }).fill('SW1(config)#hostname SW1');
+ await page.getByRole('button', { name: 'Проверить', exact: true }).click();
+ await expect(page.getByRole('heading', { name: /Есть замечания · \d+ %/ })).toBeVisible();
+
+ await page.goto('/training/labs');
+ await expect(page.getByRole('heading', { name: 'Лабораторные Packet Tracer', exact: true })).toBeVisible();
+ await expect(page.getByRole('heading', { name: 'Что сделать', exact: true })).toBeVisible();
+ await page.getByLabel('Описание: что сделали и как проверяли').fill('Собрал схему, пинги внутри VLAN проходят, между VLAN нет.');
+ await page.locator('input[type=file]').setInputFiles({ name: 'club.pkt', mimeType: 'application/octet-stream', buffer: Buffer.from('pkt-e2e') });
+ await page.getByRole('button', { name: 'Отправить на проверку', exact: true }).click();
+ await expect(page.getByText('Работа отправлена на проверку руководителю.', { exact: true })).toBeVisible();
+ await expect(page.locator('.lab-sub').getByText('На проверке', { exact: true })).toBeVisible();
+
+ await page.setViewportSize({ width: 390, height: 844 });
+ await page.goto('/training/ios');
+ await expect.poll(() => overflowing(page)).toEqual([]);
+ expect(errors).toEqual([]);
+});

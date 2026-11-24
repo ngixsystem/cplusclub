@@ -1,0 +1,527 @@
+{
+ "version": "2026-11-25",
+ "ios": [
+  {
+   "id": "switch-basics",
+   "title": "Базовая настройка коммутатора",
+   "level": "Базовый",
+   "task": "Новый коммутатор в серверной клуба. Задайте имя SW-ARENA, пароль привилегированного режима через enable secret, пароль и вход на консоль, баннер предупреждения и сохраните конфигурацию.",
+   "hint": "Сначала conf t. Пароль консоли задаётся в line con 0 вместе с login. Не забудьте сохранить: copy running-config startup-config или write memory.",
+   "requirements": [
+    {
+     "label": "Имя устройства SW-ARENA",
+     "pattern": "^hostname sw-arena$"
+    },
+    {
+     "label": "Пароль привилегированного режима через enable secret",
+     "pattern": "^enable secret (\\d )?\\S+$"
+    },
+    {
+     "label": "Пароль на консольной линии",
+     "context": "^line con(sole)? 0$",
+     "pattern": "^password \\S+$"
+    },
+    {
+     "label": "Включена проверка пароля на консоли (login)",
+     "context": "^line con(sole)? 0$",
+     "pattern": "^login$"
+    },
+    {
+     "label": "Баннер предупреждения (banner motd)",
+     "pattern": "^banner motd .+"
+    },
+    {
+     "label": "Конфигурация сохранена",
+     "pattern": "^(copy run(ning-config)? start(up-config)?|wr(ite)?( mem(ory)?)?|do (copy run(ning-config)? start(up-config)?|wr(ite)?( mem(ory)?)?))$"
+    }
+   ],
+   "forbidden": [
+    {
+     "label": "enable password хранит пароль слабо — используйте enable secret",
+     "pattern": "^enable password "
+    }
+   ],
+   "solution": [
+    "enable",
+    "configure terminal",
+    "hostname SW-ARENA",
+    "enable secret Str0ngSecret",
+    "line console 0",
+    " password ConPass1",
+    " login",
+    " exit",
+    "banner motd #Только для персонала C+Club#",
+    "end",
+    "copy running-config startup-config"
+   ]
+  },
+  {
+   "id": "vlan-access",
+   "title": "VLAN и access-порты для зала",
+   "level": "Базовый",
+   "task": "Создайте VLAN 10 с именем STAFF и VLAN 20 с именем GAMERS. Порт Fa0/1 (касса) — access в VLAN 10. Порты Fa0/2–Fa0/24 (игровые ПК) — access в VLAN 20.",
+   "hint": "VLAN создаётся командой vlan <номер>, имя — name. Для группы портов используйте interface range. На порту: switchport mode access и switchport access vlan.",
+   "requirements": [
+    {
+     "label": "Создан VLAN 10",
+     "pattern": "^vlan 10$"
+    },
+    {
+     "label": "VLAN 10 назван STAFF",
+     "context": "^vlan 10$",
+     "pattern": "^name staff$"
+    },
+    {
+     "label": "Создан VLAN 20",
+     "pattern": "^vlan 20$"
+    },
+    {
+     "label": "VLAN 20 назван GAMERS",
+     "context": "^vlan 20$",
+     "pattern": "^name gamers$"
+    },
+    {
+     "label": "Fa0/1 в режиме access",
+     "context": "^(f|fa|fastethernet)0/1$",
+     "pattern": "^sw(itchport)? mo(de)? acc(ess)?$"
+    },
+    {
+     "label": "Fa0/1 в VLAN 10",
+     "context": "^(f|fa|fastethernet)0/1$",
+     "pattern": "^sw(itchport)? acc(ess)? vlan 10$"
+    },
+    {
+     "label": "Fa0/2–24 в режиме access",
+     "context": "^range (f|fa|fastethernet)0/2 ?- ?((f|fa|fastethernet)0/)?24$",
+     "pattern": "^sw(itchport)? mo(de)? acc(ess)?$"
+    },
+    {
+     "label": "Fa0/2–24 в VLAN 20",
+     "context": "^range (f|fa|fastethernet)0/2 ?- ?((f|fa|fastethernet)0/)?24$",
+     "pattern": "^sw(itchport)? acc(ess)? vlan 20$"
+    }
+   ],
+   "forbidden": [],
+   "solution": [
+    "configure terminal",
+    "vlan 10",
+    " name STAFF",
+    "vlan 20",
+    " name GAMERS",
+    "interface fa0/1",
+    " switchport mode access",
+    " switchport access vlan 10",
+    "interface range fa0/2 - 24",
+    " switchport mode access",
+    " switchport access vlan 20",
+    "end"
+   ]
+  },
+  {
+   "id": "trunk",
+   "title": "Trunk между коммутаторами",
+   "level": "Базовый",
+   "task": "Gi0/1 соединяет коммутатор зала с коммутатором серверной. Переведите порт в trunk, разрешите только VLAN 10 и 20, а native VLAN сделайте 99.",
+   "hint": "switchport mode trunk, затем switchport trunk allowed vlan и switchport trunk native vlan — всё в interface gi0/1.",
+   "requirements": [
+    {
+     "label": "Gi0/1 в режиме trunk",
+     "context": "^(g|gi|gigabitethernet)0/1$",
+     "pattern": "^sw(itchport)? mo(de)? tr(unk)?$"
+    },
+    {
+     "label": "Разрешены только VLAN 10 и 20",
+     "context": "^(g|gi|gigabitethernet)0/1$",
+     "pattern": "^sw(itchport)? tr(unk)? al(lowed)? vlan 10,20$"
+    },
+    {
+     "label": "Native VLAN 99",
+     "context": "^(g|gi|gigabitethernet)0/1$",
+     "pattern": "^sw(itchport)? tr(unk)? na(tive)? vlan 99$"
+    }
+   ],
+   "forbidden": [
+    {
+     "label": "allowed vlan all открывает в trunk все VLAN",
+     "pattern": "^sw(itchport)? tr(unk)? al(lowed)? vlan all$"
+    }
+   ],
+   "solution": [
+    "configure terminal",
+    "interface gi0/1",
+    " switchport mode trunk",
+    " switchport trunk allowed vlan 10,20",
+    " switchport trunk native vlan 99",
+    "end"
+   ]
+  },
+  {
+   "id": "ssh",
+   "title": "Удалённый доступ по SSH",
+   "level": "Средний",
+   "task": "Настройте управление коммутатором по SSH: домен arena.local, RSA-ключ 2048 бит, локальный пользователь admin с привилегией 15 и secret-паролем, на линиях vty 0–4 вход только по SSH с локальной учётной записью. Адрес управления VLAN 1 — 192.168.99.2/24, шлюз 192.168.99.1.",
+   "hint": "ip domain-name, crypto key generate rsa modulus 2048, username ... privilege 15 secret ..., line vty 0 4: transport input ssh и login local. Адрес — на interface vlan 1, не забудьте no shutdown.",
+   "requirements": [
+    {
+     "label": "Домен arena.local",
+     "pattern": "^ip domain(-| )name arena\\.local$"
+    },
+    {
+     "label": "RSA-ключ 2048 бит",
+     "pattern": "^crypto key gen(erate)? rsa( general-keys)? modulus 2048$"
+    },
+    {
+     "label": "Пользователь admin, privilege 15, secret",
+     "pattern": "^username admin priv(ilege)? 15 secret (\\d )?\\S+$"
+    },
+    {
+     "label": "На vty только SSH",
+     "context": "^line vty 0 (4|15)$",
+     "pattern": "^transport input ssh$"
+    },
+    {
+     "label": "На vty вход по локальным учёткам",
+     "context": "^line vty 0 (4|15)$",
+     "pattern": "^login local$"
+    },
+    {
+     "label": "Адрес управления на VLAN 1",
+     "context": "^vlan ?1$",
+     "pattern": "^ip add(ress)? 192\\.168\\.99\\.2 255\\.255\\.255\\.0$"
+    },
+    {
+     "label": "Интерфейс VLAN 1 включён",
+     "context": "^vlan ?1$",
+     "pattern": "^no shut(down)?$"
+    },
+    {
+     "label": "Шлюз по умолчанию",
+     "pattern": "^ip default-gateway 192\\.168\\.99\\.1$"
+    }
+   ],
+   "forbidden": [
+    {
+     "label": "transport input telnet/all оставляет незашифрованный доступ",
+     "context": "^line vty",
+     "pattern": "^transport input (telnet|all|ssh telnet|telnet ssh)$"
+    }
+   ],
+   "solution": [
+    "configure terminal",
+    "ip domain-name arena.local",
+    "crypto key generate rsa modulus 2048",
+    "username admin privilege 15 secret Adm1nSecret",
+    "line vty 0 4",
+    " transport input ssh",
+    " login local",
+    " exit",
+    "interface vlan 1",
+    " ip address 192.168.99.2 255.255.255.0",
+    " no shutdown",
+    " exit",
+    "ip default-gateway 192.168.99.1",
+    "end"
+   ]
+  },
+  {
+   "id": "router-on-stick",
+   "title": "Маршрутизация между VLAN (router-on-a-stick)",
+   "level": "Средний",
+   "task": "Маршрутизатор подключён к trunk-порту коммутатора через G0/0. Создайте подинтерфейсы: G0/0.10 для VLAN 10 с адресом 192.168.10.1/24 и G0/0.20 для VLAN 20 с адресом 192.168.20.1/24. Включите физический интерфейс.",
+   "hint": "interface g0/0.10, encapsulation dot1Q 10, ip address ... Физический G0/0 включается no shutdown — без этого подинтерфейсы не работают.",
+   "requirements": [
+    {
+     "label": "G0/0.10: инкапсуляция dot1Q 10",
+     "context": "^(g|gi|gigabitethernet)0/0\\.10$",
+     "pattern": "^enc(apsulation)? dot1q 10$"
+    },
+    {
+     "label": "G0/0.10: адрес 192.168.10.1/24",
+     "context": "^(g|gi|gigabitethernet)0/0\\.10$",
+     "pattern": "^ip add(ress)? 192\\.168\\.10\\.1 255\\.255\\.255\\.0$"
+    },
+    {
+     "label": "G0/0.20: инкапсуляция dot1Q 20",
+     "context": "^(g|gi|gigabitethernet)0/0\\.20$",
+     "pattern": "^enc(apsulation)? dot1q 20$"
+    },
+    {
+     "label": "G0/0.20: адрес 192.168.20.1/24",
+     "context": "^(g|gi|gigabitethernet)0/0\\.20$",
+     "pattern": "^ip add(ress)? 192\\.168\\.20\\.1 255\\.255\\.255\\.0$"
+    },
+    {
+     "label": "Физический G0/0 включён",
+     "context": "^(g|gi|gigabitethernet)0/0$",
+     "pattern": "^no shut(down)?$"
+    }
+   ],
+   "forbidden": [],
+   "solution": [
+    "configure terminal",
+    "interface g0/0",
+    " no shutdown",
+    "interface g0/0.10",
+    " encapsulation dot1Q 10",
+    " ip address 192.168.10.1 255.255.255.0",
+    "interface g0/0.20",
+    " encapsulation dot1Q 20",
+    " ip address 192.168.20.1 255.255.255.0",
+    "end"
+   ]
+  },
+  {
+   "id": "dhcp",
+   "title": "DHCP-сервер на маршрутизаторе",
+   "level": "Средний",
+   "task": "Для VLAN 20 (192.168.20.0/24) поднимите DHCP на маршрутизаторе: исключите адреса 192.168.20.1–192.168.20.20, пул GAMERS, шлюз 192.168.20.1, DNS 1.1.1.1.",
+   "hint": "ip dhcp excluded-address задаётся в глобальном режиме до пула. В ip dhcp pool: network, default-router, dns-server.",
+   "requirements": [
+    {
+     "label": "Исключены 192.168.20.1–20",
+     "pattern": "^ip dhcp excluded-address 192\\.168\\.20\\.1 192\\.168\\.20\\.20$"
+    },
+    {
+     "label": "Пул GAMERS",
+     "pattern": "^ip dhcp pool gamers$"
+    },
+    {
+     "label": "Сеть пула 192.168.20.0/24",
+     "context": "^pool gamers$",
+     "pattern": "^network 192\\.168\\.20\\.0 (255\\.255\\.255\\.0|/24)$"
+    },
+    {
+     "label": "Шлюз 192.168.20.1",
+     "context": "^pool gamers$",
+     "pattern": "^default-router 192\\.168\\.20\\.1$"
+    },
+    {
+     "label": "DNS 1.1.1.1",
+     "context": "^pool gamers$",
+     "pattern": "^dns-server 1\\.1\\.1\\.1( \\S+)?$"
+    }
+   ],
+   "forbidden": [],
+   "solution": [
+    "configure terminal",
+    "ip dhcp excluded-address 192.168.20.1 192.168.20.20",
+    "ip dhcp pool GAMERS",
+    " network 192.168.20.0 255.255.255.0",
+    " default-router 192.168.20.1",
+    " dns-server 1.1.1.1",
+    "end"
+   ]
+  },
+  {
+   "id": "static-routes",
+   "title": "Статические маршруты и маршрут по умолчанию",
+   "level": "Средний",
+   "task": "Маршрутизатор клуба R1: сеть филиала 10.20.0.0/16 доступна через 172.16.0.2, весь остальной трафик — в сторону провайдера 203.0.113.1.",
+   "hint": "ip route <сеть> <маска> <следующий хоп>. Маршрут по умолчанию — 0.0.0.0 0.0.0.0.",
+   "requirements": [
+    {
+     "label": "Маршрут в 10.20.0.0/16 через 172.16.0.2",
+     "pattern": "^ip route 10\\.20\\.0\\.0 255\\.255\\.0\\.0 172\\.16\\.0\\.2$"
+    },
+    {
+     "label": "Маршрут по умолчанию через 203.0.113.1",
+     "pattern": "^ip route 0\\.0\\.0\\.0 0\\.0\\.0\\.0 203\\.0\\.113\\.1$"
+    }
+   ],
+   "forbidden": [],
+   "solution": [
+    "configure terminal",
+    "ip route 10.20.0.0 255.255.0.0 172.16.0.2",
+    "ip route 0.0.0.0 0.0.0.0 203.0.113.1",
+    "end"
+   ]
+  },
+  {
+   "id": "acl-guests",
+   "title": "ACL: гостевая сеть не видит кассу",
+   "level": "Продвинутый",
+   "task": "Сеть игровых ПК 192.168.20.0/24 не должна иметь доступа к сети кассы 192.168.10.0/24, весь остальной трафик разрешён. Создайте расширенный именованный ACL GUESTS и примените его на входе подинтерфейса G0/0.20.",
+   "hint": "ip access-list extended GUESTS: deny ip <источник> <wildcard> <назначение> <wildcard>, затем permit ip any any. Применение: ip access-group GUESTS in на G0/0.20.",
+   "requirements": [
+    {
+     "label": "Создан расширенный ACL GUESTS",
+     "pattern": "^ip access-list ext(ended)? guests$"
+    },
+    {
+     "label": "Запрет 192.168.20.0/24 → 192.168.10.0/24",
+     "context": "^acl guests$",
+     "pattern": "^(\\d+ )?deny ip 192\\.168\\.20\\.0 0\\.0\\.0\\.255 192\\.168\\.10\\.0 0\\.0\\.0\\.255$"
+    },
+    {
+     "label": "Остальной трафик разрешён",
+     "context": "^acl guests$",
+     "pattern": "^(\\d+ )?permit ip any any$"
+    },
+    {
+     "label": "ACL применён на входе G0/0.20",
+     "context": "^(g|gi|gigabitethernet)0/0\\.20$",
+     "pattern": "^ip access-group guests in$"
+    }
+   ],
+   "forbidden": [],
+   "solution": [
+    "configure terminal",
+    "ip access-list extended GUESTS",
+    " deny ip 192.168.20.0 0.0.0.255 192.168.10.0 0.0.0.255",
+    " permit ip any any",
+    " exit",
+    "interface g0/0.20",
+    " ip access-group GUESTS in",
+    "end"
+   ]
+  },
+  {
+   "id": "pat",
+   "title": "PAT: выход клуба в интернет",
+   "level": "Продвинутый",
+   "task": "Внутренний интерфейс G0/0, внешний G0/1 (адрес от провайдера). Настройте PAT: сети 192.168.0.0/16 выходят в интернет через адрес G0/1. Используйте стандартный ACL 1.",
+   "hint": "ip nat inside на G0/0 и ip nat outside на G0/1; access-list 1 permit 192.168.0.0 0.0.255.255; ip nat inside source list 1 interface g0/1 overload.",
+   "requirements": [
+    {
+     "label": "G0/0 — ip nat inside",
+     "context": "^(g|gi|gigabitethernet)0/0$",
+     "pattern": "^ip nat inside$"
+    },
+    {
+     "label": "G0/1 — ip nat outside",
+     "context": "^(g|gi|gigabitethernet)0/1$",
+     "pattern": "^ip nat outside$"
+    },
+    {
+     "label": "ACL 1 разрешает 192.168.0.0/16",
+     "pattern": "^access-list 1 permit 192\\.168\\.0\\.0 0\\.0\\.255\\.255$"
+    },
+    {
+     "label": "PAT через интерфейс G0/1 (overload)",
+     "pattern": "^ip nat inside source list 1 int(erface)? (g|gi|gigabitethernet)0/1 overload$"
+    }
+   ],
+   "forbidden": [],
+   "solution": [
+    "configure terminal",
+    "interface g0/0",
+    " ip nat inside",
+    "interface g0/1",
+    " ip nat outside",
+    " exit",
+    "access-list 1 permit 192.168.0.0 0.0.255.255",
+    "ip nat inside source list 1 interface g0/1 overload",
+    "end"
+   ]
+  }
+ ],
+ "packet_tracer": [
+  {
+   "id": "pt-vlans",
+   "title": "Две VLAN и trunk между коммутаторами",
+   "level": "Базовый",
+   "goal": "Разделить сеть клуба на VLAN 10 (персонал) и VLAN 20 (игровые ПК) на двух коммутаторах, соединённых trunk.",
+   "steps": [
+    "Два коммутатора 2960, по два ПК в каждой VLAN на каждом коммутаторе.",
+    "Создайте VLAN 10 STAFF и VLAN 20 GAMERS на обоих коммутаторах.",
+    "Порты ПК — access в нужной VLAN, порт между коммутаторами — trunk с allowed vlan 10,20.",
+    "Адреса: VLAN 10 — 192.168.10.0/24, VLAN 20 — 192.168.20.0/24, вручную."
+   ],
+   "check": [
+    "ПК одной VLAN на разных коммутаторах пингуют друг друга.",
+    "ПК разных VLAN друг друга не пингуют.",
+    "show interfaces trunk показывает VLAN 10 и 20."
+   ],
+   "deliverables": [
+    "Файл .pkt",
+    "Скриншот show vlan brief и show interfaces trunk",
+    "Коротко: как проверяли"
+   ]
+  },
+  {
+   "id": "pt-roas-dhcp",
+   "title": "Router-on-a-stick и DHCP",
+   "level": "Средний",
+   "goal": "Обеспечить связь между VLAN через маршрутизатор и раздачу адресов по DHCP.",
+   "steps": [
+    "Возьмите топологию из первой лабораторной и добавьте маршрутизатор 2911, подключённый к trunk.",
+    "Подинтерфейсы G0/0.10 и G0/0.20 со шлюзами 192.168.10.1 и 192.168.20.1.",
+    "DHCP-пулы для обеих VLAN на маршрутизаторе, первые 20 адресов исключены.",
+    "ПК переведите на получение адреса по DHCP."
+   ],
+   "check": [
+    "ПК получают адреса из правильного пула.",
+    "ПК VLAN 10 пингует ПК VLAN 20.",
+    "show ip dhcp binding показывает выданные адреса."
+   ],
+   "deliverables": [
+    "Файл .pkt",
+    "Скриншот show ip dhcp binding и ipconfig на ПК",
+    "Коротко: как проверяли"
+   ]
+  },
+  {
+   "id": "pt-static",
+   "title": "Статическая маршрутизация между филиалами",
+   "level": "Средний",
+   "goal": "Связать три сети через два маршрутизатора статическими маршрутами.",
+   "steps": [
+    "Клуб 192.168.10.0/24 — R1 — канал 172.16.0.0/30 — R2 — филиал 10.20.0.0/16.",
+    "Пропишите статические маршруты в обе стороны.",
+    "На R1 добавьте маршрут по умолчанию в сторону «провайдера» (третий маршрутизатор или loopback)."
+   ],
+   "check": [
+    "ПК клуба пингует ПК филиала.",
+    "tracert показывает путь через R1 и R2.",
+    "show ip route показывает маршруты S и S*."
+   ],
+   "deliverables": [
+    "Файл .pkt",
+    "Скриншот show ip route на обоих маршрутизаторах",
+    "Результат tracert"
+   ]
+  },
+  {
+   "id": "pt-acl",
+   "title": "ACL: гости не видят кассу и сервер",
+   "level": "Продвинутый",
+   "goal": "Изолировать игровую сеть от кассы и сервера, сохранив доступ в интернет.",
+   "steps": [
+    "На основе router-on-a-stick добавьте сервер 192.168.10.10 и кассу 192.168.10.20.",
+    "Расширенный ACL: VLAN 20 не имеет доступа к 192.168.10.0/24, остальное разрешено.",
+    "Примените ACL на входе подинтерфейса VLAN 20."
+   ],
+   "check": [
+    "ПК VLAN 20 не пингует кассу и сервер.",
+    "ПК VLAN 20 пингует адрес «интернета».",
+    "show access-lists показывает совпадения (matches)."
+   ],
+   "deliverables": [
+    "Файл .pkt",
+    "Скриншот show access-lists после проверки",
+    "Коротко: как проверяли"
+   ]
+  },
+  {
+   "id": "pt-nat",
+   "title": "PAT и выход в интернет",
+   "level": "Продвинутый",
+   "goal": "Настроить выход клуба в интернет через один публичный адрес.",
+   "steps": [
+    "Добавьте маршрутизатор «провайдера» и сервер в «интернете» (например, 8.8.8.8 с веб-сервисом).",
+    "На R1: ip nat inside/outside, ACL внутренних сетей, ip nat inside source list ... overload.",
+    "Маршрут по умолчанию в сторону провайдера."
+   ],
+   "check": [
+    "ПК клуба открывают веб-страницу сервера в «интернете».",
+    "show ip nat translations показывает трансляции.",
+    "Сервер «интернета» видит запросы с публичного адреса R1."
+   ],
+   "deliverables": [
+    "Файл .pkt",
+    "Скриншот show ip nat translations",
+    "Коротко: как проверяли"
+   ]
+  }
+ ]
+}
