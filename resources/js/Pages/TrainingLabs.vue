@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Head, Link, useForm, usePage } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 import Shell from '../Layouts/Shell.vue';
 import '../../css/knowledge.css';
 
@@ -10,7 +10,7 @@ type Submission = { id: number; lab_id: string; comment: string; status: 'submit
 type Lab = { id: string; title: string; level: string; goal: string; steps: string[]; check: string[]; deliverables: string[]; submissions: Submission[]; status: string | null; accepted: boolean };
 type Queued = Submission & { user: { id: number; name: string }; lab_title: string };
 const props = defineProps<{ labs: Lab[]; review: Queued[] | null }>();
-const page = usePage<{ errors: Record<string, string>; flash?: { success?: string } }>();
+
 const statusText: Record<string, string> = { submitted: 'На проверке', accepted: 'Принято', rework: 'На доработку' };
 const date = (v: string | null) => v ? new Date(v).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent', dateStyle: 'short', timeStyle: 'short' }) : '';
 const size = (b: number) => b > 1048576 ? (b / 1048576).toFixed(1) + ' МБ' : Math.max(1, Math.round(b / 1024)) + ' КБ';
@@ -39,7 +39,6 @@ function sendReview(s: Queued) {
  <Head title="Лабораторные Packet Tracer" />
  <Shell>
   <div class="kb-heading"><div><h1>Лабораторные Packet Tracer</h1><p>Соберите схему в Cisco Packet Tracer, проверьте её по списку, приложите файл .pkt и скриншоты. Руководитель проверит работу, поставит оценку 0–100 или вернёт на доработку с комментарием.</p></div><Link href="/training" class="kb-source-button">← Обучение</Link></div>
-  <p v-if="page.props.flash?.success" class="success" role="status">{{page.props.flash.success}}</p>
 
   <div v-if="review" class="lab-tabs" role="tablist">
    <button type="button" role="tab" :aria-selected="tab==='mine'" :class="{ active: tab==='mine' }" @click="tab='mine'">Мои работы</button>
