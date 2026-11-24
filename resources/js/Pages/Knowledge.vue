@@ -5,7 +5,7 @@ import Shell from '../Layouts/Shell.vue';
 import { type KnowledgeItem, type KnowledgeCategory, useKnowledgeNotes, normalizeSearch } from '../Components/knowledge';
 import '../../css/knowledge.css';
 const props = defineProps<{ articles: KnowledgeItem[]; categories: KnowledgeCategory[]; audit: { checked_at: string; pages: number; links: number; broken: number; unverified: number; guides: number };
- training: { id: string; title: string; done: number; total: number; next: { id: string; title: string } | null }[] }>();
+ training: { id: string; title: string; done: number; total: number; next: { id: string; title: string; url: string } | null }[] }>();
 const filters = reactive(unref(useRemember({ q: '', category: '', kind: 'guide', saved: false }, 'knowledge-handbook-filters')));
 const limit = ref(12);
 const { saved, toggleSaved, storageAvailable } = useKnowledgeNotes();
@@ -24,7 +24,7 @@ const date = (value: string) => new Date(value + 'T12:00:00').toLocaleDateString
  <Head title="База знаний" />
  <Shell>
   <div class="kb-heading"><div><h1>База знаний</h1><p>Руководство C+Club: {{audit.guides}} главы о настройке, диагностике и обслуживании клуба. Читайте целиком здесь.</p></div><Link href="/knowledge/first-start" class="kb-source-button">Читать с начала →</Link></div>
-  <nav v-if="training.length" class="kb-training" aria-label="Моё обучение"><Link v-for="track in training" :key="track.id" :href="track.next ? '/knowledge/'+track.next.id : '/training'"><small>Моя программа · {{track.done}} из {{track.total}} глав</small><b>{{track.title}}</b><span class="kb-bar" aria-hidden="true"><i :style="{width:(track.total?track.done/track.total*100:0)+'%'}"></i></span><small>{{track.next ? 'Далее: '+track.next.title : 'Программа пройдена ✓'}}</small></Link></nav>
+  <nav v-if="training.length" class="kb-training" aria-label="Моё обучение"><Link v-for="track in training" :key="track.id" :href="track.next ? track.next.url : '/training'"><small>Моя программа · {{track.done}} из {{track.total}} глав</small><b>{{track.title}}</b><span class="kb-bar" aria-hidden="true"><i :style="{width:(track.total?track.done/track.total*100:0)+'%'}"></i></span><small>{{track.next ? 'Далее: '+track.next.title : 'Программа пройдена ✓'}}</small></Link></nav>
   <section class="kb-search-panel" aria-label="Поиск по базе знаний">
    <label for="knowledge-search">Что нужно настроить или исправить?</label>
    <div class="kb-search-field"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg><input id="knowledge-search" v-model="filters.q" type="search" maxlength="200" placeholder="Например: PXE, синий экран, образ, FACEIT…" autocomplete="off"/><button v-if="filters.q" class="secondary" @click="filters.q=''">Очистить</button></div>

@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Domain\Knowledge\{Library, Quizzes, Training};
+use App\Domain\Knowledge\{Lessons, Library, Quizzes, Training};
 use App\Models\{KnowledgeProgress, QuizAttempt, TrainingEnrollment, User};
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -50,6 +50,16 @@ class TrainingTest extends TestCase
             $this->assertNotEmpty($track['chapters'], $track['id']);
             $this->assertCount(count($track['chapters']), array_unique($track['chapters']), $track['id']);
             foreach ($track['chapters'] as $id) {
+                if (($track['kind'] ?? null) === 'video') {
+                    $lesson = app(Lessons::class)->find($id);
+                    $this->assertNotNull($lesson, "$track[id]: $id");
+                    $count = count($quizzes->forChapter($id));
+                    $this->assertSame($lesson['quiz'], $count > 0, "quiz flag for $id");
+                    if ($lesson['quiz']) {
+                        $this->assertGreaterThanOrEqual(3, $count, $id);
+                    }
+                    continue;
+                }
                 $article = $library->find($id);
                 $this->assertNotNull($article, "$track[id]: $id");
                 $this->assertSame('guide', $article->data['kind'], "$track[id]: $id");
@@ -59,11 +69,13 @@ class TrainingTest extends TestCase
             if (isset($track['exam'])) {
                 $pool = collect($track['chapters'])->sum(fn ($id) => count($quizzes->forChapter($id)));
                 $this->assertLessThanOrEqual($pool, $track['exam']['questions'], $track['id']);
-                $this->assertGreaterThanOrEqual(count($track['chapters']), $track['exam']['questions'], 'every chapter gets a question');
+                if (($track['kind'] ?? null) !== 'video') {
+                    $this->assertGreaterThanOrEqual(count($track['chapters']), $track['exam']['questions'], 'every chapter gets a question');
+                }
             }
         }
         foreach ($quizzes->bank() as $chapter => $questions) {
-            $this->assertNotNull($library->find($chapter), $chapter);
+            $this->assertTrue($library->find($chapter) !== null || app(Lessons::class)->find($chapter) !== null, $chapter);
             foreach ($questions as $q) {
                 $ids[] = $q['id'];
                 $this->assertCount(4, array_unique($q['options']), $q['id']);
@@ -162,7 +174,7 @@ class TrainingTest extends TestCase
         // Before the start the intro is shown: no enrollment, exam locked.
         $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('tracks.0.enrollment', null)
             ->where('tracks.0.exam.questions', 20)->where('tracks.0.exam.max_points', 100)->where('tracks.0.exam.pass_points', 80)
-            ->where('tracks.0.exam.available', false)->has('tracks', 1));
+            ->where('tracks.0.exam.available', false)->has('tracks', 2)->where('tracks.1.id', 'cisco-ccna'));
         $this->post('/training/lead-server/start')->assertNotFound(); // not a specialist program
         $this->post('/training/engineer-start/start')->assertRedirect('/training');
         $this->post('/training/engineer-start/start')->assertRedirect('/training'); // idempotent
@@ -262,6 +274,6 @@ class TrainingTest extends TestCase
     public function test_knowledge_index_shows_my_tracks(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'lead']))->get('/knowledge')->assertOk()
-            ->assertInertia(fn (Assert $p) => $p->has('training', 2)->where('training.0.next.id', 'daily-operations'));
+            ->assertInertia(fn (Assert $p) => $p->has('training', 3)->where('training.0.next.id', 'daily-operations')->where('training.0.next.url', '/knowledge/daily-operations'));
     }
 }

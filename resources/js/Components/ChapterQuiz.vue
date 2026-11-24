@@ -6,7 +6,8 @@ type Question = { id: string; q: string; options: string[] };
 type Review = { id: string; chosen: number | null; correct: number; ok: boolean; explain: string };
 type Result = { correct: number; total: number; percent: number; passed: boolean; pass_percent: number; review: Review[]; quiz: QuizState };
 
-const props = defineProps<{ articleId: string; quiz: QuizState; checklistDone: boolean }>();
+const props = withDefaults(defineProps<{ articleId: string; quiz: QuizState; checklistDone: boolean; startUrl?: string; submitUrl?: string; requirement?: string }>(), { startUrl: '', submitUrl: '/knowledge/quiz/', requirement: '' });
+const startEndpoint = computed(() => props.startUrl || `/knowledge/${props.articleId}/quiz`);
 const emit = defineEmits<{ updated: [quiz: QuizState] }>();
 
 const phase = ref<'idle' | 'running' | 'result'>('idle');
@@ -30,7 +31,7 @@ async function post<T>(url: string, body: unknown): Promise<T> {
 async function start() {
  busy.value = true; error.value = '';
  try {
-  const data = await post<{ attempt: number; questions: Question[] }>(`/knowledge/${props.articleId}/quiz`, {});
+  const data = await post<{ attempt: number; questions: Question[] }>(startEndpoint.value, {});
   attempt.value = data.attempt; questions.value = data.questions; answers.value = {}; result.value = null; phase.value = 'running';
  } catch { error.value = 'Не удалось начать тест. Проверьте соединение и попробуйте ещё раз.'; }
  finally { busy.value = false; }
@@ -40,7 +41,7 @@ async function submit() {
  if (!attempt.value) return;
  busy.value = true; error.value = '';
  try {
-  result.value = await post<Result>(`/knowledge/quiz/${attempt.value}`, { answers: answers.value });
+  result.value = await post<Result>(`${props.submitUrl}${attempt.value}`, { answers: answers.value });
   phase.value = 'result';
   emit('updated', result.value.quiz);
  } catch { error.value = 'Не удалось отправить ответы. Проверьте соединение и попробуйте ещё раз.'; }
@@ -66,7 +67,7 @@ const optionClass = (q: Question, i: number) => {
 
   <template v-if="phase==='idle'">
    <p class="cq-lead">{{quiz.questions}} вопросов по материалу этой главы. Чтобы глава засчиталась, нужно ответить правильно минимум на {{quiz.pass_percent}}% и отметить все пункты «Проверки результата». После проверки вы увидите правильные ответы с пояснениями. Пересдавать можно сколько угодно.</p>
-   <p v-if="!checklistDone && !quiz.passed" class="cq-hint">Совет: сначала прочитайте главу и выполните чек-лист выше.</p>
+   <p v-if="!checklistDone && !quiz.passed" class="cq-hint">{{ requirement || 'Совет: сначала прочитайте главу и выполните чек-лист выше.' }}</p>
    <button type="button" class="kb-source-button cq-button" :disabled="busy" @click="start">{{ quiz.attempts ? 'Пройти тест ещё раз' : 'Начать тест' }}</button>
   </template>
 
@@ -89,7 +90,7 @@ const optionClass = (q: Question, i: number) => {
 
    <div v-else-if="result" class="cq-result" :class="{ ok: result.passed }" role="status">
     <b>{{result.correct}} из {{result.total}} · {{result.percent}}%</b>
-    <span v-if="result.passed">Тест сдан.{{ checklistDone ? ' Глава засчитана.' : ' Отметьте все пункты «Проверки результата», чтобы глава засчиталась.' }}</span>
+    <span v-if="result.passed">Тест сдан.{{ checklistDone ? ' Засчитано.' : (requirement ? ' ' + requirement : ' Отметьте все пункты «Проверки результата», чтобы глава засчиталась.') }}</span>
     <span v-else>Нужно минимум {{result.pass_percent}}%. Перечитайте пояснения выше и попробуйте снова.</span>
     <button type="button" class="kb-source-button cq-button" :disabled="busy" @click="start">Пройти ещё раз</button>
    </div>

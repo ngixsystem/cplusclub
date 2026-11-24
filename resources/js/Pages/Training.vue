@@ -5,12 +5,12 @@ import Shell from '../Layouts/Shell.vue';
 import '../../css/knowledge.css';
 
 type Quiz = { best_percent: number | null; passed: boolean } | null;
-type Chapter = { id: string; title: string; minutes: number | null; checked: number; total: number; checklist_done: boolean; quiz: Quiz; done: boolean; completed_at: string | null };
+type Chapter = { id: string; kind: 'guide' | 'lesson'; url: string; title: string; minutes: number | null; checked: number; total: number; checklist_done: boolean; watch_percent: number | null; quiz: Quiz; done: boolean; completed_at: string | null };
 type Enrollment = { started_at: string; completed_at: string | null; duration_seconds: number } | null;
 type Best = { points: number; max_points: number; percent: number; passed: boolean; finished_at: string; duration_seconds: number } | null;
 type Exam = { questions: number; points_per_answer: number; max_points: number; pass_percent: number; pass_points: number; retake_minutes: number;
  available: boolean; locked_reason: string | null; attempts: number; in_progress_id: number | null; best: Best; passed_at: string | null } | null;
-type Track = { id: string; title: string; summary: string; chapters: Chapter[]; done: number; total: number; next: { id: string; title: string } | null; enrollment: Enrollment; exam: Exam };
+type Track = { id: string; kind: 'guides' | 'video'; title: string; summary: string; chapters: Chapter[]; done: number; total: number; next: { id: string; title: string; url: string } | null; enrollment: Enrollment; exam: Exam };
 type MemberTrack = { id: string; title: string; done: number; total: number; enrollment: Enrollment; quiz_average: number | null; exam: { best: Best; attempts: number; max_points: number } | null };
 type PracticeScenario = { id: string; title: string; difficulty: string; minutes_target: number; demo_done: boolean; open_demo: number | null; open_exam: number | null;
  attempts: number; best: number | null; best_run: number | null; passed_at: string | null; last_run: number | null };
@@ -51,7 +51,8 @@ function startExam(track: Track) {
 function chapterStatus(c: Chapter) {
  if (c.done) return 'Изучено ' + date(c.completed_at);
  const parts = [];
- if (c.checked) parts.push(`чек-лист ${c.checked}/${c.total}`);
+ if (c.kind === 'lesson' && c.watch_percent) parts.push(c.checklist_done ? 'просмотрено' : `просмотр ${c.watch_percent} %`);
+ if (c.kind === 'guide' && c.checked) parts.push(`чек-лист ${c.checked}/${c.total}`);
  if (c.quiz && c.quiz.best_percent !== null) parts.push(c.quiz.passed ? 'тест сдан' : `тест ${c.quiz.best_percent}%`);
  return parts.length ? parts.join(' · ') : (c.minutes ? c.minutes + ' мин' : '');
 }
@@ -105,11 +106,17 @@ function chapterStatus(c: Chapter) {
 
     <!-- Intro: shown until the employee starts the program -->
     <div v-if="!track.enrollment" class="tr-intro">
-     <span class="tr-eyebrow">Новая программа · {{track.total}} глав · ~{{minutesAll(track)}} мин чтения</span>
+     <span class="tr-eyebrow">Новая программа · {{track.total}} {{ track.kind==='video' ? 'видеоуроков' : 'глав' }} · ~{{minutesAll(track)}} мин {{ track.kind==='video' ? 'видео' : 'чтения' }}</span>
      <h2>{{track.title}}</h2>
      <p class="tr-summary">{{track.summary}}</p>
      <h3>Как устроено обучение</h3>
-     <ol class="tr-steps">
+     <ol v-if="track.kind==='video'" class="tr-steps">
+      <li><b>Смотрите видеоурок</b> прямо в C+CLub. Урок засчитывается, когда просмотрено не меньше 90 % видео: перемотка вперёд не считается, скорость до 2× — можно.</li>
+      <li><b>Сдаёте тест по уроку.</b> 3–4 вопроса, нужно не меньше {{chapterPassPercent}}% правильных, после проверки — разбор с пояснениями. Тест открывается только после просмотра. У вводных уроков теста нет.</li>
+      <li v-if="track.exam"><b>Сдаёте итоговый экзамен.</b> Он откроется, когда пройдены все уроки. {{track.exam.questions}} вопросов из всех уроков, {{track.exam.points_per_answer}} балла за каждый правильный ответ, максимум {{track.exam.max_points}}, проходной {{track.exam.pass_points}}. Правильные ответы не показываются. Повторная попытка — через {{track.exam.retake_minutes}} минут.</li>
+      <li><b>Получаете сертификат C+CLub</b> с баллами и сроком прохождения — его можно распечатать или сохранить в PDF.</li>
+     </ol>
+     <ol v-else class="tr-steps">
       <li><b>Читаете главу.</b> Каждая глава — реальная рабочая инструкция: порядок проверки, диагностика, что записать в заявку.</li>
       <li><b>Выполняете «Проверку результата».</b> В конце главы — чек-лист из 4 пунктов. Отмечайте пункты, которые поняли и можете выполнить на объекте.</li>
       <li><b>Сдаёте тест по главе.</b> 5 вопросов, нужно не меньше {{chapterPassPercent}}% правильных. После проверки увидите правильные ответы с пояснениями. Пересдавать можно без ограничений.</li>
@@ -122,14 +129,14 @@ function chapterStatus(c: Chapter) {
       <li>Баллы, результаты тестов и срок прохождения видят владелец сервиса и технический руководитель.</li>
       <li>Прогресс сохраняется в вашем профиле: можно продолжить с любого устройства.</li>
      </ul>
-     <details class="tr-preview"><summary>Список глав</summary><ol><li v-for="c in track.chapters" :key="c.id">{{c.title}}</li></ol></details>
+     <details class="tr-preview"><summary>{{ track.kind==='video' ? 'Список уроков' : 'Список глав' }}</summary><ol><li v-for="c in track.chapters" :key="c.id">{{c.title}}</li></ol></details>
      <button type="button" class="kb-source-button tr-start" :disabled="busy===track.id" @click="startTrack(track)">Начать обучение</button>
     </div>
 
     <template v-else>
      <button class="tr-track-head" :aria-expanded="open===track.id" @click="open = open===track.id ? null : track.id">
       <span>
-       <span class="tr-eyebrow">{{ track.enrollment.completed_at ? 'Программа пройдена ✓ за ' + duration(track.enrollment.duration_seconds) : `${track.done} из ${track.total} глав · идёт ${duration(track.enrollment.duration_seconds)} · осталось ~${minutesLeft(track)} мин чтения` }}</span>
+       <span class="tr-eyebrow">{{ track.enrollment.completed_at ? 'Программа пройдена ✓ за ' + duration(track.enrollment.duration_seconds) : `${track.done} из ${track.total} ${track.kind==='video' ? 'уроков' : 'глав'} · идёт ${duration(track.enrollment.duration_seconds)} · осталось ~${minutesLeft(track)} мин` }}</span>
        <b>{{track.title}}</b>
        <small>Начато {{date(track.enrollment.started_at)}}<template v-if="track.enrollment.completed_at"> · завершено {{date(track.enrollment.completed_at)}}</template><template v-if="track.exam?.best"> · экзамен: {{track.exam.best.points}} из {{track.exam.best.max_points}} баллов</template></small>
       </span>
@@ -137,20 +144,21 @@ function chapterStatus(c: Chapter) {
      </button>
      <span class="kb-bar" aria-hidden="true"><i :style="{width: percent(track.done, track.total)+'%'}"></i></span>
      <div v-if="open===track.id" class="tr-chapters">
-      <Link v-if="track.next" :href="'/knowledge/'+track.next.id" class="kb-source-button">{{track.done ? 'Продолжить' : 'Начать'}}: {{track.next.title}} →</Link>
+      <Link v-if="track.next" :href="track.next.url" class="kb-source-button">{{track.done ? 'Продолжить' : 'Начать'}}: {{track.next.title}} →</Link>
       <ol>
        <li v-for="chapter in track.chapters" :key="chapter.id" :class="{done: chapter.done}">
-        <Link :href="'/knowledge/'+chapter.id">{{chapter.title}}</Link>
+        <Link :href="chapter.url">{{chapter.title}}</Link>
         <span>{{chapterStatus(chapter)}}</span>
        </li>
       </ol>
 
+      <p v-if="!track.exam && track.enrollment.completed_at" class="tr-exam-ok">Программа пройдена ✓ · <a :href="'/training/certificate/'+track.id">Сертификат</a></p>
       <div v-if="track.exam" class="tr-exam" :class="{ passed: track.exam.passed_at }">
        <div>
         <h3>Итоговый экзамен</h3>
         <p>{{track.exam.questions}} вопросов · {{track.exam.points_per_answer}} баллов за правильный ответ · проходной балл {{track.exam.pass_points}} из {{track.exam.max_points}}</p>
         <p v-if="track.exam.best" class="tr-exam-best">Лучший результат: <b>{{track.exam.best.points}} из {{track.exam.best.max_points}}</b> ({{track.exam.best.percent}}%) за {{duration(track.exam.best.duration_seconds)}} · попыток: {{track.exam.attempts}}</p>
-        <p v-if="track.exam.passed_at" class="tr-exam-ok">Сдан {{date(track.exam.passed_at)}} ✓</p>
+        <p v-if="track.exam.passed_at" class="tr-exam-ok">Сдан {{date(track.exam.passed_at)}} ✓ · <a :href="'/training/certificate/'+track.id">Сертификат</a></p>
         <p v-else-if="track.exam.locked_reason && !track.exam.in_progress_id" class="tr-exam-lock">{{track.exam.locked_reason}}</p>
        </div>
        <Link v-if="track.exam.in_progress_id" :href="'/training/exam/'+track.exam.in_progress_id" class="kb-source-button">Продолжить экзамен →</Link>
