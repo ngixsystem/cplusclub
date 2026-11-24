@@ -13,7 +13,7 @@ test('cisco course: intro, start, lesson page with player area, locked test, cer
  await page.goto('/training');
  const course = page.locator('.tr-track', { hasText: 'Курс Cisco CCNA (видео)' });
  await expect(course.getByText(/Смотрите видеоурок/)).toBeVisible();
- await expect(course.getByText(/37 видеоуроков/)).toBeVisible();
+ await expect(course.getByText(/Новая программа · 37 видеоуроков/)).toBeVisible();
  await course.getByRole('button', { name: 'Начать обучение', exact: true }).click();
  await expect(page.getByText('Обучение началось. Удачи!', { exact: true })).toBeVisible();
 
