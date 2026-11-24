@@ -34,6 +34,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/training/lesson/{lesson}/quiz', [\App\Http\Controllers\TrainingLessonController::class, 'quizStart'])->where('lesson', '[a-z0-9-]+')->middleware('throttle:training');
     Route::post('/training/lesson-quiz/{attempt}', [\App\Http\Controllers\TrainingLessonController::class, 'quizSubmit'])->whereNumber('attempt')->middleware('throttle:training');
     Route::get('/training/certificate/{track}', [\App\Http\Controllers\TrainingController::class, 'certificate'])->where('track', '[a-z0-9-]+')->name('training.certificate');
+    Route::post('/training/assignments', [\App\Http\Controllers\TrainingAssignmentsController::class, 'store'])->middleware('throttle:training');
+    Route::delete('/training/assignments/{assignment}', [\App\Http\Controllers\TrainingAssignmentsController::class, 'destroy'])->whereNumber('assignment')->middleware('throttle:training');
+    Route::post('/training/telegram/code', [\App\Http\Controllers\TrainingAssignmentsController::class, 'telegramCode'])->middleware('throttle:training');
+    Route::delete('/training/telegram', [\App\Http\Controllers\TrainingAssignmentsController::class, 'telegramUnlink'])->middleware('throttle:training');
     Route::get('/training/subnets', [\App\Http\Controllers\TrainingLabsController::class, 'subnets'])->name('training.subnets');
     Route::post('/training/subnets/session', [\App\Http\Controllers\TrainingLabsController::class, 'subnetsStart'])->middleware('throttle:training');
     Route::post('/training/subnets/{attempt}', [\App\Http\Controllers\TrainingLabsController::class, 'subnetsSubmit'])->whereNumber('attempt')->middleware('throttle:training');

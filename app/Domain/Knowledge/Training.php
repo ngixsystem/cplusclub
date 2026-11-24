@@ -287,6 +287,13 @@ final class Training
         return array_map(fn ($track) => $this->trackState($track, $progress, $enrollments->get($track['id']), $exams->get($track['id'], collect())), $this->tracksFor($user->role));
     }
 
+    /** Whether the reviewer oversees this employee's training (team scope, never themselves). */
+    public function manages(User $reviewer, User $member): bool
+    {
+        return $reviewer->active && $member->active && $reviewer->id !== $member->id
+            && in_array($member->role, self::TEAM_SCOPE[$reviewer->role] ?? [], true);
+    }
+
     /** Progress of the people the reviewer is responsible for. Empty for roles without a team scope. */
     public function team(User $reviewer): array
     {

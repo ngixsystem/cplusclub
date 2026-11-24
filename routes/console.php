@@ -33,6 +33,11 @@ Artisan::command('cclub:icafe-boot {club}', function () {
     $r = app(\App\Domain\Monitoring\IcafeBootTelemetry::class)->collect($club);
     $this->info(sprintf('%s: Boot %s, matched %d PCs, unmatched %d.', $club->name, $r['supported'] ? 'on' : 'off', $r['matched'], $r['unmatched']));
 })->purpose('Pull CPU/GPU temperatures for a club from iCafeCloud Boot once');
+// Training reminders in personal Telegram chats: 10:10 Tashkent.
+Schedule::call(fn () => app(\App\Domain\Knowledge\TrainingAssignments::class)->remind())->name('training-reminders')->dailyAt('05:10')->withoutOverlapping();
+Artisan::command('cclub:training-reminders', function () {
+    $this->info('Sent: '.app(\App\Domain\Knowledge\TrainingAssignments::class)->remind());
+})->purpose('Send training reminders now (deadlines, overdue, inactivity)');
 Schedule::call(fn () => \App\Jobs\PollTelegram::dispatch())->name('telegram-poll')->everyMinute()->withoutOverlapping();
 Schedule::call(fn () => app(\App\Domain\Telegram\LinkFollowups::class)->sweep())->name('link-followups')->everyMinute()->withoutOverlapping();
 Schedule::call(function () {

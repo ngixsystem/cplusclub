@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3';
 import Shell from '../Layouts/Shell.vue';
 import '../../css/knowledge.css';
 
@@ -16,8 +16,27 @@ type PracticeScenario = { id: string; title: string; difficulty: string; minutes
  attempts: number; best: number | null; best_run: number | null; passed_at: string | null; last_run: number | null };
 type Practice = { scenarios: PracticeScenario[]; passed: number; total: number; pass_points: number; started_at: string | null; completed_at: string | null; duration_seconds: number | null };
 type Labs = { subnet_best: number | null; subnet_sessions: number; ios_passed: number; ios_total: number; labs_accepted: number; labs_total: number; labs_pending: number; labs_grade: number | null };
-type Member = { id: number; name: string; role: string; tracks: MemberTrack[]; last_activity: string | null; practice: Practice | null; labs: Labs | null };
-const props = defineProps<{ tracks: Track[]; team: Member[] | null; chapterPassPercent: number; practice: Practice | null; labs: Labs | null }>();
+type Assignment = { id: number; due_on: string; note: string | null; assigned_by: string | null; completed_at: string | null; on_time: boolean | null; days_left: number | null; overdue: boolean };
+type Member = { id: number; name: string; role: string; tracks: MemberTrack[]; last_activity: string | null; practice: Practice | null; labs: Labs | null; assignments: Record<string, Assignment>; assignable: boolean };
+type Telegram = { linked: boolean; username: string | null; linked_at: string | null };
+const props = defineProps<{ tracks: Track[]; team: Member[] | null; chapterPassPercent: number; practice: Practice | null; labs: Labs | null; assignments: Record<string, Assignment>; telegram: Telegram }>();
+const dueText = (a: Assignment) => a.completed_at ? (a.on_time ? 'пройдено в срок' : 'пройдено с опозданием')
+ : a.overdue ? `просрочено на ${-(a.days_left ?? 0)} дн.` : a.days_left === 0 ? 'срок сегодня' : `осталось ${a.days_left} дн.`;
+const dueDate = (d: string) => new Date(d + 'T00:00:00').toLocaleDateString('ru-RU');
+const xsrf = () => decodeURIComponent((document.cookie.match(/XSRF-TOKEN=([^;]+)/) || [])[1] ?? '');
+const tgCode = ref<{ code: string; expires_at: string; bots: string[] } | null>(null);
+const tgError = ref('');
+async function telegramCode() {
+ tgError.value = '';
+ const r = await fetch('/training/telegram/code', { method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json', 'X-XSRF-TOKEN': xsrf() } });
+ if (r.ok) tgCode.value = await r.json(); else tgError.value = 'Не удалось получить код. Обновите страницу и попробуйте ещё раз.';
+}
+function telegramUnlink() { router.delete('/training/telegram', { preserveScroll: true }); }
+const assignForm = useForm({ user_id: '' as number | '', track_id: '', due_on: '', note: '' });
+const assignMember = computed(() => (props.team ?? []).find(m => m.id === assignForm.user_id));
+const minDate = new Date(Date.now() + 5 * 3600 * 1000).toISOString().slice(0, 10);
+function assign() { assignForm.post('/training/assignments', { preserveScroll: true, onSuccess: () => assignForm.reset() }); }
+function unassign(a: Assignment) { router.delete(`/training/assignments/${a.id}`, { preserveScroll: true }); }
 const practiceOpen = ref(!props.practice?.started_at || (props.practice.passed < props.practice.total));
 function practiceStart(id: string, mode: 'demo' | 'exam') {
  busy.value = id + mode;
@@ -113,9 +132,31 @@ function chapterStatus(c: Chapter) {
    </div>
   </section>
 
+  <section class="panel tr-telegram" aria-labelledby="tg-title">
+   <h2 id="tg-title">Напоминания в Telegram</h2>
+   <template v-if="telegram.linked">
+    <p>Подключено{{ telegram.username ? ' · ' + telegram.username : '' }}. Бот напомнит о сроке назначенной программы, о просрочке и о перерыве в обучении больше 3 дней.</p>
+    <button type="button" class="secondary" @click="telegramUnlink">Отключить</button>
+   </template>
+   <template v-else>
+    <p>Бот напомнит о сроке назначенной программы, о просрочке и о перерыве в обучении больше 3 дней.</p>
+    <button v-if="!tgCode" type="button" class="secondary" @click="telegramCode">Подключить Telegram</button>
+    <div v-else class="tr-tg-code">
+     <p v-if="tgCode.bots.length">Откройте бота <a v-for="b in tgCode.bots" :key="b" :href="'https://t.me/' + b + '?start=' + tgCode.code" target="_blank" rel="noopener noreferrer">@{{b}}</a> и отправьте ему:</p>
+     <p v-else>Telegram-бот клуба пока не подключён — обратитесь к руководителю. Когда он появится, отправьте ему:</p>
+     <code>/start {{tgCode.code}}</code>
+     <small>Код одноразовый и действует 15 минут. После отправки обновите страницу.</small>
+    </div>
+    <p v-if="tgError" class="error" role="alert">{{tgError}}</p>
+   </template>
+  </section>
+
   <section aria-label="Мои программы" class="tr-tracks">
    <p v-if="!tracks.length" class="panel">Для вашей роли программ пока нет.</p>
    <article v-for="track in tracks" :key="track.id" class="tr-track">
+    <p v-if="assignments[track.id]" :class="['tr-deadline', { overdue: assignments[track.id].overdue, done: assignments[track.id].completed_at }]">
+     Назначено{{ assignments[track.id].assigned_by ? ': ' + assignments[track.id].assigned_by : '' }} · срок до {{dueDate(assignments[track.id].due_on)}} · {{dueText(assignments[track.id])}}<template v-if="assignments[track.id].note"> · {{assignments[track.id].note}}</template>
+    </p>
 
     <!-- Intro: shown until the employee starts the program -->
     <div v-if="!track.enrollment" class="tr-intro">
@@ -184,6 +225,14 @@ function chapterStatus(c: Chapter) {
 
   <section v-if="team" class="tr-team" aria-label="Обучение команды">
    <div class="tr-team-head"><h2>Обучение команды</h2><label>Роль<select v-model="roleFilter"><option value="">Все</option><option v-for="r in teamRoles" :key="r" :value="r">{{roles[r] || r}}</option></select></label></div>
+   <form class="panel tr-assign" aria-label="Назначить программу" @submit.prevent="assign">
+    <label>Сотрудник<select v-model="assignForm.user_id" required><option value="" disabled>Выберите</option><option v-for="m in (team ?? []).filter(x => x.assignable)" :key="m.id" :value="m.id">{{m.name}} · {{roles[m.role] || m.role}}</option></select></label>
+    <label>Программа<select v-model="assignForm.track_id" required :disabled="!assignMember"><option value="" disabled>Выберите</option><option v-for="t in assignMember?.tracks ?? []" :key="t.id" :value="t.id">{{t.title}}</option></select></label>
+    <label>Срок<input v-model="assignForm.due_on" type="date" :min="minDate" required /></label>
+    <label class="tr-assign-note">Комментарий<input v-model="assignForm.note" type="text" maxlength="500" placeholder="Необязательно" /></label>
+    <button type="submit" :disabled="assignForm.processing">Назначить</button>
+    <p v-for="(e, k) in assignForm.errors" :key="k" class="error" role="alert">{{e}}</p>
+   </form>
    <p v-if="!members.length" class="panel">Нет активных сотрудников с этой ролью.</p>
    <div v-else class="kb-diagnostics tr-table" role="region" aria-label="Прогресс сотрудников" tabindex="0">
     <table>
@@ -195,7 +244,7 @@ function chapterStatus(c: Chapter) {
         <td><span class="tr-cell-title">{{t.title}}</span><span class="kb-bar" aria-hidden="true"><i :style="{width: percent(t.done, t.total)+'%'}"></i></span><small>{{t.done}} из {{t.total}} глав</small></td>
         <td>{{ t.quiz_average !== null ? 'в среднем ' + t.quiz_average + '%' : '—' }}</td>
         <td><template v-if="t.exam?.best"><b :class="{ 'tr-ok': t.exam.best.passed }">{{t.exam.best.points}} / {{t.exam.best.max_points}}</b><small>{{t.exam.best.passed ? 'сдан' : 'не сдан'}} · попыток {{t.exam.attempts}}</small></template><template v-else-if="t.exam">не сдавал</template><template v-else>без экзамена</template></td>
-        <td><template v-if="t.enrollment"><b v-if="t.enrollment.completed_at" class="tr-ok">{{duration(t.enrollment.duration_seconds)}}</b><span v-else>идёт {{duration(t.enrollment.duration_seconds)}}</span><small>{{date(t.enrollment.started_at)}} → {{t.enrollment.completed_at ? date(t.enrollment.completed_at) : '…'}}</small></template><template v-else>не начато</template></td>
+        <td><template v-if="t.enrollment"><b v-if="t.enrollment.completed_at" class="tr-ok">{{duration(t.enrollment.duration_seconds)}}</b><span v-else>идёт {{duration(t.enrollment.duration_seconds)}}</span><small>{{date(t.enrollment.started_at)}} → {{t.enrollment.completed_at ? date(t.enrollment.completed_at) : '…'}}</small></template><template v-else>не начато</template><template v-if="member.assignments[t.id]"><small :class="['tr-due', { overdue: member.assignments[t.id].overdue }]">срок до {{dueDate(member.assignments[t.id].due_on)}} · {{dueText(member.assignments[t.id])}}</small><button v-if="member.assignable" type="button" class="tr-link-button" :aria-label="'Снять назначение: ' + member.name + ', ' + t.title" @click="unassign(member.assignments[t.id])">снять</button></template></td>
         <td v-if="i===0" :rowspan="member.tracks.length"><template v-if="member.practice"><b :class="{ 'tr-ok': member.practice.passed === member.practice.total }">{{member.practice.passed}} из {{member.practice.total}}</b><small v-for="sc in member.practice.scenarios" :key="sc.id">{{sc.title}}: {{ sc.attempts ? sc.best + ' б.' + (sc.passed_at ? ' ✓' : '') + ' · попыток ' + sc.attempts : (sc.demo_done ? 'только демо' : '—') }}</small><small v-if="member.practice.duration_seconds !== null">{{ member.practice.completed_at ? 'за ' : 'идёт ' }}{{duration(member.practice.duration_seconds)}}</small></template><template v-else>—</template></td>
         <td v-if="i===0" :rowspan="member.tracks.length"><template v-if="member.labs"><small>Подсети: {{ member.labs.subnet_best !== null ? member.labs.subnet_best + ' %' : '—' }}</small><small>IOS: {{member.labs.ios_passed}} из {{member.labs.ios_total}}</small><small>Лабораторные: {{member.labs.labs_accepted}} из {{member.labs.labs_total}}<template v-if="member.labs.labs_grade !== null"> · ср. {{member.labs.labs_grade}}</template></small><Link v-if="member.labs.labs_pending" href="/training/labs" class="tr-link">На проверке: {{member.labs.labs_pending}}</Link></template><template v-else>—</template></td>
        </tr>
@@ -248,6 +297,20 @@ function chapterStatus(c: Chapter) {
 .tr-table table{table-layout:auto;min-width:900px}
 .tr-practice{margin-bottom:14px;border-color:var(--accent-text)}
 .tr-labs{margin-bottom:14px}
+.tr-telegram{margin-bottom:14px;display:grid;gap:8px}
+.tr-telegram h2{margin:0;font-size:17px}
+.tr-telegram p{margin:0}
+.tr-tg-code{display:grid;gap:6px}
+.tr-tg-code code{font-size:18px;font-weight:700;letter-spacing:.06em}
+.tr-tg-code a{margin-right:8px}
+.tr-deadline{margin:0;padding:8px 16px;font-size:13px;font-weight:600;background:var(--surface-2, transparent);border-bottom:1px solid var(--border)}
+.tr-deadline.overdue,.tr-due.overdue{color:var(--danger, #c0392b)}
+.tr-deadline.done{color:var(--success, #1e8e3e)}
+.tr-assign{display:flex;flex-wrap:wrap;gap:10px;align-items:end;margin-bottom:14px}
+.tr-assign label{display:grid;gap:4px;font-size:13px}
+.tr-assign-note{flex:1 1 200px}
+.tr-assign .error{flex-basis:100%;margin:0}
+.tr-link-button{background:none;border:0;padding:0;color:var(--accent-text);text-decoration:underline;font-size:12px;cursor:pointer}
 .tr-lab-cards{list-style:none;padding:0;margin:12px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
 .tr-lab-card{display:grid;gap:6px;height:100%;padding:12px 14px;border:1px solid var(--border);border-radius:6px;color:inherit;text-decoration:none;background:var(--surface-2, var(--surface))}
 .tr-lab-card:hover,.tr-lab-card:focus-visible{border-color:var(--accent-text)}
