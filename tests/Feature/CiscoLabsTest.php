@@ -77,10 +77,10 @@ class CiscoLabsTest extends TestCase
     {
         $user = User::factory()->create(['role' => 'lead']);
         $this->actingAs($user)->get('/training/subnets')->assertOk()->assertInertia(fn (Assert $page) => $page->component('TrainingSubnets')->where('state.best', null));
-        $start = $this->postJson('/training/subnets/start')->assertOk();
+        $start = $this->postJson('/training/subnets/session')->assertOk();
         $this->assertCount(10, $start->json('tasks'));
         $this->assertStringNotContainsString('"answer"', $start->getContent());
-        $this->assertSame($start->json('attempt'), $this->postJson('/training/subnets/start')->json('attempt'), 'an open session is resumed');
+        $this->assertSame($start->json('attempt'), $this->postJson('/training/subnets/session')->json('attempt'), 'an open session is resumed');
 
         $attempt = TrainingLabAttempt::findOrFail($start->json('attempt'));
         $answers = array_map(fn ($t) => $t['answer'], $attempt->payload['tasks']);
@@ -128,7 +128,7 @@ class CiscoLabsTest extends TestCase
         $this->post('/training/labs/pt-vlans/submit', ['comment' => 'Коротко', 'files' => [UploadedFile::fake()->create('virus.exe', 10)]])
             ->assertSessionHasErrors(['comment', 'files.0']);
         $this->post('/training/labs/pt-vlans/submit', ['comment' => 'Собрал две VLAN, trunk, пинги проходят внутри VLAN.',
-            'files' => [UploadedFile::fake()->create('club.pkt', 300), UploadedFile::fake()->image('trunk.png')]])->assertRedirect()->assertSessionHasNoErrors();
+            'files' => [UploadedFile::fake()->create('club.pkt', 300), UploadedFile::fake()->create('trunk.png', 40, 'image/png')]])->assertRedirect()->assertSessionHasNoErrors();
         $submission = TrainingLabSubmission::sole();
         $this->assertSame('submitted', $submission->status);
         Storage::disk('local')->assertExists($submission->files[0]['path']);
@@ -147,7 +147,7 @@ class CiscoLabsTest extends TestCase
         $this->assertSame('rework', $submission->fresh()->status);
         $this->post("/training/labs/submissions/{$submission->id}/review", ['status' => 'accepted', 'grade' => 90])->assertSessionHasErrors('status');
 
-        $this->actingAs($engineer)->post('/training/labs/pt-vlans/submit', ['comment' => 'Добавил скриншот show vlan brief.', 'files' => [UploadedFile::fake()->image('vlan.png')]])->assertSessionHasNoErrors();
+        $this->actingAs($engineer)->post('/training/labs/pt-vlans/submit', ['comment' => 'Добавил скриншот show vlan brief.', 'files' => [UploadedFile::fake()->create('vlan.png', 40, 'image/png')]])->assertSessionHasNoErrors();
         $second = TrainingLabSubmission::latest('id')->first();
         $this->actingAs($owner)->post("/training/labs/submissions/{$second->id}/review", ['status' => 'accepted', 'grade' => 92, 'review_comment' => 'Хорошо'])->assertSessionHasNoErrors();
         $this->assertSame(92, $second->fresh()->grade);
@@ -157,7 +157,7 @@ class CiscoLabsTest extends TestCase
             ->where('team', fn ($team) => collect($team)->firstWhere('id', $engineer->id)['labs']['labs_accepted'] === 1
                 && collect($team)->firstWhere('id', $engineer->id)['labs']['labs_grade'] === 92));
         $this->actingAs($engineer)->get('/training')->assertInertia(fn (Assert $page) => $page->where('labs.labs_accepted', 1)->where('labs.ios_total', 9));
-        $this->actingAs($engineer)->post('/training/labs/pt-vlans/submit', ['comment' => 'Повторная отправка принятой.', 'files' => [UploadedFile::fake()->image('x.png')]])
+        $this->actingAs($engineer)->post('/training/labs/pt-vlans/submit', ['comment' => 'Повторная отправка принятой.', 'files' => [UploadedFile::fake()->create('x.png', 40, 'image/png')]])
             ->assertSessionHasErrors('files');
     }
 }

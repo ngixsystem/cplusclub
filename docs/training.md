@@ -91,7 +91,7 @@
 - **Лабораторные Packet Tracer** (`/training/labs`): 5 работ. Сотрудник прикладывает до 4 файлов (.pkt, .pka, изображения, PDF, до 20 МБ каждый) и описание. Файлы лежат на диске `local` в `training-labs/<user_id>/`, скачать их могут автор и проверяющий. Владелец проверяет работы руководителей и специалистов, руководитель — работы специалистов и других руководителей, свою работу проверить нельзя. Решение: «Принять» с оценкой 0–100 или «На доработку» с обязательным комментарием. Пока работа на проверке, повторно отправить её нельзя; принятая лабораторная закрыта.
 - В таблице команды появилась колонка «Практика Cisco»: лучший результат по подсетям, решённые задачи IOS, принятые лабораторные со средней оценкой и ссылка на работы, ожидающие проверки.
 
-Маршруты: `GET /training/subnets`, `POST /training/subnets/start`, `POST /training/subnets/{attempt}`, `GET /training/ios`, `POST /training/ios/{task}`, `GET /training/labs`, `POST /training/labs/{lab}/submit`, `POST /training/labs/submissions/{id}/review`, `GET /training/labs/submissions/{id}/files/{n}`. Все POST под лимитом `throttle:training`.
+Маршруты: `GET /training/subnets`, `POST /training/subnets/session`, `POST /training/subnets/{attempt}`, `GET /training/ios`, `POST /training/ios/{task}`, `GET /training/labs`, `POST /training/labs/{lab}/submit`, `POST /training/labs/submissions/{id}/review`, `GET /training/labs/submissions/{id}/files/{n}`. Все POST под лимитом `throttle:training`.
 
 ## Дальше
 

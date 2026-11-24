@@ -32,7 +32,7 @@ async function post(url: string, body: unknown) {
 async function start() {
  busy.value = true; error.value = ''; result.value = null;
  try {
-  const data = await post('/training/subnets/start', {});
+  const data = await post('/training/subnets/session', {});
   attempt.value = data.attempt; tasks.value = data.tasks; answers.value = data.tasks.map(() => '');
   startedAt.value = new Date(data.started_at).getTime();
  } catch (e) { error.value = (e as Error).message; } finally { busy.value = false; }

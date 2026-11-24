@@ -35,7 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/training/lesson-quiz/{attempt}', [\App\Http\Controllers\TrainingLessonController::class, 'quizSubmit'])->whereNumber('attempt')->middleware('throttle:training');
     Route::get('/training/certificate/{track}', [\App\Http\Controllers\TrainingController::class, 'certificate'])->where('track', '[a-z0-9-]+')->name('training.certificate');
     Route::get('/training/subnets', [\App\Http\Controllers\TrainingLabsController::class, 'subnets'])->name('training.subnets');
-    Route::post('/training/subnets/start', [\App\Http\Controllers\TrainingLabsController::class, 'subnetsStart'])->middleware('throttle:training');
+    Route::post('/training/subnets/session', [\App\Http\Controllers\TrainingLabsController::class, 'subnetsStart'])->middleware('throttle:training');
     Route::post('/training/subnets/{attempt}', [\App\Http\Controllers\TrainingLabsController::class, 'subnetsSubmit'])->whereNumber('attempt')->middleware('throttle:training');
     Route::get('/training/ios', [\App\Http\Controllers\TrainingLabsController::class, 'ios'])->name('training.ios');
     Route::post('/training/ios/{task}', [\App\Http\Controllers\TrainingLabsController::class, 'iosCheck'])->where('task', '[a-z0-9-]+')->middleware('throttle:training');
