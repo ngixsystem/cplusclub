@@ -125,7 +125,7 @@ final class Training
         $now = now();
         $credit = 0;
         if ($row->watch_ping_at && $row->watch_position !== null) {
-            $wall = $row->watch_ping_at->diffInSeconds($now);
+            $wall = (int) floor($row->watch_ping_at->diffInSeconds($now));
             $advance = $position - $row->watch_position;
             if ($wall <= 90 && $advance > 0) {
                 $credit = (int) min($advance, $wall * 2 + 2, 40);
