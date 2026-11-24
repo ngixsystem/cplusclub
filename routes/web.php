@@ -29,6 +29,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/training/{track}/exam', [\App\Http\Controllers\TrainingController::class, 'examStart'])->where('track', '[a-z0-9-]+')->middleware('throttle:training');
     Route::get('/training/exam/{attempt}', [\App\Http\Controllers\TrainingController::class, 'exam'])->whereNumber('attempt')->name('training.exam');
     Route::post('/training/exam/{attempt}', [\App\Http\Controllers\TrainingController::class, 'examSubmit'])->whereNumber('attempt')->middleware('throttle:training');
+    Route::get('/training/lesson/{lesson}', [\App\Http\Controllers\TrainingLessonController::class, 'show'])->where('lesson', '[a-z0-9-]+')->name('training.lesson');
+    Route::post('/training/lesson/{lesson}/watch', [\App\Http\Controllers\TrainingLessonController::class, 'watch'])->where('lesson', '[a-z0-9-]+')->middleware('throttle:training');
+    Route::post('/training/lesson/{lesson}/quiz', [\App\Http\Controllers\TrainingLessonController::class, 'quizStart'])->where('lesson', '[a-z0-9-]+')->middleware('throttle:training');
+    Route::post('/training/lesson-quiz/{attempt}', [\App\Http\Controllers\TrainingLessonController::class, 'quizSubmit'])->whereNumber('attempt')->middleware('throttle:training');
+    Route::get('/training/certificate/{track}', [\App\Http\Controllers\TrainingController::class, 'certificate'])->where('track', '[a-z0-9-]+')->name('training.certificate');
     Route::post('/training/practice/{scenario}/start', [\App\Http\Controllers\TicketPracticeController::class, 'start'])->where('scenario', '[a-z0-9-]+')->middleware('throttle:training');
     Route::get('/training/practice/run/{run}', [\App\Http\Controllers\TicketPracticeController::class, 'show'])->whereNumber('run')->name('training.practice');
     Route::post('/training/practice/run/{run}', [\App\Http\Controllers\TicketPracticeController::class, 'act'])->whereNumber('run')->middleware('throttle:training');

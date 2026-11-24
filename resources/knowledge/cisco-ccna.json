@@ -1,0 +1,344 @@
+{
+ "id": "cisco-ccna",
+ "title": "Курс Cisco CCNA",
+ "author": "Академия Cisco STR",
+ "source": "https://www.youtube.com/playlist?list=PLHpWwR6fSBN5gTzVFoNbKfYi7ziZfxjwf",
+ "playlist": "PLHpWwR6fSBN5gTzVFoNbKfYi7ziZfxjwf",
+ "watch_percent": 90,
+ "note": "Видео размещены на YouTube-канале «Академия Cisco STR» и показываются через встроенный плеер YouTube.",
+ "lessons": [
+  {
+   "id": "ccna-1-2",
+   "code": "1.2",
+   "title": "Компоненты сети",
+   "index": 0,
+   "seconds": 600,
+   "match": "itn 1 2 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-1-3",
+   "code": "1.3",
+   "title": "Представление и топологии сетей",
+   "index": 1,
+   "seconds": 853,
+   "match": "itn 1 3 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-1-4",
+   "code": "1.4",
+   "title": "Основные типы сетей",
+   "index": 2,
+   "seconds": 780,
+   "match": "itn 1 4 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-1-5-1",
+   "code": "1.5.1",
+   "title": "Интернет-подключения",
+   "index": 3,
+   "seconds": 352,
+   "match": "itn 1 5 1 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-1-5-2",
+   "code": "1.5.2",
+   "title": "Установка Cisco Packet Tracer",
+   "index": 4,
+   "seconds": 811,
+   "match": "itn 1 5 2 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-1-6",
+   "code": "1.6",
+   "title": "Надёжные сети",
+   "index": 5,
+   "seconds": 489,
+   "match": "itn 1 6 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-1-8",
+   "code": "1.8",
+   "title": "Сетевая безопасность",
+   "index": 6,
+   "seconds": 452,
+   "match": "itn 1 8 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-1-9",
+   "code": "1.9",
+   "title": "Специалист в сфере ИТ",
+   "index": 7,
+   "seconds": 328,
+   "match": "itn 1 9 ",
+   "quiz": false
+  },
+  {
+   "id": "ccna-2-0",
+   "code": "2.0",
+   "title": "Базовая конфигурация коммутатора и оконечного устройства",
+   "index": 8,
+   "seconds": 77,
+   "match": "itn 2 0 ",
+   "quiz": false
+  },
+  {
+   "id": "ccna-2-1",
+   "code": "2.1",
+   "title": "Доступ к Cisco IOS",
+   "index": 9,
+   "seconds": 701,
+   "match": "itn 2 1 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-2-2",
+   "code": "2.2",
+   "title": "Навигация по IOS",
+   "index": 10,
+   "seconds": 515,
+   "match": "itn 2 2 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-2-3",
+   "code": "2.3",
+   "title": "Структура команд",
+   "index": 11,
+   "seconds": 1115,
+   "match": "itn 2 3 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-2-4",
+   "code": "2.4",
+   "title": "Базовая настройка устройств",
+   "index": 12,
+   "seconds": 858,
+   "match": "itn 2 4 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-2-5",
+   "code": "2.5",
+   "title": "Сохранение конфигураций",
+   "index": 13,
+   "seconds": 726,
+   "match": "itn 2 5 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-3-0",
+   "code": "3.0",
+   "title": "Протоколы и модели",
+   "index": 14,
+   "seconds": 139,
+   "match": "itn 3 0 ",
+   "quiz": false
+  },
+  {
+   "id": "ccna-3-1",
+   "code": "3.1",
+   "title": "Правила",
+   "index": 15,
+   "seconds": 401,
+   "match": "itn 3 1 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-3-2",
+   "code": "3.2",
+   "title": "Протоколы",
+   "index": 16,
+   "seconds": 240,
+   "match": "itn 3 2 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-3-3",
+   "code": "3.3",
+   "title": "Наборы протоколов",
+   "index": 17,
+   "seconds": 356,
+   "match": "itn 3 3 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-3-4",
+   "code": "3.4",
+   "title": "Организации по стандартизации",
+   "index": 18,
+   "seconds": 113,
+   "match": "itn 3 4 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-3-5",
+   "code": "3.5",
+   "title": "Эталонные модели OSI и TCP/IP",
+   "index": 19,
+   "seconds": 461,
+   "match": "itn 3 5 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-3-6",
+   "code": "3.6",
+   "title": "Инкапсуляция данных",
+   "index": 20,
+   "seconds": 221,
+   "match": "itn 3 6 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-3-7",
+   "code": "3.7",
+   "title": "Доступ к данным",
+   "index": 21,
+   "seconds": 588,
+   "match": "itn 3 7 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-4-1",
+   "code": "4.1",
+   "title": "Назначение физического уровня",
+   "index": 22,
+   "seconds": 103,
+   "match": "itn 4 1 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-4-2",
+   "code": "4.2",
+   "title": "Характеристики физического уровня",
+   "index": 23,
+   "seconds": 407,
+   "match": "itn 4 2 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-4-3",
+   "code": "4.3",
+   "title": "Медные кабели",
+   "index": 24,
+   "seconds": 177,
+   "match": "itn 4 3 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-4-4",
+   "code": "4.4",
+   "title": "Кабели UTP",
+   "index": 25,
+   "seconds": 398,
+   "match": "itn 4 4 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-4-5",
+   "code": "4.5",
+   "title": "Оптоволоконные кабели",
+   "index": 26,
+   "seconds": 483,
+   "match": "itn 4 5 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-4-6",
+   "code": "4.6",
+   "title": "Беспроводная среда передачи данных",
+   "index": 27,
+   "seconds": 237,
+   "match": "itn 4 6 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-5-1",
+   "code": "5.1",
+   "title": "Двоичная система счисления",
+   "index": 28,
+   "seconds": 522,
+   "match": "itn 5 1 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-5-2",
+   "code": "5.2",
+   "title": "Шестнадцатеричная система счисления",
+   "index": 29,
+   "seconds": 274,
+   "match": "itn 5 2 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-6-0",
+   "code": "6.0",
+   "title": "Канальный уровень",
+   "index": 30,
+   "seconds": 885,
+   "match": "itn 6 0 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-7-1",
+   "code": "7.1",
+   "title": "Кадр Ethernet",
+   "index": 31,
+   "seconds": 469,
+   "match": "itn 7 1 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-7-2",
+   "code": "7.2",
+   "title": "MAC-адрес Ethernet",
+   "index": 32,
+   "seconds": 777,
+   "match": "itn 7 2 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-7-3",
+   "code": "7.3",
+   "title": "Таблица MAC-адресов",
+   "index": 33,
+   "seconds": 782,
+   "match": "itn 7 3 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-7-4",
+   "code": "7.4",
+   "title": "Способы пересылки на коммутаторах",
+   "index": 34,
+   "seconds": 477,
+   "match": "itn 7 4 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-8-1",
+   "code": "8.1",
+   "title": "Сетевой уровень: характеристики",
+   "index": 35,
+   "seconds": 385,
+   "match": "itn 8 1 ",
+   "quiz": true
+  },
+  {
+   "id": "ccna-8-2-3",
+   "code": "8.2–8.3",
+   "title": "Пакеты IPv4 и IPv6",
+   "index": 36,
+   "seconds": 487,
+   "match": "itn 8 2 8 3 ",
+   "quiz": true
+  }
+ ]
+}

@@ -81,4 +81,14 @@ final class TrainingController extends Controller
         Gate::authorize('viewAny', Article::class);
         abort_unless($attempt->user_id === $request->user()->id && $attempt->kind === 'exam', 404);
     }
+
+    /** Printable certificate (browser "print → save as PDF") for a completed program. */
+    public function certificate(string $track, Request $request, Training $training): Response
+    {
+        Gate::authorize('viewAny', Article::class);
+        $data = $training->certificate($request->user(), $track);
+        abort_unless($data, 404);
+
+        return Inertia::render('TrainingCertificate', ['certificate' => $data]);
+    }
 }
