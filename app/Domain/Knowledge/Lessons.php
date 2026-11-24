@@ -3,21 +3,49 @@
 namespace App\Domain\Knowledge;
 
 /**
- * Video lessons (resources/knowledge/cisco-ccna.json): a YouTube playlist shown through the embedded player.
- * A lesson counts as watched when the player reported at least watch_percent of its length played.
+ * Video courses (resources/knowledge/<course>.json): YouTube playlists shown through the embedded player.
+ * The course id equals the id of its program in tracks.json. A lesson counts as watched when the player
+ * reported at least watch_percent of its length played.
  */
 final class Lessons
 {
-    private ?array $course = null;
+    public const COURSES = ['cisco-ccna', 'mikrotik-mtcna'];
 
-    public function course(): array
+    private ?array $courses = null;
+
+    /** @return array<string, array> */
+    public function courses(): array
     {
-        return $this->course ??= json_decode(file_get_contents(resource_path('knowledge/cisco-ccna.json')), true, 512, JSON_THROW_ON_ERROR);
+        if ($this->courses === null) {
+            $this->courses = [];
+            foreach (self::COURSES as $id) {
+                $path = resource_path('knowledge/'.$id.'.json');
+                if (is_file($path)) {
+                    $this->courses[$id] = json_decode(file_get_contents($path), true, 512, JSON_THROW_ON_ERROR);
+                }
+            }
+        }
+
+        return $this->courses;
     }
 
+    public function course(string $id = 'cisco-ccna'): ?array
+    {
+        return $this->courses()[$id] ?? null;
+    }
+
+    /** The lesson with the id of its course in 'course'. */
     public function find(string $id): ?array
     {
-        return collect($this->course()['lessons'])->firstWhere('id', $id);
+        foreach ($this->courses() as $courseId => $course) {
+            foreach ($course['lessons'] as $lesson) {
+                if ($lesson['id'] === $id) {
+                    return $lesson + ['course' => $courseId];
+                }
+            }
+        }
+
+        return null;
     }
 
     public function label(array $lesson): string
@@ -25,12 +53,21 @@ final class Lessons
         return $lesson['code'].' '.$lesson['title'];
     }
 
-    /** Previous and next lessons for navigation. */
+    public function watchPercent(): int
+    {
+        return 90;
+    }
+
+    /** Previous and next lessons of the same course, for navigation. */
     public function neighbours(string $id): array
     {
-        $lessons = $this->course()['lessons'];
+        $lesson = $this->find($id);
+        if (! $lesson) {
+            return [null, null];
+        }
+        $lessons = $this->courses()[$lesson['course']]['lessons'];
         $i = array_search($id, array_column($lessons, 'id'), true);
 
-        return [$i > 0 ? $lessons[$i - 1] : null, $i !== false && $i < count($lessons) - 1 ? $lessons[$i + 1] : null];
+        return [$i > 0 ? $lessons[$i - 1] : null, $i < count($lessons) - 1 ? $lessons[$i + 1] : null];
     }
 }
