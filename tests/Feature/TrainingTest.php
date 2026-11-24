@@ -274,6 +274,6 @@ class TrainingTest extends TestCase
     public function test_knowledge_index_shows_my_tracks(): void
     {
         $this->actingAs(User::factory()->create(['role' => 'lead']))->get('/knowledge')->assertOk()
-            ->assertInertia(fn (Assert $p) => $p->has('training', 3)->where('training.0.next.id', 'daily-operations')->where('training.0.next.url', '/knowledge/daily-operations'));
+            ->assertInertia(fn (Assert $p) => $p->has('training', 4)->where('training.0.next.id', 'daily-operations')->where('training.0.next.url', '/knowledge/daily-operations'));
     }
 }
