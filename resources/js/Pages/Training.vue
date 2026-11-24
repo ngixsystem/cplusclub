@@ -15,8 +15,9 @@ type MemberTrack = { id: string; title: string; done: number; total: number; enr
 type PracticeScenario = { id: string; title: string; difficulty: string; minutes_target: number; demo_done: boolean; open_demo: number | null; open_exam: number | null;
  attempts: number; best: number | null; best_run: number | null; passed_at: string | null; last_run: number | null };
 type Practice = { scenarios: PracticeScenario[]; passed: number; total: number; pass_points: number; started_at: string | null; completed_at: string | null; duration_seconds: number | null };
-type Member = { id: number; name: string; role: string; tracks: MemberTrack[]; last_activity: string | null; practice: Practice | null };
-const props = defineProps<{ tracks: Track[]; team: Member[] | null; chapterPassPercent: number; practice: Practice | null }>();
+type Labs = { subnet_best: number | null; subnet_sessions: number; ios_passed: number; ios_total: number; labs_accepted: number; labs_total: number; labs_pending: number; labs_grade: number | null };
+type Member = { id: number; name: string; role: string; tracks: MemberTrack[]; last_activity: string | null; practice: Practice | null; labs: Labs | null };
+const props = defineProps<{ tracks: Track[]; team: Member[] | null; chapterPassPercent: number; practice: Practice | null; labs: Labs | null }>();
 const practiceOpen = ref(!props.practice?.started_at || (props.practice.passed < props.practice.total));
 function practiceStart(id: string, mode: 'demo' | 'exam') {
  busy.value = id + mode;
@@ -100,6 +101,18 @@ function chapterStatus(c: Chapter) {
    </div>
   </section>
 
+  <section v-if="labs" class="tr-track tr-labs" aria-labelledby="labs-title">
+   <div class="tr-intro">
+    <span class="tr-eyebrow">Практика к курсу Cisco · тренажёры проверяются автоматически, лабораторные — руководителем</span>
+    <h2 id="labs-title">Практика Cisco</h2>
+    <ul class="tr-lab-cards">
+     <li><Link href="/training/subnets" class="tr-lab-card"><b>Тренажёр подсетей</b><span>10 случайных задач: сеть, broadcast, маска, число узлов. Проходной 80 %.</span><small>{{ labs.subnet_best !== null ? 'Лучший результат ' + labs.subnet_best + ' % · тренировок ' + labs.subnet_sessions : 'Ещё не решали' }}</small></Link></li>
+     <li><Link href="/training/ios" class="tr-lab-card"><b>Тренажёр команд IOS</b><span>Введите команды для задачи — система проверит конфигурацию по пунктам.</span><small>Решено {{labs.ios_passed}} из {{labs.ios_total}}</small></Link></li>
+     <li><Link href="/training/labs" class="tr-lab-card"><b>Лабораторные Packet Tracer</b><span>Соберите схему, приложите .pkt и скриншоты — руководитель проверит и поставит оценку.</span><small>Принято {{labs.labs_accepted}} из {{labs.labs_total}}<template v-if="labs.labs_pending"> · на проверке {{labs.labs_pending}}</template></small></Link></li>
+    </ul>
+   </div>
+  </section>
+
   <section aria-label="Мои программы" class="tr-tracks">
    <p v-if="!tracks.length" class="panel">Для вашей роли программ пока нет.</p>
    <article v-for="track in tracks" :key="track.id" class="tr-track">
@@ -174,7 +187,7 @@ function chapterStatus(c: Chapter) {
    <p v-if="!members.length" class="panel">Нет активных сотрудников с этой ролью.</p>
    <div v-else class="kb-diagnostics tr-table" role="region" aria-label="Прогресс сотрудников" tabindex="0">
     <table>
-     <thead><tr><th scope="col">Сотрудник</th><th scope="col">Программа и главы</th><th scope="col">Тесты глав</th><th scope="col">Экзамен</th><th scope="col">Срок обучения</th><th scope="col">Практикум по заявкам</th></tr></thead>
+     <thead><tr><th scope="col">Сотрудник</th><th scope="col">Программа и главы</th><th scope="col">Тесты глав</th><th scope="col">Экзамен</th><th scope="col">Срок обучения</th><th scope="col">Практикум по заявкам</th><th scope="col">Практика Cisco</th></tr></thead>
      <tbody>
       <template v-for="member in members" :key="member.id">
        <tr v-for="(t, i) in member.tracks" :key="t.id">
@@ -184,8 +197,9 @@ function chapterStatus(c: Chapter) {
         <td><template v-if="t.exam?.best"><b :class="{ 'tr-ok': t.exam.best.passed }">{{t.exam.best.points}} / {{t.exam.best.max_points}}</b><small>{{t.exam.best.passed ? 'сдан' : 'не сдан'}} · попыток {{t.exam.attempts}}</small></template><template v-else-if="t.exam">не сдавал</template><template v-else>без экзамена</template></td>
         <td><template v-if="t.enrollment"><b v-if="t.enrollment.completed_at" class="tr-ok">{{duration(t.enrollment.duration_seconds)}}</b><span v-else>идёт {{duration(t.enrollment.duration_seconds)}}</span><small>{{date(t.enrollment.started_at)}} → {{t.enrollment.completed_at ? date(t.enrollment.completed_at) : '…'}}</small></template><template v-else>не начато</template></td>
         <td v-if="i===0" :rowspan="member.tracks.length"><template v-if="member.practice"><b :class="{ 'tr-ok': member.practice.passed === member.practice.total }">{{member.practice.passed}} из {{member.practice.total}}</b><small v-for="sc in member.practice.scenarios" :key="sc.id">{{sc.title}}: {{ sc.attempts ? sc.best + ' б.' + (sc.passed_at ? ' ✓' : '') + ' · попыток ' + sc.attempts : (sc.demo_done ? 'только демо' : '—') }}</small><small v-if="member.practice.duration_seconds !== null">{{ member.practice.completed_at ? 'за ' : 'идёт ' }}{{duration(member.practice.duration_seconds)}}</small></template><template v-else>—</template></td>
+        <td v-if="i===0" :rowspan="member.tracks.length"><template v-if="member.labs"><small>Подсети: {{ member.labs.subnet_best !== null ? member.labs.subnet_best + ' %' : '—' }}</small><small>IOS: {{member.labs.ios_passed}} из {{member.labs.ios_total}}</small><small>Лабораторные: {{member.labs.labs_accepted}} из {{member.labs.labs_total}}<template v-if="member.labs.labs_grade !== null"> · ср. {{member.labs.labs_grade}}</template></small><Link v-if="member.labs.labs_pending" href="/training/labs" class="tr-link">На проверке: {{member.labs.labs_pending}}</Link></template><template v-else>—</template></td>
        </tr>
-       <tr v-if="!member.tracks.length"><th scope="row">{{member.name}}<small>{{roles[member.role] || member.role}}</small></th><td colspan="5">—</td></tr>
+       <tr v-if="!member.tracks.length"><th scope="row">{{member.name}}<small>{{roles[member.role] || member.role}}</small></th><td colspan="6">—</td></tr>
       </template>
      </tbody>
     </table>
@@ -233,6 +247,12 @@ function chapterStatus(c: Chapter) {
 .tr-team-head h2{margin:0;font-size:19px}
 .tr-table table{table-layout:auto;min-width:900px}
 .tr-practice{margin-bottom:14px;border-color:var(--accent-text)}
+.tr-labs{margin-bottom:14px}
+.tr-lab-cards{list-style:none;padding:0;margin:12px 0 0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.tr-lab-card{display:grid;gap:6px;height:100%;padding:12px 14px;border:1px solid var(--border);border-radius:6px;color:inherit;text-decoration:none;background:var(--surface-2, var(--surface))}
+.tr-lab-card:hover,.tr-lab-card:focus-visible{border-color:var(--accent-text)}
+.tr-lab-card span{font-size:13px;color:var(--muted)}
+.tr-lab-card small{font-size:12px;font-weight:600}
 .tr-toggle{background:transparent;border:0;padding:0;margin-top:12px;color:var(--accent-text);font-weight:400;height:auto;min-height:0}
 .tr-practice-rules{margin-top:10px}
 .tr-criteria{margin:18px 0 8px;border-collapse:collapse;font-size:12px;width:100%;max-width:820px}

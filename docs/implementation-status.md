@@ -171,3 +171,4 @@
 Все зависимости, сборки, миграции и тесты запускаются только в Docker. PostgreSQL-тесты используют только cclub_test.
 
 Визуальный ориентир: https://www.hostinger.com/support/1583483-comprehensive-guide-to-hostinger-dashboard-at-hostinger/
+- 2026-11-25: практика Cisco — тренажёр подсетей, тренажёр команд IOS с разбором режимов, лабораторные Packet Tracer с проверкой и оценкой руководителя, колонка в сводке команды (`docs/training.md`).
