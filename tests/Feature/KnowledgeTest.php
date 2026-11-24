@@ -87,6 +87,10 @@ class KnowledgeTest extends TestCase
                 $this->assertNotEmpty($article['checklist']);
                 foreach ($article['sources'] as $source) {
                     $this->assertSame('https', parse_url($source['url'], PHP_URL_SCHEME));
+                    if ($article['category'] === 'mikrotik') {
+                        $this->assertSame('help.mikrotik.com', parse_url($source['url'], PHP_URL_HOST));
+                        continue;
+                    }
                     $this->assertSame('www.ccboot.com', parse_url($source['url'], PHP_URL_HOST));
                     $this->assertContains($source['url'], array_column($sources, 'url'));
                 }

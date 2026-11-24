@@ -86,6 +86,30 @@
   }
  },
  {
+  "id": "mikrotik",
+  "title": "Cisco → MikroTik",
+  "summary": "Как перенести знания Cisco на MikroTik RouterOS, на котором работают сети клубов: безопасные изменения, VLAN на bridge, DHCP и NAT, firewall вместо ACL, диагностика. После глав — практикум «VLAN на коммутаторе».",
+  "roles": [
+   "specialist",
+   "lead",
+   "owner"
+  ],
+  "chapters": [
+   "mt-from-cisco",
+   "mt-safe-changes",
+   "mt-bridge-vlan",
+   "mt-routing-dhcp",
+   "mt-firewall",
+   "mt-diagnostics"
+  ],
+  "exam": {
+   "questions": 20,
+   "points_per_answer": 5,
+   "pass_percent": 80,
+   "retake_minutes": 30
+  }
+ },
+ {
   "id": "lead-server",
   "title": "Старший инженер: сервер и образы",
   "summary": "Проектирование и сопровождение сервера клуба: ресурсы, диски, сеть, образы Windows, обновления, резервные копии и откат.",

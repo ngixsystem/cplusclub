@@ -174,7 +174,7 @@ class TrainingTest extends TestCase
         // Before the start the intro is shown: no enrollment, exam locked.
         $this->get('/training')->assertInertia(fn (Assert $p) => $p->where('tracks.0.enrollment', null)
             ->where('tracks.0.exam.questions', 20)->where('tracks.0.exam.max_points', 100)->where('tracks.0.exam.pass_points', 80)
-            ->where('tracks.0.exam.available', false)->has('tracks', 2)->where('tracks.1.id', 'cisco-ccna'));
+            ->where('tracks.0.exam.available', false)->has('tracks', 3)->where('tracks.1.id', 'cisco-ccna')->where('tracks.2.id', 'mikrotik'));
         $this->post('/training/lead-server/start')->assertNotFound(); // not a specialist program
         $this->post('/training/engineer-start/start')->assertRedirect('/training');
         $this->post('/training/engineer-start/start')->assertRedirect('/training'); // idempotent

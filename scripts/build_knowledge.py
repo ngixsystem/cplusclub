@@ -6,12 +6,15 @@ import json, math, re
 from pathlib import Path
 from urllib.parse import unquote
 
-ROOT = Path('/work')
+import os
+ROOT = Path(os.environ.get('KNOWLEDGE_ROOT', '/work'))
 DIR = ROOT / 'resources/knowledge'
 audit = json.loads((DIR / 'ccboot-audit.json').read_text())
 guides = json.loads((DIR / 'guides.json').read_text())
 guides += [dict(g, updated_at='2026-10-12') for g in json.loads((DIR / 'handbook.json').read_text())]
-reading_order = ['first-start','server-planning','hardware-baseline','x520-compatibility','network-plan','disk-layout','external-dhcp','uefi-readiness','create-image','driver-rollout','client-card','server-controls','settings-baseline','cache-tuning','super-client','windows-maintenance','restore-image','backup-rehearsal','hybrid-pilot','games-update','gamefix-diagnostics','faceit','applications','dhcp-pxe','tftp-timeout','windows-logo','bsod-triage','performance','writeback','daily-operations','support-package','license','ccproxy']
+# MikroTik chapters cite the vendor manual directly instead of the CCBoot audit.
+guides += [dict(g, updated_at='2026-11-25') for g in json.loads((DIR / 'mikrotik.json').read_text())]
+reading_order = ['first-start','server-planning','hardware-baseline','x520-compatibility','network-plan','disk-layout','external-dhcp','uefi-readiness','create-image','driver-rollout','client-card','server-controls','settings-baseline','cache-tuning','super-client','windows-maintenance','restore-image','backup-rehearsal','hybrid-pilot','games-update','gamefix-diagnostics','faceit','applications','dhcp-pxe','tftp-timeout','windows-logo','bsod-triage','performance','writeback','daily-operations','support-package','license','ccproxy','mt-from-cisco','mt-safe-changes','mt-bridge-vlan','mt-routing-dhcp','mt-firewall','mt-diagnostics']
 assert set(reading_order) == {g['id'] for g in guides}, 'Update the handbook reading order'
 guides.sort(key=lambda g: reading_order.index(g['id']))
 # Explicit editorial matches only. A citation alone does not mean a guide covers its topic.
@@ -51,6 +54,7 @@ definitions = [
  ('Diskless speed issues','performance','Производительность','Скорость загрузки, сеть, кеш и нагрузка серверных дисков.'),
  ('Game issues','games','Игры и античиты','Лаунчеры, файлы игр, GameFix, FACEIT и другие античиты.'),
  ('Applications issues','applications','Приложения','Установка и диагностика приложений, периферии и сетевых утилит.'),
+ ('__mikrotik','mikrotik','MikroTik','RouterOS для инженеров клуба: VLAN, DHCP, NAT, firewall и диагностика сети.'),
  ('Payment FAQs','license','Лицензии и оплата','Срок лицензии, количество мест, продление и платёжные вопросы.'),
  ('CCProxy related','ccproxy','CCProxy','Регистрация и восстановление лицензии продукта CCProxy.'),
  ('Support','support','Поддержка','Диагностические данные и подготовка обращения к специалисту.'),
@@ -83,8 +87,8 @@ def search_terms(title,category):
  return ' '.join([cat_by_id[category]['title'],*[v for k,v in synonyms.items() if k in lower]])
 articles=[]
 for guide in guides:
- sources=[]
- for slug in guide['sources']:
+ sources=[dict(s) for s in guide.pop('external_sources',[])]
+ for slug in guide.get('sources',[]):
   source=source_by_slug.get(unquote(slug))
   assert source, f'Missing source: {slug}'
   assert source['status']==200 and not source.get('soft_error'), f'Unreadable guide source: {slug}'
