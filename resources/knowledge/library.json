@@ -85,6 +85,12 @@
       "count": 22
     },
     {
+      "id": "mikrotik",
+      "title": "MikroTik",
+      "description": "RouterOS для инженеров клуба: VLAN, DHCP, NAT, firewall и диагностика сети.",
+      "count": 6
+    },
+    {
       "id": "license",
       "title": "Лицензии и оплата",
       "description": "Срок лицензии, количество мест, продление и платёжные вопросы.",
@@ -2518,6 +2524,450 @@
       "search": "CCProxy и CCBoot — разные продукты. Сначала уточните, какая лицензия и какой компьютер требуют регистрации. Не меняйте настройки сетевой загрузки клуба из-за ошибки активации прокси.  Сверьте идентификатор лицензии и Machine ID на целевом компьютере. Для ручной регистрации используйте официальный канал поддержки, указанный в статье CCBoot. Передайте идентификаторы через приватное обращение. Если требуется сброс лицензии, проверьте выбранный продукт и данные в официальном кабинете перед отправкой формы. После получения ответа завершите регистрацию и проверьте штатную работу прокси на одном клиенте. Зафиксируйте дату и результат обращения, не публикуя регистрационные данные в общей базе знаний.  Приложите точный текст ошибки и номер обращения. Повторная отправка разных идентификаторов без проверки целевого компьютера усложняет восстановление доступа.  CCProxy",
       "status": "ok",
       "updated_at": "2026-10-11",
+      "minutes": 2
+    },
+    {
+      "id": "mt-from-cisco",
+      "category": "mikrotik",
+      "title": "MikroTik для тех, кто знает Cisco",
+      "summary": "Как переложить знания Cisco IOS на RouterOS: где интерфейсы, как смотреть конфигурацию, таблицы и состояние.",
+      "tags": [
+        "mikrotik",
+        "routeros",
+        "cisco",
+        "winbox",
+        "cli"
+      ],
+      "sections": [
+        {
+          "title": "Главное отличие",
+          "paragraphs": [
+            "В Cisco IOS вы входите в режимы (config, config-if) и меняете running-config, который потом нужно сохранить в startup-config. В RouterOS режимов нет: команда пишется как путь меню, например /ip address или /interface bridge port, и применяется сразу. Отдельного сохранения нет — изменение уже записано в конфигурацию.",
+            "Управлять можно тремя способами: Winbox (приложение для Windows), WebFig (браузер) и терминал (SSH или New Terminal в Winbox). Все три меняют одну и ту же конфигурацию. В заявке записывайте команды терминала — их можно повторить и проверить."
+          ]
+        },
+        {
+          "title": "Соответствие команд",
+          "commands": [
+            {
+              "label": "Cisco: show running-config",
+              "code": "/export"
+            },
+            {
+              "label": "Cisco: show ip interface brief",
+              "code": "/interface print\n/ip address print"
+            },
+            {
+              "label": "Cisco: show mac address-table",
+              "code": "/interface bridge host print"
+            },
+            {
+              "label": "Cisco: show arp",
+              "code": "/ip arp print"
+            },
+            {
+              "label": "Cisco: show ip route",
+              "code": "/ip route print"
+            },
+            {
+              "label": "Cisco: show vlan brief",
+              "code": "/interface bridge vlan print"
+            },
+            {
+              "label": "Cisco: show logging",
+              "code": "/log print"
+            },
+            {
+              "label": "Cisco: ping / traceroute",
+              "code": "/ping 8.8.8.8 count=5\n/tool traceroute 8.8.8.8"
+            }
+          ]
+        },
+        {
+          "title": "Как читать вывод",
+          "steps": [
+            "Флаги в начале строки: X — выключено (disabled), R — работает (running), D — создано автоматически (dynamic). Динамические записи создаёт сам RouterOS, их не редактируют вручную.",
+            "Фильтруйте вывод через where: /interface bridge host print where interface=ether5 или /log print where topics~\"dhcp\".",
+            "Команда /export показывает только то, что отличается от заводских значений. Полный вид — /export verbose; для заявки обычно хватает /export без пароля и ключей (они не выводятся).",
+            "Названия портов: ether1…, sfp-sfpplus1, wlan1 / wifi1. Подписывайте порты через comment — в клубе это экономит время следующему инженеру."
+          ]
+        },
+        {
+          "title": "Чего нет в RouterOS",
+          "note": "Нет write memory и startup-config: перезагрузка не откатывает изменения. Нет неявного запрета в конце правил firewall, как у ACL Cisco. Поэтому перед любым изменением делайте экспорт и включайте Safe Mode — следующая глава."
+        }
+      ],
+      "checklist": [
+        "Нашёл в /export интерфейсы, адреса и VLAN учебного или клубного роутера",
+        "Посмотрел таблицу MAC-адресов bridge и ARP",
+        "Отфильтровал журнал по теме dhcp"
+      ],
+      "updated_at": "2026-11-25",
+      "kind": "guide",
+      "sources": [
+        {
+          "title": "Configuration Management — RouterOS",
+          "url": "https://help.mikrotik.com/docs/display/ROS/Configuration+Management"
+        },
+        {
+          "title": "Torch — RouterOS",
+          "url": "https://help.mikrotik.com/docs/display/ROS/Torch"
+        }
+      ],
+      "search": "В Cisco IOS вы входите в режимы (config, config-if) и меняете running-config, который потом нужно сохранить в startup-config. В RouterOS режимов нет: команда пишется как путь меню, например /ip address или /interface bridge port, и применяется сразу. Отдельного сохранения нет — изменение уже записано в конфигурацию. Управлять можно тремя способами: Winbox (приложение для Windows), WebFig (браузер) и терминал (SSH или New Terminal в Winbox). Все три меняют одну и ту же конфигурацию. В заявке записывайте команды терминала — их можно повторить и проверить.   Cisco: show running-config /export Cisco: show ip interface brief /interface print\n/ip address print Cisco: show mac address-table /interface bridge host print Cisco: show arp /ip arp print Cisco: show ip route /ip route print Cisco: show vlan brief /interface bridge vlan print Cisco: show logging /log print Cisco: ping / traceroute /ping 8.8.8.8 count=5\n/tool traceroute 8.8.8.8 Флаги в начале строки: X — выключено (disabled), R — работает (running), D — создано автоматически (dynamic). Динамические записи создаёт сам RouterOS, их не редактируют вручную. Фильтруйте вывод через where: /interface bridge host print where interface=ether5 или /log print where topics~\"dhcp\". Команда /export показывает только то, что отличается от заводских значений. Полный вид — /export verbose; для заявки обычно хватает /export без пароля и ключей (они не выводятся). Названия портов: ether1…, sfp-sfpplus1, wlan1 / wifi1. Подписывайте порты через comment — в клубе это экономит время следующему инженеру.  Нет write memory и startup-config: перезагрузка не откатывает изменения. Нет неявного запрета в конце правил firewall, как у ACL Cisco. Поэтому перед любым изменением делайте экспорт и включайте Safe Mode — следующая глава. MikroTik",
+      "status": "ok",
+      "minutes": 2
+    },
+    {
+      "id": "mt-safe-changes",
+      "category": "mikrotik",
+      "title": "Безопасные изменения на MikroTik",
+      "summary": "Экспорт и бэкап, Safe Mode, доступ к управлению и учётные записи — чтобы не оставить клуб без сети.",
+      "tags": [
+        "mikrotik",
+        "backup",
+        "safe mode",
+        "export",
+        "доступ"
+      ],
+      "sections": [
+        {
+          "title": "До изменения",
+          "steps": [
+            "Сделайте текстовый экспорт: /export file=club-ДАТА-задача. Файл появится в /file — скачайте его через Winbox (Files) и приложите к заявке.",
+            "Сделайте бинарный бэкап: /system backup save name=club-ДАТА. Он восстанавливается на том же устройстве, включая пароли; экспорт удобнее читать и переносить.",
+            "Включите Safe Mode: Ctrl+X в терминале или кнопка Safe Mode в Winbox. Если связь с роутером пропадёт, RouterOS сам отменит изменения, сделанные в этом режиме.",
+            "Меняйте одно за раз и сразу проверяйте результат. Выключите Safe Mode (снова Ctrl+X), только когда убедились, что доступ и сеть работают."
+          ]
+        },
+        {
+          "title": "Доступ к управлению",
+          "steps": [
+            "У каждого инженера своя учётная запись: /user add name=ivanov group=full. Общий admin с паролем на стикере — источник «кто это поменял».",
+            "Отключите лишние службы: /ip service print, затем /ip service disable telnet,ftp,www,api. Оставьте ssh и winbox, ограничьте их адресами управления через address=.",
+            "Ограничьте MAC-доступ интерфейсами LAN: /tool mac-server set allowed-interface-list=LAN и /tool mac-server mac-winbox set allowed-interface-list=LAN.",
+            "Журнал изменений: /log print where topics~\"system\" показывает, кто и когда менял конфигурацию."
+          ]
+        },
+        {
+          "title": "Чего не делать",
+          "note": "Не сбрасывайте роутер клуба к заводским настройкам ради одной проблемы: пропадут VLAN, DHCP, правила firewall и доступ CCBoot. Не обновляйте RouterOS посреди рабочего дня без окна обслуживания и бэкапа."
+        }
+      ],
+      "checklist": [
+        "Экспорт и бэкап сделаны и приложены к заявке",
+        "Изменение выполнено в Safe Mode",
+        "Работаю под своей учётной записью, лишние службы выключены"
+      ],
+      "updated_at": "2026-11-25",
+      "kind": "guide",
+      "sources": [
+        {
+          "title": "Configuration Management — RouterOS",
+          "url": "https://help.mikrotik.com/docs/display/ROS/Configuration+Management"
+        }
+      ],
+      "search": "Сделайте текстовый экспорт: /export file=club-ДАТА-задача. Файл появится в /file — скачайте его через Winbox (Files) и приложите к заявке. Сделайте бинарный бэкап: /system backup save name=club-ДАТА. Он восстанавливается на том же устройстве, включая пароли; экспорт удобнее читать и переносить. Включите Safe Mode: Ctrl+X в терминале или кнопка Safe Mode в Winbox. Если связь с роутером пропадёт, RouterOS сам отменит изменения, сделанные в этом режиме. Меняйте одно за раз и сразу проверяйте результат. Выключите Safe Mode (снова Ctrl+X), только когда убедились, что доступ и сеть работают.  У каждого инженера своя учётная запись: /user add name=ivanov group=full. Общий admin с паролем на стикере — источник «кто это поменял». Отключите лишние службы: /ip service print, затем /ip service disable telnet,ftp,www,api. Оставьте ssh и winbox, ограничьте их адресами управления через address=. Ограничьте MAC-доступ интерфейсами LAN: /tool mac-server set allowed-interface-list=LAN и /tool mac-server mac-winbox set allowed-interface-list=LAN. Журнал изменений: /log print where topics~\"system\" показывает, кто и когда менял конфигурацию.  Не сбрасывайте роутер клуба к заводским настройкам ради одной проблемы: пропадут VLAN, DHCP, правила firewall и доступ CCBoot. Не обновляйте RouterOS посреди рабочего дня без окна обслуживания и бэкапа. MikroTik",
+      "status": "ok",
+      "minutes": 2
+    },
+    {
+      "id": "mt-bridge-vlan",
+      "category": "mikrotik",
+      "title": "VLAN на коммутаторе MikroTik: access и trunk",
+      "summary": "Как настроить VLAN через bridge vlan-filtering и как это соотносится с switchport access/trunk на Cisco.",
+      "tags": [
+        "mikrotik",
+        "vlan",
+        "bridge",
+        "trunk",
+        "access",
+        "pvid",
+        "crs"
+      ],
+      "sections": [
+        {
+          "title": "Модель",
+          "paragraphs": [
+            "На MikroTik порты коммутатора объединяют в один bridge. VLAN включаются на самом bridge параметром vlan-filtering=yes. Access-порт Cisco соответствует порту bridge с pvid=VLAN и записи untagged в таблице /interface bridge vlan. Trunk соответствует записи tagged. Native VLAN — это pvid на trunk-порту.",
+            "Используйте один bridge на устройство: на CRS3xx и RB5009 аппаратную обработку (offload) получает только один bridge. Интерфейс VLAN для адреса роутера создают на bridge, а не на физическом порту, входящем в bridge.",
+            "Типичная схема клуба: VLAN 10 — касса и персонал, VLAN 20 — игровые ПК и сервер CCBoot (загрузка остаётся внутри одной сети и не идёт через процессор роутера), VLAN 30 — гостевой Wi‑Fi, VLAN 99 — управление."
+          ]
+        },
+        {
+          "title": "Пример: два access-порта и trunk",
+          "commands": [
+            {
+              "label": "Порты в bridge, pvid для access",
+              "code": "/interface bridge add name=bridge1 vlan-filtering=no\n/interface bridge port add bridge=bridge1 interface=ether2 pvid=10 frame-types=admit-only-untagged-and-priority-tagged\n/interface bridge port add bridge=bridge1 interface=ether3 pvid=20 frame-types=admit-only-untagged-and-priority-tagged\n/interface bridge port add bridge=bridge1 interface=sfp-sfpplus1 frame-types=admit-only-vlan-tagged"
+            },
+            {
+              "label": "Таблица VLAN: tagged = trunk, untagged = access",
+              "code": "/interface bridge vlan add bridge=bridge1 vlan-ids=10 tagged=bridge1,sfp-sfpplus1 untagged=ether2\n/interface bridge vlan add bridge=bridge1 vlan-ids=20 tagged=bridge1,sfp-sfpplus1 untagged=ether3"
+            },
+            {
+              "label": "Интерфейс VLAN для адреса роутера — на bridge",
+              "code": "/interface vlan add interface=bridge1 name=vlan10 vlan-id=10"
+            },
+            {
+              "label": "Включить фильтрацию последней, в Safe Mode",
+              "code": "/interface bridge set bridge1 vlan-filtering=yes"
+            }
+          ]
+        },
+        {
+          "title": "Порядок и проверка",
+          "steps": [
+            "Включите Safe Mode и убедитесь, что вы управляете устройством через порт или VLAN, которые останутся доступны после включения фильтрации.",
+            "Сначала заполните порты и таблицу VLAN, и только потом включайте vlan-filtering=yes. Bridge указывают в tagged для каждой VLAN, в которой у самого устройства есть адрес.",
+            "Проверьте: /interface bridge vlan print — в каких VLAN порты tagged/untagged; /interface bridge port print — pvid; /interface bridge host print where vid=20 — какие MAC пришли в VLAN.",
+            "Сравнивайте неисправный порт с исправным портом того же назначения: отличия в pvid или списке untagged обычно и есть причина."
+          ]
+        },
+        {
+          "title": "Типичные ошибки",
+          "diagnostics": [
+            {
+              "symptom": "Порт получает адрес не из той сети",
+              "check": "pvid порта и в какой VLAN он untagged",
+              "next": "Исправьте pvid и запись untagged на нужную VLAN; проверьте одинаковые соседние порты."
+            },
+            {
+              "symptom": "После vlan-filtering=yes пропал доступ к коммутатору",
+              "check": "Есть ли bridge в tagged для VLAN управления",
+              "next": "Safe Mode откатит изменение. Добавьте bridge в tagged, затем повторите."
+            },
+            {
+              "symptom": "Trunk не пропускает VLAN",
+              "check": "Порт указан в tagged для этой VLAN на обоих концах",
+              "next": "Сверьте список VLAN на обоих коммутаторах; frame-types на trunk — admit-only-vlan-tagged."
+            }
+          ]
+        }
+      ],
+      "checklist": [
+        "Составил таблицу: порт → VLAN → tagged/untagged",
+        "vlan-filtering включён последним и в Safe Mode",
+        "Проверил bridge host: MAC клиента в нужной VLAN"
+      ],
+      "updated_at": "2026-11-25",
+      "kind": "guide",
+      "sources": [
+        {
+          "title": "Bridge VLAN Table — RouterOS",
+          "url": "https://help.mikrotik.com/docs/display/ROS/Bridge+VLAN+Table"
+        }
+      ],
+      "search": "На MikroTik порты коммутатора объединяют в один bridge. VLAN включаются на самом bridge параметром vlan-filtering=yes. Access-порт Cisco соответствует порту bridge с pvid=VLAN и записи untagged в таблице /interface bridge vlan. Trunk соответствует записи tagged. Native VLAN — это pvid на trunk-порту. Используйте один bridge на устройство: на CRS3xx и RB5009 аппаратную обработку (offload) получает только один bridge. Интерфейс VLAN для адреса роутера создают на bridge, а не на физическом порту, входящем в bridge. Типичная схема клуба: VLAN 10 — касса и персонал, VLAN 20 — игровые ПК и сервер CCBoot (загрузка остаётся внутри одной сети и не идёт через процессор роутера), VLAN 30 — гостевой Wi‑Fi, VLAN 99 — управление.   Порты в bridge, pvid для access /interface bridge add name=bridge1 vlan-filtering=no\n/interface bridge port add bridge=bridge1 interface=ether2 pvid=10 frame-types=admit-only-untagged-and-priority-tagged\n/interface bridge port add bridge=bridge1 interface=ether3 pvid=20 frame-types=admit-only-untagged-and-priority-tagged\n/interface bridge port add bridge=bridge1 interface=sfp-sfpplus1 frame-types=admit-only-vlan-tagged Таблица VLAN: tagged = trunk, untagged = access /interface bridge vlan add bridge=bridge1 vlan-ids=10 tagged=bridge1,sfp-sfpplus1 untagged=ether2\n/interface bridge vlan add bridge=bridge1 vlan-ids=20 tagged=bridge1,sfp-sfpplus1 untagged=ether3 Интерфейс VLAN для адреса роутера — на bridge /interface vlan add interface=bridge1 name=vlan10 vlan-id=10 Включить фильтрацию последней, в Safe Mode /interface bridge set bridge1 vlan-filtering=yes Включите Safe Mode и убедитесь, что вы управляете устройством через порт или VLAN, которые останутся доступны после включения фильтрации. Сначала заполните порты и таблицу VLAN, и только потом включайте vlan-filtering=yes. Bridge указывают в tagged для каждой VLAN, в которой у самого устройства есть адрес. Проверьте: /interface bridge vlan print — в каких VLAN порты tagged/untagged; /interface bridge port print — pvid; /interface bridge host print where vid=20 — какие MAC пришли в VLAN. Сравнивайте неисправный порт с исправным портом того же назначения: отличия в pvid или списке untagged обычно и есть причина.   Порт получает адрес не из той сети pvid порта и в какой VLAN он untagged Исправьте pvid и запись untagged на нужную VLAN; проверьте одинаковые соседние порты. После vlan-filtering=yes пропал доступ к коммутатору Есть ли bridge в tagged для VLAN управления Safe Mode откатит изменение. Добавьте bridge в tagged, затем повторите. Trunk не пропускает VLAN Порт указан в tagged для этой VLAN на обоих концах Сверьте список VLAN на обоих коммутаторах; frame-types на trunk — admit-only-vlan-tagged. MikroTik",
+      "status": "ok",
+      "minutes": 3
+    },
+    {
+      "id": "mt-routing-dhcp",
+      "category": "mikrotik",
+      "title": "Адреса, DHCP, DNS и NAT на MikroTik",
+      "summary": "Шлюз для каждой VLAN, пул DHCP, DNS для клиентов и выход в интернет через masquerade — аналоги ip dhcp pool и ip nat overload.",
+      "tags": [
+        "mikrotik",
+        "dhcp",
+        "dns",
+        "nat",
+        "masquerade",
+        "pxe"
+      ],
+      "sections": [
+        {
+          "title": "Шлюз и DHCP для VLAN",
+          "commands": [
+            {
+              "label": "Адрес шлюза на интерфейсе VLAN (аналог router-on-a-stick)",
+              "code": "/ip address add address=192.168.10.1/24 interface=vlan10"
+            },
+            {
+              "label": "Пул и DHCP-сервер (аналог ip dhcp pool)",
+              "code": "/ip pool add name=pool10 ranges=192.168.10.100-192.168.10.200\n/ip dhcp-server add name=dhcp10 interface=vlan10 address-pool=pool10\n/ip dhcp-server network add address=192.168.10.0/24 gateway=192.168.10.1 dns-server=192.168.10.1"
+            },
+            {
+              "label": "Маршрут по умолчанию (аналог ip route 0.0.0.0 0.0.0.0)",
+              "code": "/ip route add dst-address=0.0.0.0/0 gateway=ШЛЮЗ_ПРОВАЙДЕРА"
+            },
+            {
+              "label": "Выход в интернет (аналог ip nat ... overload)",
+              "code": "/ip firewall nat add chain=srcnat out-interface=ether1 action=masquerade"
+            }
+          ]
+        },
+        {
+          "title": "DNS",
+          "steps": [
+            "Роутер может раздавать DNS клиентам: /ip dns set servers=DNS_ПРОВАЙДЕРА,1.1.1.1 allow-remote-requests=yes. Клиенты получают адрес роутера в dns-server сети DHCP.",
+            "При allow-remote-requests=yes обязательно закройте порт 53 со стороны интернета правилами input — иначе роутер станет открытым DNS-резолвером.",
+            "Проверка с ПК: ping 8.8.8.8 проверяет канал, nslookup steampowered.com — DNS. Если по IP работает, а по имени нет — смотрите /ip dns."
+          ]
+        },
+        {
+          "title": "DHCP и CCBoot",
+          "paragraphs": [
+            "В игровой VLAN адреса выдаёт кто‑то один: либо DHCP CCBoot, либо MikroTik. Два сервера в одной сети дают ПК случайные настройки и ошибки PXE.",
+            "Если DHCP выдаёт MikroTik, загрузочный сервер указывают в сети DHCP: /ip dhcp-server network set [find address=192.168.20.0/24] next-server=АДРЕС_CCBOOT boot-file-name=ИМЯ_ЗАГРУЗЧИКА. Имя загрузчика сверьте с настройками CCBoot для BIOS или UEFI.",
+            "Ошибка PXE «No boot filename received» означает, что ПК получил адрес от DHCP без параметров загрузки — часто это DHCP чужой VLAN."
+          ]
+        },
+        {
+          "title": "Проверка",
+          "steps": [
+            "Выданные адреса: /ip dhcp-server lease print where server=dhcp10.",
+            "Журнал DHCP: /log print where topics~\"dhcp\".",
+            "Счётчик NAT: /ip firewall nat print stats — пакеты должны расти, когда клиенты выходят в интернет."
+          ]
+        }
+      ],
+      "checklist": [
+        "Для каждой VLAN понятно, кто выдаёт DHCP",
+        "DNS проверен через nslookup с клиента",
+        "Порт 53 закрыт со стороны интернета"
+      ],
+      "updated_at": "2026-11-25",
+      "kind": "guide",
+      "sources": [
+        {
+          "title": "DHCP — RouterOS",
+          "url": "https://help.mikrotik.com/docs/display/ROS/DHCP"
+        },
+        {
+          "title": "NAT — RouterOS",
+          "url": "https://help.mikrotik.com/docs/display/ROS/NAT"
+        }
+      ],
+      "search": " Адрес шлюза на интерфейсе VLAN (аналог router-on-a-stick) /ip address add address=192.168.10.1/24 interface=vlan10 Пул и DHCP-сервер (аналог ip dhcp pool) /ip pool add name=pool10 ranges=192.168.10.100-192.168.10.200\n/ip dhcp-server add name=dhcp10 interface=vlan10 address-pool=pool10\n/ip dhcp-server network add address=192.168.10.0/24 gateway=192.168.10.1 dns-server=192.168.10.1 Маршрут по умолчанию (аналог ip route 0.0.0.0 0.0.0.0) /ip route add dst-address=0.0.0.0/0 gateway=ШЛЮЗ_ПРОВАЙДЕРА Выход в интернет (аналог ip nat ... overload) /ip firewall nat add chain=srcnat out-interface=ether1 action=masquerade Роутер может раздавать DNS клиентам: /ip dns set servers=DNS_ПРОВАЙДЕРА,1.1.1.1 allow-remote-requests=yes. Клиенты получают адрес роутера в dns-server сети DHCP. При allow-remote-requests=yes обязательно закройте порт 53 со стороны интернета правилами input — иначе роутер станет открытым DNS-резолвером. Проверка с ПК: ping 8.8.8.8 проверяет канал, nslookup steampowered.com — DNS. Если по IP работает, а по имени нет — смотрите /ip dns.  В игровой VLAN адреса выдаёт кто‑то один: либо DHCP CCBoot, либо MikroTik. Два сервера в одной сети дают ПК случайные настройки и ошибки PXE. Если DHCP выдаёт MikroTik, загрузочный сервер указывают в сети DHCP: /ip dhcp-server network set [find address=192.168.20.0/24] next-server=АДРЕС_CCBOOT boot-file-name=ИМЯ_ЗАГРУЗЧИКА. Имя загрузчика сверьте с настройками CCBoot для BIOS или UEFI. Ошибка PXE «No boot filename received» означает, что ПК получил адрес от DHCP без параметров загрузки — часто это DHCP чужой VLAN.  Выданные адреса: /ip dhcp-server lease print where server=dhcp10. Журнал DHCP: /log print where topics~\"dhcp\". Счётчик NAT: /ip firewall nat print stats — пакеты должны расти, когда клиенты выходят в интернет.  MikroTik айпи ip адрес",
+      "status": "ok",
+      "minutes": 2
+    },
+    {
+      "id": "mt-firewall",
+      "category": "mikrotik",
+      "title": "Firewall MikroTik вместо ACL Cisco",
+      "summary": "Цепочки input и forward, порядок правил, established/related, изоляция гостевой сети и защита управления.",
+      "tags": [
+        "mikrotik",
+        "firewall",
+        "acl",
+        "гости",
+        "безопасность"
+      ],
+      "sections": [
+        {
+          "title": "Как это устроено",
+          "paragraphs": [
+            "Правила /ip firewall filter проверяются сверху вниз, срабатывает первое подходящее — как в ACL. Но в отличие от ACL Cisco в конце нет неявного deny: пакет, не попавший ни под одно правило, пропускается. Запрет «всего остального» пишут явным последним правилом.",
+            "Цепочка input — трафик к самому роутеру (Winbox, SSH, DNS роутера). Цепочка forward — трафик через роутер между сетями и в интернет. ACL на интерфейсе Cisco ближе всего к правилам forward с in-interface."
+          ]
+        },
+        {
+          "title": "Базовый набор",
+          "commands": [
+            {
+              "label": "Защита самого роутера (input)",
+              "code": "/ip firewall filter\nadd chain=input action=accept connection-state=established,related,untracked\nadd chain=input action=drop connection-state=invalid\nadd chain=input action=accept protocol=icmp\nadd chain=input action=accept in-interface-list=LAN\nadd chain=input action=drop comment=\"всё остальное к роутеру\""
+            },
+            {
+              "label": "Транзит и гости (forward)",
+              "code": "add chain=forward action=accept connection-state=established,related,untracked\nadd chain=forward action=drop connection-state=invalid\nadd chain=forward action=drop src-address=192.168.30.0/24 dst-address=192.168.0.0/16 comment=\"гости не видят клуб\"\nadd chain=forward action=drop connection-state=new connection-nat-state=!dstnat in-interface-list=WAN"
+            }
+          ]
+        },
+        {
+          "title": "Как менять правила",
+          "steps": [
+            "Перед правкой — экспорт /ip firewall export и Safe Mode.",
+            "Новое правило ставьте в нужное место: place-before=НОМЕР. Правило ниже разрешающего всё не сработает.",
+            "Счётчики /ip firewall filter print stats показывают, срабатывает ли правило. Нулевой счётчик — повод проверить порядок и условия.",
+            "Пишите comment к каждому правилу: зачем оно и номер заявки."
+          ]
+        }
+      ],
+      "checklist": [
+        "Нашёл правило, которое изолирует гостевую сеть",
+        "Понимаю разницу input и forward",
+        "Проверил счётчики правил после изменения"
+      ],
+      "updated_at": "2026-11-25",
+      "kind": "guide",
+      "sources": [
+        {
+          "title": "Filter — RouterOS",
+          "url": "https://help.mikrotik.com/docs/display/ROS/Filter"
+        }
+      ],
+      "search": "Правила /ip firewall filter проверяются сверху вниз, срабатывает первое подходящее — как в ACL. Но в отличие от ACL Cisco в конце нет неявного deny: пакет, не попавший ни под одно правило, пропускается. Запрет «всего остального» пишут явным последним правилом. Цепочка input — трафик к самому роутеру (Winbox, SSH, DNS роутера). Цепочка forward — трафик через роутер между сетями и в интернет. ACL на интерфейсе Cisco ближе всего к правилам forward с in-interface.   Защита самого роутера (input) /ip firewall filter\nadd chain=input action=accept connection-state=established,related,untracked\nadd chain=input action=drop connection-state=invalid\nadd chain=input action=accept protocol=icmp\nadd chain=input action=accept in-interface-list=LAN\nadd chain=input action=drop comment=\"всё остальное к роутеру\" Транзит и гости (forward) add chain=forward action=accept connection-state=established,related,untracked\nadd chain=forward action=drop connection-state=invalid\nadd chain=forward action=drop src-address=192.168.30.0/24 dst-address=192.168.0.0/16 comment=\"гости не видят клуб\"\nadd chain=forward action=drop connection-state=new connection-nat-state=!dstnat in-interface-list=WAN Перед правкой — экспорт /ip firewall export и Safe Mode. Новое правило ставьте в нужное место: place-before=НОМЕР. Правило ниже разрешающего всё не сработает. Счётчики /ip firewall filter print stats показывают, срабатывает ли правило. Нулевой счётчик — повод проверить порядок и условия. Пишите comment к каждому правилу: зачем оно и номер заявки.  MikroTik",
+      "status": "ok",
+      "minutes": 2
+    },
+    {
+      "id": "mt-diagnostics",
+      "category": "mikrotik",
+      "title": "Диагностика сети на MikroTik",
+      "summary": "Линк и ошибки порта, кто занимает канал, где MAC-адрес, что видно в журнале — порядок проверки сбоев в зале.",
+      "tags": [
+        "mikrotik",
+        "диагностика",
+        "torch",
+        "sniffer",
+        "ошибки порта"
+      ],
+      "sections": [
+        {
+          "title": "Порядок проверки",
+          "steps": [
+            "Физика: /interface ethernet monitor ether5 once — есть ли линк и на какой скорости. 100 Мбит/с вместо 1 Гбит/с у игрового ПК — кабель или разъём.",
+            "Ошибки: /interface ethernet print stats where name=ether5 — растущие rx-fcs-error и rx-error указывают на кабель, патч-корд или порт.",
+            "Где ПК: /interface bridge host print where mac-address=AA:BB:CC:DD:EE:FF — на каком порту и в какой VLAN виден MAC.",
+            "Адрес и аренда: /ip arp print where address=192.168.20.41 и /ip dhcp-server lease print where mac-address=…",
+            "Кто занимает канал: /tool torch interface=ether1 — потоки по адресам и портам в реальном времени.",
+            "Захват пакетов для разбора: /tool sniffer quick interface=ether5 port=67 — например, видно ли DHCP-запросы ПК.",
+            "Нагрузка роутера: /system resource print и /tool profile — высокая загрузка CPU объясняет задержки у всех."
+          ]
+        },
+        {
+          "title": "Признаки и следующий шаг",
+          "diagnostics": [
+            {
+              "symptom": "Один ПК тормозит или теряет связь",
+              "check": "Скорость линка и ошибки на его порту",
+              "next": "Замените патч-корд, переключите на свободный порт, проверьте счётчики снова."
+            },
+            {
+              "symptom": "Группа ПК в одной зоне без сети",
+              "check": "Uplink коммутатора зоны, VLAN на trunk, bridge host",
+              "next": "Сверьте trunk и pvid с рабочей зоной; не перезагружайте ядро сети наугад."
+            },
+            {
+              "symptom": "Все без интернета, локальная сеть работает",
+              "check": "ping 8.8.8.8 с роутера, /ip dns, маршрут по умолчанию, NAT",
+              "next": "Разделите канал и DNS; проверьте изменения в журнале."
+            }
+          ]
+        },
+        {
+          "title": "Что приложить к заявке",
+          "note": "Вывод команд до и после исправления, имя порта и VLAN, экспорт изменённого раздела. Не прикладывайте полный экспорт с паролями Wi‑Fi в публичные чаты."
+        }
+      ],
+      "checklist": [
+        "Проверил линк и ошибки порта проблемного ПК",
+        "Нашёл MAC ПК в таблице bridge host",
+        "Посмотрел трафик через torch"
+      ],
+      "updated_at": "2026-11-25",
+      "kind": "guide",
+      "sources": [
+        {
+          "title": "Torch — RouterOS",
+          "url": "https://help.mikrotik.com/docs/display/ROS/Torch"
+        }
+      ],
+      "search": "Физика: /interface ethernet monitor ether5 once — есть ли линк и на какой скорости. 100 Мбит/с вместо 1 Гбит/с у игрового ПК — кабель или разъём. Ошибки: /interface ethernet print stats where name=ether5 — растущие rx-fcs-error и rx-error указывают на кабель, патч-корд или порт. Где ПК: /interface bridge host print where mac-address=AA:BB:CC:DD:EE:FF — на каком порту и в какой VLAN виден MAC. Адрес и аренда: /ip arp print where address=192.168.20.41 и /ip dhcp-server lease print where mac-address=… Кто занимает канал: /tool torch interface=ether1 — потоки по адресам и портам в реальном времени. Захват пакетов для разбора: /tool sniffer quick interface=ether5 port=67 — например, видно ли DHCP-запросы ПК. Нагрузка роутера: /system resource print и /tool profile — высокая загрузка CPU объясняет задержки у всех.   Один ПК тормозит или теряет связь Скорость линка и ошибки на его порту Замените патч-корд, переключите на свободный порт, проверьте счётчики снова. Группа ПК в одной зоне без сети Uplink коммутатора зоны, VLAN на trunk, bridge host Сверьте trunk и pvid с рабочей зоной; не перезагружайте ядро сети наугад. Все без интернета, локальная сеть работает ping 8.8.8.8 с роутера, /ip dns, маршрут по умолчанию, NAT Разделите канал и DNS; проверьте изменения в журнале. Вывод команд до и после исправления, имя порта и VLAN, экспорт изменённого раздела. Не прикладывайте полный экспорт с паролями Wi‑Fi в публичные чаты. MikroTik",
+      "status": "ok",
       "minutes": 2
     },
     {
@@ -8092,6 +8542,6 @@
     "links": 620,
     "broken": 9,
     "unverified": 21,
-    "guides": 33
+    "guides": 39
   }
 }

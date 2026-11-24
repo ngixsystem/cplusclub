@@ -1209,6 +1209,199 @@
     "resolve": "В проверке — температуры до и после. В причине — что нашли внутри. Фото «до» и «после» уже в заявке.",
     "close": "Закройте заявку и верните ПК в бронирование."
    }
+  },
+  {
+   "id": "mikrotik-vlan",
+   "title": "Новые ПК в VIP-зоне не загружаются после установки коммутатора",
+   "difficulty": "Сложный",
+   "minutes_target": 25,
+   "chapters": [
+    "mt-bridge-vlan",
+    "mt-safe-changes",
+    "mt-diagnostics"
+   ],
+   "message": {
+    "from": "Управляющий клуба Тимур",
+    "channel": "Telegram-группа клуба",
+    "time": "11:20",
+    "text": "Вчера подрядчик поставил в VIP-зону новый коммутатор MikroTik и подключил 6 новых ПК (места 41–46). Сегодня ни один из них не загружается: висят на сетевой загрузке и пишут что-то про boot filename. Остальной зал работает. Открываемся в 14:00, VIP уже забронирован."
+   },
+   "equipment": [
+    {
+     "id": "sw-vip",
+     "name": "MikroTik CRS326-24G-2S+ (VIP)",
+     "place": null,
+     "zone": "VIP"
+    },
+    {
+     "id": "router",
+     "name": "MikroTik RB5009",
+     "place": null,
+     "zone": "Серверная"
+    },
+    {
+     "id": "srv-01",
+     "name": "Boot server",
+     "place": null,
+     "zone": "Серверная",
+     "server": true
+    },
+    {
+     "id": "pc-41",
+     "name": "PC-41",
+     "place": "41",
+     "zone": "VIP"
+    },
+    {
+     "id": "pc-12",
+     "name": "PC-12",
+     "place": "12",
+     "zone": "Standard"
+    }
+   ],
+   "expected": {
+    "equipment": "sw-vip",
+    "equipment_ok": [
+     "sw-vip",
+     "pc-41",
+     null
+    ],
+    "category": "Диагностика",
+    "priority": [
+     "high",
+     "critical"
+    ],
+    "keywords": [
+     "vip",
+     "коммутатор",
+     "загруз",
+     "41"
+    ]
+   },
+   "actions": [
+    {
+     "id": "pxe-screen",
+     "group": "diag",
+     "role": "key",
+     "label": "Посмотреть экран загрузки PC-41: какой адрес получен и какая ошибка",
+     "result": "PXE получил адрес 192.168.30.57 — это сеть гостевого Wi‑Fi (игровые ПК — 192.168.20.0/24). Ошибка: «PXE-E53: No boot filename received»."
+    },
+    {
+     "id": "compare-port",
+     "group": "diag",
+     "role": "key",
+     "label": "На CRS326 сравнить порты новых ПК с портом точки доступа: /interface bridge port print",
+     "result": "ether13–ether18 (места 41–46) имеют pvid=30 — как ether24, к которому подключена гостевая точка Wi‑Fi. Uplink sfp-sfpplus1 — trunk."
+    },
+    {
+     "id": "vlan-table",
+     "group": "diag",
+     "role": "key",
+     "label": "Проверить таблицу VLAN: /interface bridge vlan print",
+     "result": "VLAN 20: tagged=bridge1,sfp-sfpplus1, untagged — пусто. VLAN 30: tagged=bridge1,sfp-sfpplus1, untagged=ether13–ether18,ether24. Подрядчик скопировал настройку порта точки доступа на все новые порты."
+    },
+    {
+     "id": "bridge-host",
+     "group": "diag",
+     "role": "neutral",
+     "label": "Найти MAC PC-41 в /interface bridge host print",
+     "result": "MAC PC-41 виден на ether13 с vid=30 — подтверждает, что ПК в гостевой VLAN."
+    },
+    {
+     "id": "export-backup",
+     "group": "diag",
+     "role": "neutral",
+     "label": "Сделать /export и бэкап CRS326, включить Safe Mode",
+     "result": "Сохранено vip-sw-2026-11-25-vlan.rsc и бинарный бэкап. Safe Mode включён."
+    },
+    {
+     "id": "static-ip",
+     "group": "diag",
+     "role": "neutral",
+     "label": "Задать PC-41 статический адрес 192.168.20.141",
+     "result": "Бездисковый ПК получает адрес при сетевой загрузке и не видит настроек Windows. Загрузка не изменилась."
+    },
+    {
+     "id": "vlan-filter-off",
+     "group": "diag",
+     "role": "harmful",
+     "label": "Выключить vlan-filtering на CRS326, чтобы «всё было в одной сети»",
+     "result": "ПК начали загружаться, но гостевой Wi‑Fi оказался в одной сети с игровыми ПК и сервером CCBoot, а касса потеряла отдельную VLAN.",
+     "penalty": "Отключение VLAN смешало гостевую сеть с клубной и открыло гостям доступ к серверу загрузки."
+    },
+    {
+     "id": "reset-switch",
+     "group": "diag",
+     "role": "harmful",
+     "label": "Сбросить CRS326 к заводским настройкам и настроить заново",
+     "result": "Пропали trunk и гостевая точка доступа, VIP-зона без сети, коммутатор недоступен удалённо.",
+     "penalty": "Сброс уничтожил рабочую конфигурацию коммутатора вместо исправления одной ошибки."
+    },
+    {
+     "id": "restart-ccboot",
+     "group": "diag",
+     "role": "harmful",
+     "label": "Перезапустить службы CCBoot на сервере",
+     "result": "Весь зал на 4 минуты потерял связь с сервером. VIP-ПК по-прежнему получают гостевые адреса.",
+     "penalty": "Остановка зала без связи с причиной: сервер загрузки исправен, ПК до него не доходят."
+    },
+    {
+     "id": "fix-pvid",
+     "group": "fix",
+     "role": "fix",
+     "label": "В Safe Mode поставить ether13–ether18 pvid=20 и перенести их в untagged VLAN 20, затем выключить Safe Mode",
+     "result": "/interface bridge port set [find interface~\"ether1[3-8]\"] pvid=20; в /interface bridge vlan порты ether13–ether18 убраны из VLAN 30 и добавлены untagged в VLAN 20. ether24 остался в VLAN 30. Порты подписаны comment."
+    },
+    {
+     "id": "verify-boot",
+     "group": "verify",
+     "role": "verify",
+     "required": true,
+     "label": "Загрузить PC-41 и PC-46 и запустить игру",
+     "result": "Оба ПК получили 192.168.20.x, загрузились с CCBoot и запустили CS2.",
+     "result_before_fix": "PC-41 снова получает 192.168.30.x и останавливается на «No boot filename received»."
+    },
+    {
+     "id": "verify-guest",
+     "group": "verify",
+     "role": "verify",
+     "required": true,
+     "label": "Проверить, что гость в Wi‑Fi не видит сервер загрузки (ping 192.168.20.10)",
+     "result": "Гостевой телефон получает 192.168.30.x, интернет работает, ping сервера загрузки не проходит.",
+     "result_before_fix": "Гостевой Wi‑Fi работает, но VIP-ПК по-прежнему в гостевой сети."
+    }
+   ],
+   "causes": [
+    {
+     "id": "pvid",
+     "label": "Порты новых ПК на коммутаторе VIP оставлены в гостевой VLAN 30 вместо игровой VLAN 20",
+     "correct": true
+    },
+    {
+     "id": "ccboot",
+     "label": "Сбой сервера CCBoot"
+    },
+    {
+     "id": "nic",
+     "label": "Неисправны сетевые карты новых ПК"
+    },
+    {
+     "id": "two-dhcp",
+     "label": "В игровой сети работают два DHCP-сервера"
+    }
+   ],
+   "approval": null,
+   "hints": {
+    "create": "Шесть ПК VIP-зоны не загружаются, открытие через 3 часа — приоритет «Высокий» или «Критический». Привяжите заявку к новому коммутатору VIP. В описании: что поменяли вчера, какие места не работают, что остальной зал в порядке.",
+    "accept": "Примите заявку сразу — до открытия мало времени.",
+    "work": "Переведите заявку «В работу».",
+    "diagnose": "Начните с ПК: какой адрес он получил. Адрес из чужой сети — проблема VLAN. Сравните порты новых ПК с соседним рабочим портом и посмотрите таблицу VLAN на коммутаторе. Не выключайте VLAN и не сбрасывайте коммутатор.",
+    "fix": "Сделайте экспорт и включите Safe Mode. Исправьте одно: pvid и untagged портов ether13–ether18 на VLAN 20. Порт точки доступа не трогайте.",
+    "verify": "Проверьте загрузку двух VIP-ПК и отдельно — что гостевой Wi‑Fi по-прежнему изолирован.",
+    "worklog": "Запишите трудозатраты.",
+    "resolve": "В причине — какие порты стояли в какой VLAN и почему (скопирована настройка точки доступа). В решении — что изменено и что экспорт приложен.",
+    "close": "Закройте заявку и попросите клуб согласовывать работы подрядчиков с вами."
+   }
   }
  ]
 }

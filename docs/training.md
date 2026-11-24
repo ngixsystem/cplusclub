@@ -93,6 +93,14 @@
 
 Маршруты: `GET /training/subnets`, `POST /training/subnets/session`, `POST /training/subnets/{attempt}`, `GET /training/ios`, `POST /training/ios/{task}`, `GET /training/labs`, `POST /training/labs/{lab}/submit`, `POST /training/labs/submissions/{id}/review`, `GET /training/labs/submissions/{id}/files/{n}`. Все POST под лимитом `throttle:training`.
 
+## Cisco → MikroTik (2026-11-25)
+
+- Шесть глав базы знаний в категории «MikroTik» (`resources/knowledge/mikrotik.json`, собираются `scripts/build_knowledge.py` в `library.json`): MikroTik для тех, кто знает Cisco; безопасные изменения (экспорт, бэкап, Safe Mode, доступ); VLAN на bridge (access/trunk, pvid, tagged/untagged); адреса, DHCP, DNS и NAT (включая next-server для CCBoot); firewall вместо ACL; диагностика. Источники — документация RouterOS на help.mikrotik.com.
+- К каждой главе чек-лист и 5 вопросов теста (`quizzes.json`, 30 вопросов).
+- Программа `mikrotik` «Cisco → MikroTik» для специалиста, руководителя и владельца, экзамен 20 вопросов × 5 баллов, проходной 80, пересдача через 30 минут.
+- Сценарий практикума `mikrotik-vlan` (сложный, 25 минут): новые ПК VIP-зоны получают адреса гостевой VLAN и не загружаются по PXE. Нужно найти pvid=30 на портах ether13–18, исправить их на VLAN 20 в Safe Mode и проверить, что гостевой Wi‑Fi остался изолирован. Вредные действия: выключить vlan-filtering, сбросить коммутатор, перезапустить CCBoot.
+- Пересборка библиотеки локально: `KNOWLEDGE_ROOT=$PWD python3 scripts/build_knowledge.py`.
+
 ## Дальше
 
 Назначение программы со сроком и напоминания в Telegram, связь возвратов заявок с рекомендованными главами, редактор глав в админке.
