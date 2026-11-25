@@ -1,0 +1,245 @@
+{
+ "id": "mikrotik-mtcna",
+ "title": "Курс MikroTik MTCNA",
+ "author": "курсы-по-ит.рф",
+ "source": "https://www.youtube.com/playlist?list=PL4p9O5LPYFNuK-7zIziI-eR492bBSUqph",
+ "playlist": "PL4p9O5LPYFNuK-7zIziI-eR492bBSUqph",
+ "watch_percent": 90,
+ "note": "Видео — открытая часть курса «Настройка оборудования MikroTik» (аналог программы MTCNA) с YouTube-канала «курсы-по-ит.рф»: модуль 1 «Введение» и первый урок модуля 7 «QoS». Показываются через встроенный плеер YouTube.",
+ "lessons": [
+  {
+   "id": "mtcna-01",
+   "code": "01",
+   "title": "Знакомство с курсом",
+   "index": 0,
+   "seconds": 473,
+   "match": "mikrotik 01 ",
+   "quiz": false
+  },
+  {
+   "id": "mtcna-02",
+   "code": "02",
+   "title": "Учебные программы MikroTik",
+   "index": 1,
+   "seconds": 304,
+   "match": "mikrotik 02 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-03",
+   "code": "03",
+   "title": "Обозначения в курсе",
+   "index": 2,
+   "seconds": 182,
+   "match": "mikrotik 03 ",
+   "quiz": false
+  },
+  {
+   "id": "mtcna-04",
+   "code": "04",
+   "title": "Требования к предварительной подготовке",
+   "index": 3,
+   "seconds": 90,
+   "match": "mikrotik 04 ",
+   "quiz": false
+  },
+  {
+   "id": "mtcna-05",
+   "code": "05",
+   "title": "Компания MikroTik",
+   "index": 4,
+   "seconds": 327,
+   "match": "mikrotik 05 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-06",
+   "code": "06",
+   "title": "Плюсы и минусы MikroTik",
+   "index": 5,
+   "seconds": 249,
+   "match": "mikrotik 06 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-07",
+   "code": "07",
+   "title": "Знакомство с RouterOS",
+   "index": 6,
+   "seconds": 479,
+   "match": "mikrotik 07 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-08",
+   "code": "08",
+   "title": "Знакомство с RouterBOARD",
+   "index": 7,
+   "seconds": 349,
+   "match": "mikrotik 08 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-09",
+   "code": "09",
+   "title": "Маркировка RouterBOARD",
+   "index": 8,
+   "seconds": 246,
+   "match": "mikrotik 09 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-10",
+   "code": "10",
+   "title": "Маркировка Cloud Core Router",
+   "index": 9,
+   "seconds": 137,
+   "match": "mikrotik 10 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-11",
+   "code": "11",
+   "title": "Блок-схема RouterBOARD",
+   "index": 10,
+   "seconds": 547,
+   "match": "mikrotik 11 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-12",
+   "code": "12",
+   "title": "Сравнение производительности сетевого оборудования",
+   "index": 11,
+   "seconds": 464,
+   "match": "mikrotik 12 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-13",
+   "code": "13",
+   "title": "Сайт mikrotik.com",
+   "index": 12,
+   "seconds": 460,
+   "match": "mikrotik 13 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-14",
+   "code": "14",
+   "title": "Как выбрать устройство на базе RouterBOARD",
+   "index": 13,
+   "seconds": 270,
+   "match": "mikrotik 14 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-15",
+   "code": "15",
+   "title": "Знакомство с Cloud Hosted Router (CHR)",
+   "index": 14,
+   "seconds": 192,
+   "match": "mikrotik 15 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-16",
+   "code": "16",
+   "title": "Знакомство с Cloud Router Switch (CRS)",
+   "index": 15,
+   "seconds": 110,
+   "match": "mikrotik 16 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-17",
+   "code": "17",
+   "title": "Первое подключение к устройству MikroTik",
+   "index": 16,
+   "seconds": 289,
+   "match": "mikrotik 17 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-18",
+   "code": "18",
+   "title": "WebFig",
+   "index": 17,
+   "seconds": 183,
+   "match": "mikrotik 18 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-19",
+   "code": "19",
+   "title": "WinBox, настройки подключения",
+   "index": 18,
+   "seconds": 741,
+   "match": "mikrotik 19 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-20",
+   "code": "20",
+   "title": "WinBox, интерфейс настроек маршрутизатора",
+   "index": 19,
+   "seconds": 445,
+   "match": "mikrotik 20 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-21",
+   "code": "21",
+   "title": "Лабораторная работа. Знакомство с WebFig и WinBox",
+   "index": 20,
+   "seconds": 52,
+   "match": "mikrotik 21 ",
+   "quiz": false
+  },
+  {
+   "id": "mtcna-22",
+   "code": "22",
+   "title": "Подключение через Telnet и SSH",
+   "index": 21,
+   "seconds": 198,
+   "match": "mikrotik 22 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-23",
+   "code": "23",
+   "title": "Интерфейс командной строки. Часть 1",
+   "index": 22,
+   "seconds": 558,
+   "match": "mikrotik 23 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-24",
+   "code": "24",
+   "title": "Лабораторная работа. Работа в командной строке (№1)",
+   "index": 23,
+   "seconds": 52,
+   "match": "mikrotik 24 ",
+   "quiz": false
+  },
+  {
+   "id": "mtcna-25",
+   "code": "25",
+   "title": "Лабораторная работа. Работа в командной строке (№1). Решение",
+   "index": 24,
+   "seconds": 216,
+   "match": "mikrotik 25 ",
+   "quiz": true
+  },
+  {
+   "id": "mtcna-26",
+   "code": "М7",
+   "title": "QoS. Ограничение скорости. Часть 1",
+   "index": 25,
+   "seconds": 743,
+   "match": "mikrotik модуль 7 ",
+   "quiz": true
+  }
+ ]
+}

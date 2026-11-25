@@ -110,6 +110,51 @@
   }
  },
  {
+  "id": "mikrotik-mtcna",
+  "kind": "video",
+  "title": "Курс MikroTik MTCNA (видео)",
+  "summary": "Основы MikroTik по программе MTCNA: 26 видеоуроков канала «курсы-по-ит.рф» — RouterOS и RouterBOARD, маркировка и выбор устройств, CHR и CRS, первое подключение, WinBox, WebFig, SSH, командная строка и ограничение скорости. Урок засчитывается после досмотра видео и сданного теста.",
+  "roles": [
+   "specialist",
+   "lead",
+   "owner"
+  ],
+  "chapters": [
+   "mtcna-01",
+   "mtcna-02",
+   "mtcna-03",
+   "mtcna-04",
+   "mtcna-05",
+   "mtcna-06",
+   "mtcna-07",
+   "mtcna-08",
+   "mtcna-09",
+   "mtcna-10",
+   "mtcna-11",
+   "mtcna-12",
+   "mtcna-13",
+   "mtcna-14",
+   "mtcna-15",
+   "mtcna-16",
+   "mtcna-17",
+   "mtcna-18",
+   "mtcna-19",
+   "mtcna-20",
+   "mtcna-21",
+   "mtcna-22",
+   "mtcna-23",
+   "mtcna-24",
+   "mtcna-25",
+   "mtcna-26"
+  ],
+  "exam": {
+   "questions": 20,
+   "points_per_answer": 5,
+   "pass_percent": 80,
+   "retake_minutes": 30
+  }
+ },
+ {
   "id": "lead-server",
   "title": "Старший инженер: сервер и образы",
   "summary": "Проектирование и сопровождение сервера клуба: ресурсы, диски, сеть, образы Windows, обновления, резервные копии и откат.",

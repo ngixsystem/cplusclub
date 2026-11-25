@@ -7,16 +7,14 @@ use App\Models\QuizAttempt;
 use Illuminate\Http\Request;
 use Inertia\{Inertia, Response};
 
-/** Video lessons of the Cisco course: player page, watch reports, lesson tests. */
+/** Video lessons (Cisco CCNA, MikroTik MTCNA): player page, watch reports, lesson tests. The program id equals the course id. */
 final class TrainingLessonController extends Controller
 {
-    private const TRACK = 'cisco-ccna';
-
     public function show(string $lesson, Request $request, Lessons $lessons, Training $training): Response
     {
         $item = $this->lesson($lesson, $request, $lessons, $training);
         [$prev, $next] = $lessons->neighbours($lesson);
-        $course = $lessons->course();
+        $course = $lessons->course($item['course']);
         $user = $request->user();
         $position = array_search($lesson, array_column($course['lessons'], 'id'), true);
 
@@ -28,7 +26,7 @@ final class TrainingLessonController extends Controller
             'next' => $next ? ['id' => $next['id'], 'title' => $lessons->label($next)] : null,
             'watch' => $training->watchState($training->lessonProgress($user, $lesson)),
             'quiz' => $training->quizStateFor($user, $lesson),
-            'enrolled' => collect($training->summary($user))->firstWhere('id', self::TRACK)['enrollment'] !== null,
+            'enrolled' => (collect($training->summary($user))->firstWhere('id', $item['course'])['enrollment'] ?? null) !== null,
         ]);
     }
 
@@ -67,9 +65,9 @@ final class TrainingLessonController extends Controller
     {
         $user = $request->user();
         abort_unless($user->active, 403);
-        abort_unless($training->trackFor($user, self::TRACK), 403);
         $item = $lessons->find($id);
         abort_unless($item, 404);
+        abort_unless($training->trackFor($user, $item['course']), 403);
 
         return $item;
     }

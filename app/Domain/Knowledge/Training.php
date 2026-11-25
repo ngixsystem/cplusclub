@@ -162,7 +162,7 @@ final class Training
 
     private function watchShare(): float
     {
-        return ($this->lessons->course()['watch_percent'] ?? 90) / 100;
+        return $this->lessons->watchPercent() / 100;
     }
 
     public function submitChapterQuiz(User $user, QuizAttempt $attempt, array $answers): array
@@ -271,7 +271,7 @@ final class Training
             'chapters' => $state['total'], 'started_at' => $state['enrollment']['started_at'], 'completed_at' => $completed,
             'duration_seconds' => $state['enrollment']['duration_seconds'],
             'exam' => $state['exam']['best'] ?? null,
-            'source' => ($track['kind'] ?? null) === 'video' ? $this->lessons->course()['author'] : null,
+            'source' => ($track['kind'] ?? null) === 'video' ? ($this->lessons->course($trackId)['author'] ?? null) : null,
         ];
     }
 

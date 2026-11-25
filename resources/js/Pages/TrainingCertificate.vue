@@ -31,7 +31,7 @@ function duration(seconds: number) {
     <div><dt>Срок прохождения</dt><dd>{{duration(c.duration_seconds)}}</dd></div>
     <div><dt>Период</dt><dd>{{date(c.started_at)}} — {{date(c.completed_at)}}</dd></div>
    </dl>
-   <p v-if="c.source" class="cert-source">Видеоматериалы: {{c.source}}. Сертификат выдан C+CLub по результатам внутреннего обучения и не является сертификатом Cisco.</p>
+   <p v-if="c.source" class="cert-source">Видеоматериалы: {{c.source}}. Сертификат выдан C+CLub по результатам внутреннего обучения и не является сертификатом производителя оборудования.</p>
    <p class="cert-number">№ {{c.number}} · выдан {{date(c.completed_at)}}</p>
   </div>
  </main>
