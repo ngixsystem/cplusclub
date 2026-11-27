@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
-type Sw = { id: number; name: string; zone: string | null; host: string | null; polled_at: string | null; last_error: string | null; sys_descr: string | null; ports_up: number; ports_total: number; slow: number; pcs: number };
+type Sw = { id: number; name: string; zone: string | null; host: string | null; polled_at: string | null; last_error: string | null; sys_descr: string | null; ports_up: number; ports_total: number; slow: number; standby?: number; pcs: number };
 type Collector = { id: number; name: string; token_hint: string; hostname: string | null; version: string | null; last_seen_at: string | null; online: boolean };
 const props = defineProps<{ clubId: number; network: { switches: Sw[]; collectors: Collector[] }; install: string | null; canEdit: boolean; tz: string }>();
 const adding = ref(false);
@@ -44,7 +44,7 @@ async function copy() { try { await navigator.clipboard.writeText(props.install 
           <template v-if="s.last_error"><span class="bad-text">{{ s.last_error }}</span></template>
           <template v-else-if="s.polled_at">
             <span>{{ s.ports_up }}/{{ s.ports_total }} портов</span><span>{{ s.pcs }} ПК</span>
-            <span v-if="s.slow" class="warn-text">{{ s.slow }} на 100 Мбит/с</span>
+            <span v-if="s.slow" class="warn-text">{{ s.slow }} с плохим линком</span>
           </template>
           <span v-else class="muted">ждёт первого опроса</span>
         </div>

@@ -13,6 +13,13 @@ final class LiveComputers {
         if(max($values)>=$warning)return 'warning';
         return count($values)===2?'normal':'unknown';
     }
+    /** Lower-cased names of PCs iCafeCloud sees as switched on, or null when that is not known right now. */
+    public function onlineNames(Club $club):?array {
+        $c=$this->connectivity($club);
+        if($c['updated_at']===null)return null;
+        if($c['stale'] && CarbonImmutable::parse($c['updated_at'])->lt(now()->subMinutes(5)))return null;
+        return array_fill_keys(array_map(fn($n)=>mb_strtolower(trim($n)),$c['online']),true);
+    }
     private function connectivity(Club $club):array {
         if(!$club->icafe_license||!$club->icafe_token)return ['stale'=>true,'updated_at'=>null,'online'=>[],'error'=>'iCafeCloud не подключён.'];
         $key='icafe:online:'.$club->id.':'.hash('sha256',$club->icafe_token.'|'.$club->icafe_license);

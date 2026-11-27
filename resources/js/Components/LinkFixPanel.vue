@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
-const props = defineProps<{ ticketId: number; version: number; pc: string | null; linkState: string | null; cable?: { switch_id: number; switch: string; zone: string | null; port: number; up: boolean; speed_mbps: number | null } | null }>();
+const props = defineProps<{ ticketId: number; version: number; pc: string | null; linkState: string | null; cable?: { switch_id: number; switch: string; zone: string | null; port: number; up: boolean; speed_mbps: number | null; state?: string } | null }>();
 const form = useForm({ version: props.version, pc_side: false, switch_side: false, comment: '' });
 const ready = computed(() => form.pc_side || form.switch_side);
 function submit() { form.version = props.version; form.post('/tickets/' + props.ticketId + '/link-fix', { preserveScroll: true }); }
@@ -18,7 +18,7 @@ function submit() { form.version = props.version; form.post('/tickets/' + props.
     <div v-if="cable" class="cable">
       <span class="cable-label">Второй конец кабеля</span>
       <strong><Link :href="'/equipment/' + cable.switch_id">{{ cable.switch }}</Link> · порт {{ cable.port }}</strong>
-      <span class="muted">{{ cable.zone ? cable.zone + ' · ' : '' }}{{ !cable.up ? 'порт выключен' : cable.speed_mbps === null ? 'порт включён' : 'сейчас ' + (cable.speed_mbps >= 1000 ? cable.speed_mbps / 1000 + ' Гбит/с' : cable.speed_mbps + ' Мбит/с') }}</span>
+      <span class="muted">{{ cable.zone ? cable.zone + ' · ' : '' }}{{ !cable.up ? 'нет линка' : cable.speed_mbps === null ? 'порт включён' : 'сейчас ' + (cable.speed_mbps >= 1000 ? cable.speed_mbps / 1000 + ' Гбит/с' : cable.speed_mbps + ' Мбит/с') }}{{ cable.state === 'standby' ? ' · ПК выключен, 100 Мбит/с — это Wake-on-LAN; проверьте после включения' : cable.state === 'slow' ? ' · ПК включён — проблема подтверждена коммутатором' : '' }}</span>
     </div>
     <p v-else class="muted small">Порт коммутатора неизвестен — добавьте коммутаторы клуба по SNMP на странице клуба.</p>
     <div class="lf-checks">

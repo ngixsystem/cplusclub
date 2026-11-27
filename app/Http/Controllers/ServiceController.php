@@ -96,10 +96,14 @@ class ServiceController extends Controller
         $ids = $page->getCollection()->pluck('id');
         $cables = DB::table('equipment_ports as ep')->join('equipment as sw', 'sw.id', '=', 'ep.switch_id')
             ->leftJoin('switch_ports as p', fn ($j) => $j->on('p.switch_id', '=', 'ep.switch_id')->on('p.if_index', '=', 'ep.if_index'))
-            ->whereIn('ep.equipment_id', $ids)->get(['ep.equipment_id', 'sw.name as switch', 'ep.if_index', 'p.port_no', 'p.up', 'p.speed_mbps'])->keyBy('equipment_id');
+            ->whereIn('ep.equipment_id', $ids)->get(['ep.equipment_id', 'sw.name as switch', 'sw.club_id', 'ep.if_index', 'p.port_no', 'p.up', 'p.uplink', 'p.speed_mbps'])->keyBy('equipment_id');
         $page->getCollection()->each(function ($e) use ($cables) {
             $c = $cables[$e->id] ?? null;
-            $e->setAttribute('cable', $c ? ['switch' => $c->switch, 'port' => (int) ($c->port_no ?? $c->if_index), 'up' => (bool) $c->up, 'speed_mbps' => $c->speed_mbps] : null);
+            if (! $c) { $e->setAttribute('cable', null); return; }
+            $speed = $c->speed_mbps !== null ? (int) $c->speed_mbps : null;
+            $on = ($c->up && $speed !== null && $speed < 1000) ? \App\Domain\Network\SwitchReport::online(\App\Domain\Network\SwitchReport::onlineFor((int) $c->club_id), $e->name) : null;
+            $e->setAttribute('cable', ['switch' => $c->switch, 'port' => (int) ($c->port_no ?? $c->if_index), 'up' => (bool) $c->up, 'speed_mbps' => $speed,
+                'state' => \App\Domain\Network\SwitchReport::state((bool) $c->up, (bool) $c->uplink, $speed, $on)]);
         });
         return $page;
     }

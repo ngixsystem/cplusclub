@@ -83,6 +83,36 @@ final class SwitchReport
         return $stats;
     }
 
+    /**
+     * What a port at below 1 Gbit/s means. A switched-off PC with Wake-on-LAN keeps its link up at
+     * 100 Mbit/s, so a slow port is a cable problem only while the PC on it is actually on.
+     * @return 'down'|'uplink'|'ok'|'slow'|'standby'|'slow_unknown'
+     */
+    public static function state(bool $up, bool $uplink, ?int $speed, ?bool $pcOnline): string
+    {
+        if (! $up) return 'down';
+        if ($uplink) return 'uplink';
+        if ($speed === null || $speed >= 1000) return 'ok';
+        return match ($pcOnline) { true => 'slow', false => 'standby', null => 'slow_unknown' };
+    }
+
+    /** Online flag for a PC name given iCafeCloud's online list (null list = unknown). */
+    public static function online(?array $onlineNames, ?string $pcName): ?bool
+    {
+        if ($onlineNames === null || $pcName === null) return null;
+        return isset($onlineNames[mb_strtolower(trim($pcName))]);
+    }
+
+    /** iCafeCloud online list of the club that owns this equipment (cached 30 s), null if unknown. */
+    public static function onlineFor(int $clubId): ?array
+    {
+        static $memo = [];
+        if (array_key_exists($clubId, $memo)) return $memo[$clubId];
+        $club = \App\Models\Club::find($clubId);
+        try { return $memo[$clubId] = $club ? app(\App\Domain\Monitoring\LiveComputers::class)->onlineNames($club) : null; }
+        catch (\Throwable) { return $memo[$clubId] = null; }
+    }
+
     public static function mac(string $mac): string
     {
         return strtolower(preg_replace('/[^a-fA-F0-9]/', '', $mac));
@@ -104,10 +134,14 @@ final class SwitchReport
             ->leftJoin('switch_ports as p', fn ($j) => $j->on('p.switch_id', '=', 'ep.switch_id')->on('p.if_index', '=', 'ep.if_index'))
             ->leftJoin('switch_snmp as s', 's.equipment_id', '=', 'ep.switch_id')
             ->where('ep.equipment_id', $equipmentId)
-            ->first(['ep.switch_id', 'sw.name as switch', 'sw.zone', 'ep.if_index', 'p.port_no', 'p.name as port_name', 'p.up', 'p.speed_mbps', 'ep.seen_at', 's.polled_at']);
+            ->first(['ep.switch_id', 'sw.name as switch', 'sw.zone', 'sw.club_id', 'ep.if_index', 'p.port_no', 'p.name as port_name', 'p.up', 'p.uplink', 'p.speed_mbps', 'ep.seen_at', 's.polled_at']);
         if (! $r) return null;
+        $speed = $r->speed_mbps !== null ? (int) $r->speed_mbps : null;
+        $online = ($r->up && $speed !== null && $speed < 1000)
+            ? self::online(self::onlineFor((int) $r->club_id), DB::table('equipment')->where('id', $equipmentId)->value('name')) : null;
         return ['switch_id' => (int) $r->switch_id, 'switch' => $r->switch, 'zone' => $r->zone, 'port' => (int) ($r->port_no ?? $r->if_index),
             'port_name' => $r->port_name ?? ('if'.$r->if_index), 'up' => (bool) $r->up, 'speed_mbps' => $r->speed_mbps !== null ? (int) $r->speed_mbps : null,
-            'seen_at' => (string) $r->seen_at, 'polled_at' => $r->polled_at];
+            'seen_at' => (string) $r->seen_at, 'polled_at' => $r->polled_at, 'pc_online' => $online,
+            'state' => self::state((bool) $r->up, (bool) $r->uplink, $speed, $online)];
     }
 }

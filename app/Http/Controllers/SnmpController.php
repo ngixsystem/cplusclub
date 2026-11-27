@@ -122,11 +122,12 @@ class SnmpController extends Controller
             'switches' => DB::table('equipment as e')->leftJoin('switch_snmp as s', 's.equipment_id', '=', 'e.id')
                 ->where('e.club_id', $club->id)->where('e.type', 'switch')->orderBy('e.name')
                 ->get(['e.id', 'e.name', 'e.zone', 's.host', 's.polled_at', 's.last_error', 's.sys_descr'])
-                ->map(function ($s) {
-                    $ports = DB::table('switch_ports')->where('switch_id', $s->id)->get(['up', 'speed_mbps', 'uplink']);
-                    $s->ports_up = $ports->where('up', true)->count();
-                    $s->ports_total = $ports->count();
-                    $s->slow = $ports->filter(fn ($p) => $p->up && ! $p->uplink && $p->speed_mbps !== null && $p->speed_mbps < 1000)->count();
+                ->map(function ($s) use ($club) {
+                    $states = collect(self::portStates($s->id, $club->id));
+                    $s->ports_up = $states->where('up', true)->count();
+                    $s->ports_total = $states->count();
+                    $s->slow = $states->whereIn('state', ['slow', 'slow_unknown'])->count();
+                    $s->standby = $states->where('state', 'standby')->count();
                     $s->pcs = DB::table('equipment_ports')->where('switch_id', $s->id)->count();
                     return $s;
                 })->values(),
@@ -136,18 +137,43 @@ class SnmpController extends Controller
         ];
     }
 
+    /**
+     * Per port of a switch: state (see SwitchReport::state), the PCs plugged in, whether that PC is on.
+     * @return array<int, array{up: bool, state: string, pc_online: ?bool, pcs: list<array{id:int,name:string}>}>
+     */
+    public static function portStates(int $switchId, int $clubId): array
+    {
+        $pcs = DB::table('equipment_ports as ep')->join('equipment as e', 'e.id', '=', 'ep.equipment_id')->where('ep.switch_id', $switchId)
+            ->get(['ep.if_index', 'e.id', 'e.name'])->groupBy('if_index');
+        $ports = DB::table('switch_ports')->where('switch_id', $switchId)->get(['if_index', 'up', 'uplink', 'speed_mbps']);
+        $needsOnline = $ports->contains(fn ($p) => $p->up && ! $p->uplink && $p->speed_mbps !== null && $p->speed_mbps < 1000);
+        $online = $needsOnline ? SwitchReport::onlineFor($clubId) : null;
+        $out = [];
+        foreach ($ports as $p) {
+            $list = ($pcs[$p->if_index] ?? collect())->map(fn ($x) => ['id' => (int) $x->id, 'name' => $x->name])->values()->all();
+            $on = null;
+            if ($online !== null && $list) {
+                $flags = array_map(fn ($x) => SwitchReport::online($online, $x['name']), $list);
+                $on = in_array(true, $flags, true);
+            }
+            $speed = $p->speed_mbps !== null ? (int) $p->speed_mbps : null;
+            $out[$p->if_index] = ['up' => (bool) $p->up, 'pc_online' => $on, 'pcs' => $list, 'state' => SwitchReport::state((bool) $p->up, (bool) $p->uplink, $speed, $on)];
+        }
+        return $out;
+    }
+
     /** Data for a switch page: port map with the PC in each port. */
     public static function switchData(Equipment $sw): array
     {
-        $pcs = DB::table('equipment_ports as ep')->join('equipment as e', 'e.id', '=', 'ep.equipment_id')->where('ep.switch_id', $sw->id)
-            ->get(['ep.if_index', 'e.id', 'e.name', 'ep.seen_at'])->groupBy('if_index');
+        $states = self::portStates($sw->id, $sw->club_id);
         $snmp = SwitchSnmp::find($sw->id);
         return [
             'snmp' => $snmp ? ['host' => $snmp->host, 'port' => $snmp->port, 'version' => $snmp->version, 'polled_at' => $snmp->polled_at, 'last_error' => $snmp->last_error, 'sys_descr' => $snmp->sys_descr, 'model' => $snmp->model, 'firmware' => $snmp->firmware, 'serial' => $sw->serial_number] : null,
             'ports' => DB::table('switch_ports')->where('switch_id', $sw->id)->orderBy('port_no')->orderBy('if_index')->get()
                 ->map(fn ($p) => ['if_index' => $p->if_index, 'port' => $p->port_no ?? $p->if_index, 'name' => $p->name, 'alias' => $p->alias, 'up' => (bool) $p->up,
                     'speed_mbps' => $p->speed_mbps, 'uplink' => (bool) $p->uplink, 'macs' => $p->mac_count, 'changed_at' => $p->changed_at,
-                    'pcs' => ($pcs[$p->if_index] ?? collect())->map(fn ($x) => ['id' => $x->id, 'name' => $x->name])->values()])->values(),
+                    'state' => $states[$p->if_index]['state'] ?? 'ok', 'pc_online' => $states[$p->if_index]['pc_online'] ?? null,
+                    'pcs' => $states[$p->if_index]['pcs'] ?? []])->values(),
         ];
     }
 }

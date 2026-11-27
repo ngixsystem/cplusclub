@@ -86,4 +86,33 @@ class SnmpSwitchesTest extends TestCase
         // Non-owners cannot add switches.
         $this->actingAs($u)->post('/clubs/'.$club->id.'/switches', ['name' => 'x', 'host' => '10.0.0.1', 'community' => 'c'])->assertForbidden();
     }
+
+    public function test_slow_port_is_a_problem_only_while_the_pc_is_on(): void
+    {
+        $this->assertSame('slow', SwitchReport::state(true, false, 100, true));
+        $this->assertSame('standby', SwitchReport::state(true, false, 100, false));
+        $this->assertSame('slow_unknown', SwitchReport::state(true, false, 100, null));
+        $this->assertSame('ok', SwitchReport::state(true, false, 1000, false));
+        $this->assertSame('uplink', SwitchReport::state(true, true, 100, null));
+        $this->assertSame('down', SwitchReport::state(false, false, null, true));
+
+        $club = Club::create(['name' => 'SPOT', 'address' => 'x']);
+        $club->forceFill(['icafe_license' => '12345', 'icafe_token' => 'tok'])->save();
+        $club = $club->fresh();
+        // iCafeCloud says PC05 is on, PC06 is off.
+        \Illuminate\Support\Facades\Cache::put('icafe:online:'.$club->id.':'.hash('sha256', $club->icafe_token.'|'.$club->icafe_license),
+            ['stale' => false, 'updated_at' => now()->toIso8601String(), 'online' => ['pc05'], 'error' => null, 'checked_at' => time()], 600);
+        $sw = Equipment::create(['club_id' => $club->id, 'name' => 'SW1', 'type' => 'switch']);
+        foreach ([5, 6] as $n) {
+            $pc = Equipment::create(['club_id' => $club->id, 'name' => sprintf('PC%02d', $n), 'type' => 'pc']);
+            DB::table('switch_ports')->insert(['switch_id' => $sw->id, 'if_index' => $n, 'port_no' => $n, 'name' => 'ge'.$n, 'up' => true, 'speed_mbps' => 100]);
+            DB::table('equipment_ports')->insert(['equipment_id' => $pc->id, 'switch_id' => $sw->id, 'if_index' => $n, 'seen_at' => now()]);
+        }
+        $states = \App\Http\Controllers\SnmpController::portStates($sw->id, $club->id);
+        $this->assertSame('slow', $states[5]['state']);
+        $this->assertSame('standby', $states[6]['state']);
+        $this->assertSame('slow', SwitchReport::forEquipment(Equipment::where('name', 'PC05')->value('id'))['state']);
+        $this->assertSame('standby', SwitchReport::forEquipment(Equipment::where('name', 'PC06')->value('id'))['state']);
+        $this->assertSame(1, \App\Http\Controllers\SnmpController::clubData($club)['switches'][0]->slow);
+    }
 }
