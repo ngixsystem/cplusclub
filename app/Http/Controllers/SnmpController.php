@@ -130,7 +130,7 @@ class SnmpController extends Controller
             ->get(['ep.if_index', 'e.id', 'e.name', 'ep.seen_at'])->groupBy('if_index');
         $snmp = SwitchSnmp::find($sw->id);
         return [
-            'snmp' => $snmp ? ['host' => $snmp->host, 'port' => $snmp->port, 'version' => $snmp->version, 'polled_at' => $snmp->polled_at, 'last_error' => $snmp->last_error, 'sys_descr' => $snmp->sys_descr] : null,
+            'snmp' => $snmp ? ['host' => $snmp->host, 'port' => $snmp->port, 'version' => $snmp->version, 'polled_at' => $snmp->polled_at, 'last_error' => $snmp->last_error, 'sys_descr' => $snmp->sys_descr, 'model' => $snmp->model, 'firmware' => $snmp->firmware, 'serial' => $sw->serial_number] : null,
             'ports' => DB::table('switch_ports')->where('switch_id', $sw->id)->orderBy('port_no')->orderBy('if_index')->get()
                 ->map(fn ($p) => ['if_index' => $p->if_index, 'port' => $p->port_no ?? $p->if_index, 'name' => $p->name, 'alias' => $p->alias, 'up' => (bool) $p->up,
                     'speed_mbps' => $p->speed_mbps, 'uplink' => (bool) $p->uplink, 'macs' => $p->mac_count, 'changed_at' => $p->changed_at,

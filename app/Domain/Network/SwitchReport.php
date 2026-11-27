@@ -69,8 +69,14 @@ final class SwitchReport
                 DB::table('switch_snmp')->where('equipment_id', $id)->update([
                     'sys_descr' => isset($sw['sys_descr']) ? mb_substr((string) $sw['sys_descr'], 0, 500) : null,
                     'uptime_seconds' => isset($sw['uptime_seconds']) ? (int) $sw['uptime_seconds'] : null,
+                    'model' => ($m = trim((string) ($sw['model'] ?? ''))) !== '' ? mb_substr($m, 0, 120) : null,
+                    'firmware' => ($f = trim((string) ($sw['firmware'] ?? ''))) !== '' ? mb_substr($f, 0, 120) : null,
                     'polled_at' => $now, 'last_error' => null, 'updated_at' => $now]);
-                DB::table('equipment')->where('id', $id)->update(['last_seen_at' => $now]);
+                // Passport fields the switch reports about itself (ENTITY-MIB / BRIDGE-MIB): kept in sync automatically.
+                $eq = ['last_seen_at' => $now];
+                if (($serial = trim((string) ($sw['serial'] ?? ''))) !== '') $eq['serial_number'] = mb_substr($serial, 0, 255);
+                if (strlen($base = self::mac((string) ($sw['base_mac'] ?? ''))) === 12 && $base !== '000000000000') $eq['mac'] = implode(':', str_split($base, 2));
+                DB::table('equipment')->where('id', $id)->update($eq);
                 $stats['switches']++;
             });
         }

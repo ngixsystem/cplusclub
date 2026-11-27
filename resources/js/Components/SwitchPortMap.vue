@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 type P = { if_index: number; port: number; name: string; alias: string | null; up: boolean; speed_mbps: number | null; uplink: boolean; macs: number; changed_at: string | null; pcs: { id: number; name: string }[] };
-const props = defineProps<{ switchId: number; network: { snmp: { host: string; port: number; version: string; polled_at: string | null; last_error: string | null; sys_descr: string | null } | null; ports: P[]; canManage: boolean }; tz: string }>();
+const props = defineProps<{ switchId: number; network: { snmp: { host: string; port: number; version: string; polled_at: string | null; last_error: string | null; sys_descr: string | null; model?: string | null; firmware?: string | null; serial?: string | null } | null; ports: P[]; canManage: boolean }; tz: string }>();
 const sel = ref<P | null>(null);
 const access = computed(() => props.network.ports.filter(p => p.port <= 48 && !(p.speed_mbps && p.speed_mbps >= 10000)));
 const top = computed(() => access.value.filter((_, i) => i % 2 === 0));
@@ -22,7 +22,7 @@ function when(v: string | null) { return v ? new Date(v).toLocaleString('ru-RU',
       <div>
         <h2>Порты</h2>
         <p v-if="network.snmp?.last_error" class="bad-text">Опрос не удался: {{ network.snmp.last_error }}</p>
-        <p v-else-if="network.snmp?.polled_at" class="muted">{{ network.snmp.sys_descr }} · опрос {{ when(network.snmp.polled_at) }}</p>
+        <p v-else-if="network.snmp?.polled_at" class="muted">{{ network.snmp.model || network.snmp.sys_descr }}<template v-if="network.snmp.serial"> · S/N {{ network.snmp.serial }}</template><template v-if="network.snmp.firmware"> · прошивка {{ network.snmp.firmware }}</template> · опрос {{ when(network.snmp.polled_at) }}</p>
         <p v-else class="muted">Данных ещё нет — сборщик опросит коммутатор в течение 2 минут.</p>
       </div>
       <ul class="legend"><li><i class="ok"></i>1 Гбит/с</li><li><i class="slow"></i>100 Мбит/с</li><li><i class="uplink"></i>Аплинк</li><li><i class="down"></i>Выключен</li></ul>

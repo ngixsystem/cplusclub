@@ -21,21 +21,26 @@ import (
 	"github.com/gosnmp/gosnmp"
 )
 
-const version = "1.0.0"
+const version = "1.1.0"
 
 const (
-	oidSysDescr      = ".1.3.6.1.2.1.1.1.0"
-	oidSysUpTime     = ".1.3.6.1.2.1.1.3.0"
-	oidIfDescr       = ".1.3.6.1.2.1.2.2.1.2"
-	oidIfType        = ".1.3.6.1.2.1.2.2.1.3"
-	oidIfSpeed       = ".1.3.6.1.2.1.2.2.1.5"
-	oidIfOperStatus  = ".1.3.6.1.2.1.2.2.1.8"
-	oidIfName        = ".1.3.6.1.2.1.31.1.1.1.1"
-	oidIfHighSpeed   = ".1.3.6.1.2.1.31.1.1.1.15"
-	oidIfAlias       = ".1.3.6.1.2.1.31.1.1.1.18"
-	oidBasePortIf    = ".1.3.6.1.2.1.17.1.4.1.2"    // dot1dBasePortIfIndex: bridge port -> ifIndex
-	oidQFdbPort      = ".1.3.6.1.2.1.17.7.1.2.2.1.2" // dot1qTpFdbPort: vlan.mac -> bridge port
-	oidFdbPort       = ".1.3.6.1.2.1.17.4.3.1.2"     // dot1dTpFdbPort: mac -> bridge port
+	oidSysDescr     = ".1.3.6.1.2.1.1.1.0"
+	oidSysUpTime    = ".1.3.6.1.2.1.1.3.0"
+	oidIfDescr      = ".1.3.6.1.2.1.2.2.1.2"
+	oidIfType       = ".1.3.6.1.2.1.2.2.1.3"
+	oidIfSpeed      = ".1.3.6.1.2.1.2.2.1.5"
+	oidIfOperStatus = ".1.3.6.1.2.1.2.2.1.8"
+	oidIfName       = ".1.3.6.1.2.1.31.1.1.1.1"
+	oidIfHighSpeed  = ".1.3.6.1.2.1.31.1.1.1.15"
+	oidIfAlias      = ".1.3.6.1.2.1.31.1.1.1.18"
+	oidBasePortIf   = ".1.3.6.1.2.1.17.1.4.1.2"     // dot1dBasePortIfIndex: bridge port -> ifIndex
+	oidQFdbPort     = ".1.3.6.1.2.1.17.7.1.2.2.1.2" // dot1qTpFdbPort: vlan.mac -> bridge port
+	oidFdbPort      = ".1.3.6.1.2.1.17.4.3.1.2"     // dot1dTpFdbPort: mac -> bridge port
+	oidBridgeAddr   = ".1.3.6.1.2.1.17.1.1.0"       // dot1dBaseBridgeAddress: switch MAC
+	oidEntClass     = ".1.3.6.1.2.1.47.1.1.1.1.5"   // entPhysicalClass (3 = chassis)
+	oidEntSoftware  = ".1.3.6.1.2.1.47.1.1.1.1.10"  // entPhysicalSoftwareRev
+	oidEntSerial    = ".1.3.6.1.2.1.47.1.1.1.1.11"  // entPhysicalSerialNum
+	oidEntModel     = ".1.3.6.1.2.1.47.1.1.1.1.13"  // entPhysicalModelName
 )
 
 type Config struct {
@@ -76,6 +81,10 @@ type Result struct {
 	Error     string `json:"error,omitempty"`
 	SysDescr  string `json:"sys_descr,omitempty"`
 	UptimeSec uint64 `json:"uptime_seconds,omitempty"`
+	Serial    string `json:"serial,omitempty"`
+	Model     string `json:"model,omitempty"`
+	Firmware  string `json:"firmware,omitempty"`
+	BaseMac   string `json:"base_mac,omitempty"`
 	Ports     []Port `json:"ports"`
 	Fdb       []Fdb  `json:"fdb"`
 }
@@ -164,7 +173,7 @@ func poll(sw Switch) (res Result) {
 	}
 	defer g.Conn.Close()
 
-	sys, err := g.Get([]string{oidSysDescr, oidSysUpTime})
+	sys, err := g.Get([]string{oidSysDescr, oidSysUpTime, oidBridgeAddr})
 	if err != nil {
 		res.Error = "нет ответа по SNMP (проверьте IP, community и что SNMP включён): " + err.Error()
 		return
@@ -177,6 +186,10 @@ func poll(sw Switch) (res Result) {
 			}
 		case oidSysUpTime:
 			res.UptimeSec = gosnmp.ToBigInt(v.Value).Uint64() / 100
+		case oidBridgeAddr:
+			if b, ok := v.Value.([]byte); ok && len(b) == 6 {
+				res.BaseMac = fmt.Sprintf("%02x%02x%02x%02x%02x%02x", b[0], b[1], b[2], b[3], b[4], b[5])
+			}
 		}
 	}
 
@@ -192,6 +205,30 @@ func poll(sw Switch) (res Result) {
 			_ = g.BulkWalk(oid, fn)
 		}
 		return out
+	}
+
+	// Serial / model / firmware (ENTITY-MIB): the chassis entry, else the first entry that has one.
+	classes, serials, models, soft := walk(oidEntClass), walk(oidEntSerial), walk(oidEntModel), walk(oidEntSoftware)
+	keys := make([]string, 0, len(serials))
+	for k := range serials {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		ci := gosnmp.ToBigInt(classes[keys[i]].Value).Int64() == 3
+		cj := gosnmp.ToBigInt(classes[keys[j]].Value).Int64() == 3
+		if ci != cj {
+			return ci
+		}
+		var a, b int
+		fmt.Sscanf(keys[i], "%d", &a)
+		fmt.Sscanf(keys[j], "%d", &b)
+		return a < b
+	})
+	for _, k := range keys {
+		if sn := str(serials[k]); sn != "" {
+			res.Serial, res.Model, res.Firmware = sn, str(models[k]), str(soft[k])
+			break
+		}
 	}
 
 	descr, types, oper := walk(oidIfDescr), walk(oidIfType), walk(oidIfOperStatus)
@@ -358,7 +395,8 @@ func printSummary(r Result) {
 		fmt.Println("ОШИБКА:", r.Error)
 		os.Exit(1)
 	}
-	fmt.Printf("Коммутатор: %s\nАптайм: %d ч\nПортов: %d, MAC-записей: %d\n\n", r.SysDescr, r.UptimeSec/3600, len(r.Ports), len(r.Fdb))
+	fmt.Printf("Коммутатор: %s\nСерийный номер: %s\nМодель: %s\nПрошивка: %s\nMAC: %s\nАптайм: %d ч\nПортов: %d, MAC-записей: %d\n\n",
+		r.SysDescr, orDash(r.Serial), orDash(r.Model), orDash(r.Firmware), orDash(r.BaseMac), r.UptimeSec/3600, len(r.Ports), len(r.Fdb))
 	count := map[int]int{}
 	for _, f := range r.Fdb {
 		count[f.IfIndex]++
@@ -370,4 +408,11 @@ func printSummary(r Result) {
 		}
 		fmt.Printf("  %-28s %-12s MAC: %d\n", p.Name, state, count[p.IfIndex])
 	}
+}
+
+func orDash(s string) string {
+	if s == "" {
+		return "— (коммутатор не отдаёт)"
+	}
+	return s
 }

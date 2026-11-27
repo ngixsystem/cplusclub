@@ -36,7 +36,7 @@ class SnmpSwitchesTest extends TestCase
         $pc2 = Equipment::create(['club_id' => $club->id, 'name' => 'PC38', 'type' => 'pc', 'mac' => 'aa-bb-cc-00-00-38']);
         $uplinkMacs = array_map(fn ($i) => ['mac' => sprintf('11:22:33:44:55:%02x', $i), 'if_index' => 50], range(1, 10));
         $report = ['switches' => [[
-            'id' => $sw->id, 'ok' => true, 'sys_descr' => 'PXT-S2790G-48TX',
+            'id' => $sw->id, 'ok' => true, 'sys_descr' => 'PXT-S2790G-48TX', 'serial' => 'PXT48A1234567', 'model' => 'PXT-S2790G-48TX', 'firmware' => 'V2.1.0', 'base_mac' => 'a0b1c2d3e4f5',
             'ports' => [
                 ['if_index' => 21, 'name' => 'GigabitEthernet0/0/21', 'oper' => 1, 'speed_mbps' => 100],
                 ['if_index' => 22, 'name' => 'GigabitEthernet0/0/22', 'oper' => 1, 'speed_mbps' => 1000],
@@ -56,6 +56,9 @@ class SnmpSwitchesTest extends TestCase
         $this->assertSame(22, SwitchReport::forEquipment($pc2->id)['port']);
         $this->assertTrue((bool) DB::table('switch_ports')->where('if_index', 50)->value('uplink'));
         $this->assertNull(DB::table('switch_ports')->where('if_index', 23)->value('speed_mbps'));
+        $this->assertSame('PXT48A1234567', $sw->fresh()->serial_number);
+        $this->assertSame('a0:b1:c2:d3:e4:f5', $sw->fresh()->mac);
+        $this->assertSame('V2.1.0', DB::table('switch_snmp')->value('firmware'));
 
         // PC switched off: its MAC ages out of the switch, the last known port is kept.
         $report['switches'][0]['fdb'] = $uplinkMacs;
