@@ -29,7 +29,9 @@ class SnmpSwitchesTest extends TestCase
 
         $this->getJson('/api/v1/snmp/config')->assertUnauthorized();
         $this->withToken($token)->getJson('/api/v1/snmp/config')->assertOk()
-            ->assertJsonPath('switches.0.host', '192.168.1.13')->assertJsonPath('switches.0.community', 'secret-ro');
+            ->assertJsonPath('switches.0.host', '192.168.1.13')->assertJsonPath('switches.0.community', 'secret-ro')
+            ->assertJsonPath('update.version', trim(file_get_contents(resource_path('collector/VERSION'))))
+            ->assertJsonPath('update.sha256', hash_file('sha256', resource_path('collector/cclub-snmp.exe')));
         $this->withToken($foreign)->getJson('/api/v1/snmp/config')->assertOk()->assertJsonCount(0, 'switches');
 
         $pc = Equipment::create(['club_id' => $club->id, 'name' => 'PC37', 'type' => 'pc', 'mac' => 'AA:BB:CC:00:00:37']);

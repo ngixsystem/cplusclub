@@ -30,14 +30,27 @@ class SnmpController extends Controller
         $c = $this->collector($r);
         $switches = SwitchSnmp::query()->join('equipment as e', 'e.id', '=', 'switch_snmp.equipment_id')
             ->where('e.club_id', $c->club_id)->where('e.status', '!=', 'retired')->get(['switch_snmp.*', 'e.name']);
-        return response()->json(['interval' => self::INTERVAL, 'switches' => $switches->map(fn ($s) => [
+        return response()->json(['interval' => self::INTERVAL, 'update' => self::latest(), 'switches' => $switches->map(fn ($s) => [
             'id' => $s->equipment_id, 'name' => $s->name, 'host' => $s->host, 'port' => $s->port, 'version' => $s->version, 'community' => $s->community,
         ])->values()]);
+    }
+
+    /** The collector build shipped with this release; the collector updates itself to it. */
+    public static function latest(): ?array
+    {
+        $path = resource_path('collector/cclub-snmp.exe');
+        $ver = @file_get_contents(resource_path('collector/VERSION'));
+        if (! is_file($path) || ! $ver) return null;
+        $sha = \Illuminate\Support\Facades\Cache::remember('snmp-collector-sha:'.filemtime($path), 86400, fn () => hash_file('sha256', $path));
+        return ['version' => trim($ver), 'url' => rtrim(config('app.url'), '/').'/snmp/cclub-snmp.exe', 'sha256' => $sha];
     }
 
     public function report(Request $r)
     {
         $c = $this->collector($r);
+        foreach ((array) $r->input('switches', []) as $sw) {
+            if (! empty($sw['diag'])) \Illuminate\Support\Facades\Log::info('snmp collector diag', ['collector' => $c->id, 'switch' => $sw['id'] ?? null, 'diag' => array_slice((array) $sw['diag'], 0, 10)]);
+        }
         $r->validate(['switches' => 'present|array|max:64', 'switches.*.id' => 'required|integer', 'switches.*.ports' => 'array|max:600', 'switches.*.fdb' => 'array|max:20000']);
         return response()->json(['ok' => true] + app(SwitchReport::class)->ingest($c, $r->all()));
     }

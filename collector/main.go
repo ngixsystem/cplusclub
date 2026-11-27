@@ -5,6 +5,8 @@ package main
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -21,7 +23,7 @@ import (
 	"github.com/gosnmp/gosnmp"
 )
 
-const version = "1.1.0"
+const version = "1.2.0"
 
 const (
 	oidSysDescr     = ".1.3.6.1.2.1.1.1.0"
@@ -57,9 +59,16 @@ type Switch struct {
 	Community string `json:"community"`
 }
 
+type Update struct {
+	Version string `json:"version"`
+	URL     string `json:"url"`
+	Sha256  string `json:"sha256"`
+}
+
 type Remote struct {
 	Interval int      `json:"interval"`
 	Switches []Switch `json:"switches"`
+	Update   *Update  `json:"update"`
 }
 
 type Port struct {
@@ -76,17 +85,18 @@ type Fdb struct {
 }
 
 type Result struct {
-	ID        int    `json:"id"`
-	OK        bool   `json:"ok"`
-	Error     string `json:"error,omitempty"`
-	SysDescr  string `json:"sys_descr,omitempty"`
-	UptimeSec uint64 `json:"uptime_seconds,omitempty"`
-	Serial    string `json:"serial,omitempty"`
-	Model     string `json:"model,omitempty"`
-	Firmware  string `json:"firmware,omitempty"`
-	BaseMac   string `json:"base_mac,omitempty"`
-	Ports     []Port `json:"ports"`
-	Fdb       []Fdb  `json:"fdb"`
+	ID        int      `json:"id"`
+	OK        bool     `json:"ok"`
+	Error     string   `json:"error,omitempty"`
+	SysDescr  string   `json:"sys_descr,omitempty"`
+	UptimeSec uint64   `json:"uptime_seconds,omitempty"`
+	Serial    string   `json:"serial,omitempty"`
+	Model     string   `json:"model,omitempty"`
+	Firmware  string   `json:"firmware,omitempty"`
+	BaseMac   string   `json:"base_mac,omitempty"`
+	Diag      []string `json:"diag,omitempty"`
+	Ports     []Port   `json:"ports"`
+	Fdb       []Fdb    `json:"fdb"`
 }
 
 var httpClient = &http.Client{Timeout: 30 * time.Second}
@@ -112,6 +122,9 @@ func main() {
 		log.Fatalf("конфиг: %v", err)
 	}
 	log.Printf("C+CLub SNMP collector %s запущен, сервер %s", version, cfg.Server)
+	if exe, err := os.Executable(); err == nil {
+		_ = os.Remove(exe + ".old")
+	}
 	for {
 		interval := cycle(cfg)
 		if *once {
@@ -126,6 +139,14 @@ func cycle(cfg Config) int {
 	if err != nil {
 		log.Printf("не удалось получить список коммутаторов: %v", err)
 		return 60
+	}
+	if remote.Update != nil && newer(remote.Update.Version, version) {
+		if err := selfUpdate(cfg, *remote.Update); err != nil {
+			log.Printf("обновление до %s не удалось: %v", remote.Update.Version, err)
+		} else {
+			log.Printf("обновлён до %s, перезапуск", remote.Update.Version)
+			os.Exit(0) // the scheduled task starts the new version within 5 minutes
+		}
 	}
 	results := make([]Result, len(remote.Switches))
 	var wg sync.WaitGroup
@@ -193,19 +214,7 @@ func poll(sw Switch) (res Result) {
 		}
 	}
 
-	walk := func(oid string) map[string]gosnmp.SnmpPDU {
-		out := map[string]gosnmp.SnmpPDU{}
-		fn := func(p gosnmp.SnmpPDU) error {
-			out[strings.TrimPrefix(strings.TrimPrefix(p.Name, oid), ".")] = p
-			return nil
-		}
-		if g.Version == gosnmp.Version1 {
-			_ = g.Walk(oid, fn)
-		} else {
-			_ = g.BulkWalk(oid, fn)
-		}
-		return out
-	}
+	walk := func(oid string) map[string]gosnmp.SnmpPDU { return walkTable(g, oid, &res.Diag) }
 
 	// Serial / model / firmware (ENTITY-MIB): the chassis entry, else the first entry that has one.
 	classes, serials, models, soft := walk(oidEntClass), walk(oidEntSerial), walk(oidEntModel), walk(oidEntSoftware)
@@ -304,10 +313,8 @@ func poll(sw Switch) (res Result) {
 			add(parts[1:], int(gosnmp.ToBigInt(p.Value).Int64()))
 		}
 	}
-	if len(res.Fdb) == 0 {
-		for idx, p := range walk(oidFdbPort) {
-			add(strings.Split(idx, "."), int(gosnmp.ToBigInt(p.Value).Int64()))
-		}
+	for idx, p := range walk(oidFdbPort) {
+		add(strings.Split(idx, "."), int(gosnmp.ToBigInt(p.Value).Int64()))
 	}
 	res.OK = true
 	return
@@ -349,7 +356,7 @@ func do(cfg Config, req *http.Request) ([]byte, error) {
 		return nil, err
 	}
 	defer resp.Body.Close()
-	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<20))
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body[:min(len(body), 300)])))
 	}
@@ -397,6 +404,9 @@ func printSummary(r Result) {
 	}
 	fmt.Printf("Коммутатор: %s\nСерийный номер: %s\nМодель: %s\nПрошивка: %s\nMAC: %s\nАптайм: %d ч\nПортов: %d, MAC-записей: %d\n\n",
 		r.SysDescr, orDash(r.Serial), orDash(r.Model), orDash(r.Firmware), orDash(r.BaseMac), r.UptimeSec/3600, len(r.Ports), len(r.Fdb))
+	for _, d := range r.Diag {
+		fmt.Println("  [диагностика]", d)
+	}
 	count := map[int]int{}
 	for _, f := range r.Fdb {
 		count[f.IfIndex]++
@@ -415,4 +425,112 @@ func orDash(s string) string {
 		return "— (коммутатор не отдаёт)"
 	}
 	return s
+}
+
+// walkTable reads one SNMP table. Some switches answer GETBULK with a cut-off or out-of-order
+// MAC table, so the result of GETBULK is merged with a plain GETNEXT walk that tolerates
+// non-increasing OIDs (guarded against loops by a seen-set and a size cap).
+func walkTable(g *gosnmp.GoSNMP, oid string, diag *[]string) map[string]gosnmp.SnmpPDU {
+	const maxRows = 30000
+	out := map[string]gosnmp.SnmpPDU{}
+	put := func(p gosnmp.SnmpPDU) bool {
+		if !strings.HasPrefix(p.Name, oid+".") {
+			return false
+		}
+		k := strings.TrimPrefix(p.Name, oid+".")
+		if _, dup := out[k]; dup {
+			return false
+		}
+		out[k] = p
+		return true
+	}
+	bulk := 0
+	var bulkErr error
+	if g.Version != gosnmp.Version1 {
+		bulkErr = g.BulkWalk(oid, func(p gosnmp.SnmpPDU) error {
+			if put(p) {
+				bulk++
+			}
+			if len(out) >= maxRows {
+				return fmt.Errorf("слишком много строк")
+			}
+			return nil
+		})
+	}
+	// GETNEXT pass: always for v1, and for v2c when GETBULK failed or looks truncated (a multiple of the batch size).
+	if g.Version == gosnmp.Version1 || bulkErr != nil || (bulk > 0 && bulk%int(g.MaxRepetitions) == 0) {
+		saved := g.AppOpts
+		g.AppOpts = map[string]any{"c": true}
+		next, stale := 0, 0
+		cur := oid
+		for len(out) < maxRows && stale < 50 {
+			r, err := g.GetNext([]string{cur})
+			if err != nil || r == nil || len(r.Variables) == 0 {
+				break
+			}
+			v := r.Variables[0]
+			if v.Type == gosnmp.EndOfMibView || v.Type == gosnmp.NoSuchObject || v.Type == gosnmp.NoSuchInstance || !strings.HasPrefix(v.Name, oid+".") || v.Name == cur {
+				break
+			}
+			if put(v) {
+				next++
+				stale = 0
+			} else {
+				stale++
+			}
+			cur = v.Name
+		}
+		g.AppOpts = saved
+		if next > 0 || bulkErr != nil {
+			*diag = append(*diag, fmt.Sprintf("%s: GETBULK %d (ошибка: %v), GETNEXT +%d", oid, bulk, bulkErr, next))
+		}
+	}
+	return out
+}
+
+// newer reports whether version a (x.y.z) is greater than b.
+func newer(a, b string) bool {
+	var a1, a2, a3, b1, b2, b3 int
+	fmt.Sscanf(a, "%d.%d.%d", &a1, &a2, &a3)
+	fmt.Sscanf(b, "%d.%d.%d", &b1, &b2, &b3)
+	if a1 != b1 {
+		return a1 > b1
+	}
+	if a2 != b2 {
+		return a2 > b2
+	}
+	return a3 > b3
+}
+
+// selfUpdate downloads the new build from C+CLub, checks its SHA-256 and swaps it in place.
+func selfUpdate(cfg Config, u Update) error {
+	if !strings.HasPrefix(u.URL, strings.TrimRight(cfg.Server, "/")+"/") || len(u.Sha256) != 64 {
+		return fmt.Errorf("некорректные данные обновления")
+	}
+	req, _ := http.NewRequest("GET", u.URL, nil)
+	body, err := do(cfg, req)
+	if err != nil {
+		return err
+	}
+	sum := sha256.Sum256(body)
+	if !strings.EqualFold(hex.EncodeToString(sum[:]), u.Sha256) {
+		return fmt.Errorf("контрольная сумма не совпала")
+	}
+	exe, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	tmp := exe + ".new"
+	if err := os.WriteFile(tmp, body, 0o755); err != nil {
+		return err
+	}
+	_ = os.Remove(exe + ".old")
+	if err := os.Rename(exe, exe+".old"); err != nil {
+		return err
+	}
+	if err := os.Rename(tmp, exe); err != nil {
+		_ = os.Rename(exe+".old", exe)
+		return err
+	}
+	return nil
 }
