@@ -123,6 +123,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/', [ServiceController::class, 'index']);
     Route::get('/tickets/{ticket}', [ServiceController::class, 'show'])->whereNumber('ticket');
     Route::post('/tickets/{ticket}/transition', [ServiceController::class, 'transition']);
+    Route::post('/tickets/{ticket}/link-fix', [ServiceController::class, 'linkFix']);
     Route::post('/tickets/{ticket}/proposal', [\App\Http\Controllers\TicketApprovalController::class, 'propose']);
     Route::post('/tickets/{ticket}/decision', [\App\Http\Controllers\TicketApprovalController::class, 'decide']);
     Route::post('/tickets/{ticket}/completion', [\App\Http\Controllers\TicketApprovalController::class, 'complete']);

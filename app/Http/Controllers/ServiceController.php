@@ -170,6 +170,15 @@ class ServiceController extends Controller
         return redirect('/tickets/'.$ticket->id)->with('success', 'Чистка записана, заявка закрыта.');
     }
 
+    /** Auto «100 Mbit/s» ticket: tick which cable ends were re-crimped and close. */
+    public function linkFix(Request $request, Ticket $ticket)
+    {
+        $d = $request->validate(['version' => 'required|integer', 'pc_side' => 'boolean', 'switch_side' => 'boolean', 'comment' => 'nullable|string|max:2000']);
+        app(\App\Domain\Tickets\QuickLinkFix::class)->execute($request->user(), $ticket->id, (int) $d['version'],
+            (bool) ($d['pc_side'] ?? false), (bool) ($d['switch_side'] ?? false), $d['comment'] ?? null);
+        return redirect('/tickets/'.$ticket->id)->with('success', 'Заявка закрыта.');
+    }
+
     public function show(Ticket $ticket)
     {
         Gate::authorize('view', $ticket);
@@ -184,6 +193,9 @@ class ServiceController extends Controller
             'attachments' => \App\Models\Attachment::where('ticket_id',$ticket->id)->get(),
             'workLogs' => DB::table('work_logs')->where('ticket_id',$ticket->id)->get(),
             'canEdit' => Gate::allows('update', $ticket),
+            'linkFix' => $ticket->source === 'link' && in_array($ticket->status, \App\Domain\Tickets\QuickLinkFix::OPEN, true) && Gate::allows('update', $ticket)
+                && ! DB::table('ticket_proposals')->where('ticket_id', $ticket->id)->exists(),
+            'linkState' => $ticket->equipment_id ? DB::table('alerts')->where('equipment_id', $ticket->equipment_id)->where('metric', 'link_speed')->value('state') : null,
             'canAttach' => Gate::allows('attach', $ticket),
             'canDecide' => Gate::allows('decide', $ticket),
             'proposals' => DB::table('ticket_proposals as p')->join('users as a', 'a.id', '=', 'p.author_id')
