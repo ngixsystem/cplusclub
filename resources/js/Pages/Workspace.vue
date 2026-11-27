@@ -7,9 +7,10 @@ import TicketCards from '../Components/TicketCards.vue';
 import TicketToolbar from '../Components/TicketToolbar.vue';
 import TicketCharts from '../Components/TicketCharts.vue';
 import CleaningQuickForm from '../Components/CleaningQuickForm.vue';
+import EquipmentToolbar from '../Components/EquipmentToolbar.vue';
 import type { TicketFilters } from '../Components/tickets';
 type Row = { id: number; name?: string; address?: string; description?: string; status: string; priority?: string; workstation_number?: string; next_inspection_date?: string; club?: { name: string }; assignee?: { name: string } };
-const props = defineProps<{ filters?: TicketFilters; ticketCounts?: Record<string,number>; filterOptions?: {assignees:{id:number;name:string}[];categories:string[]}; ticketComputers:{id:number;club_id:number;name:string;type:string;workstation_number:string|null;zone:string|null}[]; section: string; search: string; stats: Record<string, number>; clubs: {id:number;name:string}[]; rows: {data:Row[];total:number;prev_page_url:string|null;next_page_url:string|null} }>();
+const props = defineProps<{ equipmentFilter?: { club: number | 'all'; type: string | null; clubCounts: Record<string, number>; typeCounts: Record<string, number> }; filters?: TicketFilters; ticketCounts?: Record<string,number>; filterOptions?: {assignees:{id:number;name:string}[];categories:string[]}; ticketComputers:{id:number;club_id:number;name:string;type:string;workstation_number:string|null;zone:string|null}[]; section: string; search: string; stats: Record<string, number>; clubs: {id:number;name:string}[]; rows: {data:Row[];total:number;prev_page_url:string|null;next_page_url:string|null} }>();
 const page = usePage<{auth:{user:{role:string}}}>();
 const titles: Record<string,string> = {overview:'Обзор',clubs:'Клубы',equipment:'Оборудование',tickets:'Заявки'};
 const status: Record<string,string> = {new:'Новая',accepted:'Принята',working:'В работе',approval:'Согласование',parts:'Ожидает запчастей',resolved:'Решена',closed:'Закрыта',active:'Обслуживается',paused:'Приостановлен',ended:'Завершён'};
@@ -45,7 +46,8 @@ function save() { form.post('/'+props.section, {onSuccess:()=>{adding.value=fals
     </form>
     <TicketCharts v-if="section==='tickets' && filters" :filters="filters" />
     <section class="panel records-panel">
-      <div v-if="section!=='tickets' || !filters" class="toolbar"><h2>{{ section==='overview'?'Последние заявки':section==='equipment'?'Реестр оборудования':section==='clubs'?'Все клубы':'Все заявки' }} <small>{{ rows.total }}</small></h2><form @submit.prevent="router.get(section==='overview'?'/':'/'+section,{search:search},{preserveState:true})"><input v-model="search" placeholder="Поиск" aria-label="Поиск" /><button class="secondary">Найти</button></form></div>
+      <EquipmentToolbar v-if="section==='equipment' && equipmentFilter" :clubs="clubs" :filter="equipmentFilter" :search="search" :total="rows.total" />
+      <div v-else-if="section!=='tickets' || !filters" class="toolbar"><h2>{{ section==='overview'?'Последние заявки':section==='equipment'?'Реестр оборудования':section==='clubs'?'Все клубы':'Все заявки' }} <small>{{ rows.total }}</small></h2><form @submit.prevent="router.get(section==='overview'?'/':'/'+section,{search:search},{preserveState:true})"><input v-model="search" placeholder="Поиск" aria-label="Поиск" /><button class="secondary">Найти</button></form></div>
       <template v-else>
         <div class="toolbar tickets-head"><h2>Все заявки <small>{{ rows.total }}</small></h2></div>
         <TicketToolbar v-model:view="ticketView" :filters="filters" :counts="ticketCounts ?? {}" :options="filterOptions ?? {assignees:[],categories:[]}" :clubs="clubs" @loading="ticketsLoading=$event" />

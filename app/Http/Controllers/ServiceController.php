@@ -55,20 +55,53 @@ class ServiceController extends Controller
             ];
             $query = TicketFilters::sort(TicketFilters::tab($filtered, $filters['tab']), $filters['sort'])
                 ->with(['club:id,name', 'assignee:id,name', 'equipment:id,name,workstation_number']);
+        } elseif ($section === 'equipment') {
+            // One club at a time (tabs), optional type filter, natural order: PC2 before PC10.
+            $clubIds = (clone $clubs)->orderBy('name')->pluck('id');
+            $club = $request->query('club') === 'all' ? null : (int) $request->query('club', $clubIds->first() ?? 0);
+            if ($club && ! $clubIds->contains($club)) $club = $clubIds->first();
+            $type = in_array($request->query('type'), ['pc', 'switch', 'other'], true) ? $request->query('type') : null;
+            $inClub = (clone $equipment)->when($club, fn ($q) => $q->where('club_id', $club));
+            $ticketView['equipmentFilter'] = [
+                'club' => $club ?: 'all', 'type' => $type,
+                'clubCounts' => (clone $equipment)->selectRaw('club_id, count(*) n')->groupBy('club_id')->pluck('n', 'club_id'),
+                'typeCounts' => (clone $inClub)->selectRaw("case when type in ('pc','server') then 'pc' when type = 'switch' then 'switch' else 'other' end t, count(*) n")->groupByRaw('1')->pluck('n', 't'),
+            ];
+            $query = $inClub->with('club:id,name')
+                ->when($type === 'pc', fn ($q) => $q->whereIn('type', ['pc', 'server']))
+                ->when($type === 'switch', fn ($q) => $q->where('type', 'switch'))
+                ->when($type === 'other', fn ($q) => $q->whereNotIn('type', ['pc', 'server', 'switch']))
+                ->when($search, fn ($q) => $q->where(fn ($w) => $w->where('name', 'ilike', '%'.$search.'%')->orWhere('workstation_number', 'ilike', '%'.$search.'%')
+                    ->orWhere('ip', 'ilike', '%'.$search.'%')->orWhere('mac', 'ilike', '%'.$search.'%')->orWhere('zone', 'ilike', '%'.$search.'%')))
+                ->orderByRaw("case when type = 'switch' then 0 when type in ('pc','server') then 1 else 2 end")
+                ->orderByRaw("regexp_replace(name, '[0-9]+', '', 'g')")
+                ->orderByRaw("coalesce(nullif(substring(name from '([0-9]+)'), ''), '0')::bigint")
+                ->orderBy('name');
         } else {
-            $query = ($section === 'clubs'
-                ? $clubs->when($search, fn ($q) => $q->where('name', 'ilike', '%'.$search.'%'))
-                : $equipment->with('club')->when($search, fn ($q) => $q->where('name', 'ilike', '%'.$search.'%'))
-            )->orderByDesc('id');
+            $query = $clubs->when($search, fn ($q) => $q->where('name', 'ilike', '%'.$search.'%'))->orderByDesc('id');
         }
         return Inertia::render('Workspace', [
             ...$ticketView,
             'section' => $section, 'stats' => $stats, 'search' => $search,
-            'rows' => $query->paginate(20)->withQueryString(),
+            'rows' => $section === 'equipment' ? self::withCables($query->paginate(48)->withQueryString()) : $query->paginate(20)->withQueryString(),
             'clubs' => ClubAccess::filter(Club::query(), $user, 'id')->orderBy('name')->get(['id', 'name']),
             'ticketComputers' => $section === 'tickets' ? ClubAccess::filter(Equipment::query(), $user)
                 ->whereIn('type', ['pc', 'server'])->orderBy('name')->get(['id','club_id','name','type','workstation_number','zone']) : [],
         ]);
+    }
+
+    /** Adds «switch · port» to each PC on the page (one query). */
+    private static function withCables($page)
+    {
+        $ids = $page->getCollection()->pluck('id');
+        $cables = DB::table('equipment_ports as ep')->join('equipment as sw', 'sw.id', '=', 'ep.switch_id')
+            ->leftJoin('switch_ports as p', fn ($j) => $j->on('p.switch_id', '=', 'ep.switch_id')->on('p.if_index', '=', 'ep.if_index'))
+            ->whereIn('ep.equipment_id', $ids)->get(['ep.equipment_id', 'sw.name as switch', 'ep.if_index', 'p.port_no', 'p.up', 'p.speed_mbps'])->keyBy('equipment_id');
+        $page->getCollection()->each(function ($e) use ($cables) {
+            $c = $cables[$e->id] ?? null;
+            $e->setAttribute('cable', $c ? ['switch' => $c->switch, 'port' => (int) ($c->port_no ?? $c->if_index), 'up' => (bool) $c->up, 'speed_mbps' => $c->speed_mbps] : null);
+        });
+        return $page;
     }
 
     /** Tickets the user may see: their clubs, plus (for specialists) tickets assigned to them. */

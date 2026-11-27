@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import {Link} from '@inertiajs/vue3';
-defineProps<{items:{id:number;name?:string;type?:string;zone?:string;workstation_number?:string;status:string;next_inspection_date?:string;club?:{name:string}}[]}>();
+defineProps<{items:{cable?:{switch:string;port:number;up:boolean;speed_mbps:number|null}|null;id:number;name?:string;type?:string;zone?:string;workstation_number?:string;status:string;next_inspection_date?:string;club?:{name:string}}[]}>();
 const types:Record<string,string>={pc:'Компьютер',server:'Сервер',switch:'Коммутатор',router:'Маршрутизатор',ups:'UPS',peripheral:'Периферия'};
 const statuses:Record<string,string>={active:'Активно',maintenance:'Обслуживание',retired:'Выведено'};
 </script>
@@ -17,6 +17,7 @@ const statuses:Record<string,string>={active:'Активно',maintenance:'Об�
       </div>
       <h3>{{item.name}}</h3><p class="club-name">{{item.club?.name || 'Клуб не указан'}}</p>
       <div class="device-meta"><span>{{item.workstation_number ? 'Место '+item.workstation_number : types[item.type || 'pc']}}</span><span v-if="item.zone">{{item.zone}}</span></div>
+      <p v-if="item.cable" class="cable" :class="{slow:item.cable.up && item.cable.speed_mbps!==null && item.cable.speed_mbps<1000}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 2v4a2 2 0 0 0 2 2h6a2 2 0 0 1 2 2v4M1.5 2h3M11.5 14h3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>{{item.cable.switch}} · порт {{item.cable.port}}<span v-if="item.cable.up && item.cable.speed_mbps!==null && item.cable.speed_mbps<1000"> · {{item.cable.speed_mbps}} Мбит/с</span></p>
       <div class="card-bottom"><span>Осмотр: {{item.next_inspection_date || 'не назначен'}}</span><span aria-hidden="true">↗</span></div>
     </Link>
   </div>
@@ -33,5 +34,6 @@ const statuses:Record<string,string>={active:'Активно',maintenance:'Об�
 .device-art{margin:16px 0 12px;border-radius:8px;background:linear-gradient(135deg,var(--hover),var(--surface));display:flex;justify-content:center;padding:12px}
 svg{width:160px;height:100px}.screen{fill:var(--soft)}.led{fill:var(--success);stroke:var(--success)}
 h3{font-size:19px;font-weight:700;overflow-wrap:anywhere;margin:0 0 4px}.club-name{margin:0 0 16px;overflow-wrap:anywhere}.device-meta{min-height:22px}.card-bottom{margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+.cable{display:flex;align-items:center;gap:6px;margin:8px 0 0;font-size:13px;color:var(--text)}.cable svg{width:14px;height:14px;flex:none;color:var(--muted)}.cable.slow{color:#b45309;font-weight:600}
 @media(max-width:560px){.equipment-grid{grid-template-columns:1fr;padding:14px;gap:12px}}
 </style>
