@@ -6,6 +6,7 @@ import EquipmentCards from '../Components/EquipmentCards.vue';
 import TicketCards from '../Components/TicketCards.vue';
 import TicketToolbar from '../Components/TicketToolbar.vue';
 import TicketCharts from '../Components/TicketCharts.vue';
+import CleaningQuickForm from '../Components/CleaningQuickForm.vue';
 import type { TicketFilters } from '../Components/tickets';
 type Row = { id: number; name?: string; address?: string; description?: string; status: string; priority?: string; workstation_number?: string; next_inspection_date?: string; club?: { name: string }; assignee?: { name: string } };
 const props = defineProps<{ filters?: TicketFilters; ticketCounts?: Record<string,number>; filterOptions?: {assignees:{id:number;name:string}[];categories:string[]}; ticketComputers:{id:number;club_id:number;name:string;type:string;workstation_number:string|null;zone:string|null}[]; section: string; search: string; stats: Record<string, number>; clubs: {id:number;name:string}[]; rows: {data:Row[];total:number;prev_page_url:string|null;next_page_url:string|null} }>();
@@ -23,17 +24,22 @@ try { if (localStorage.getItem('cclub-ticket-view') === 'list') ticketView.value
 watch(ticketView, v => { try { localStorage.setItem('cclub-ticket-view', v); } catch { /* optional */ } });
 const ticketsLoading = ref(false);
 const ticketFiltersActive = computed(() => { const f = props.filters; return !!f && (f.tab !== 'all' || f.priority.length > 0 || !!f.club || f.assignee !== null || !!f.category || !!f.period || !!f.search); });
+const canClean = computed(() => page.props.auth.user.role !== 'representative');
+const categories = computed(() => ['Диагностика','Ремонт',...(canClean.value ? ['Чистка ПК'] : []),'Обслуживание','Другое']);
+function startCleaning() { adding.value = true; form.category = 'Чистка ПК'; }
+const cleaning = computed(() => props.section === 'tickets' && /чистк/iu.test(form.category));
 function save() { form.post('/'+props.section, {onSuccess:()=>{adding.value=false; form.reset();}}); }
 </script>
 <template>
   <Head :title="titles[section]" /><Shell>
-    <div class="heading"><div><h1>{{ titles[section] }}</h1></div><button v-if="canCreate" @click="adding=!adding">{{ adding ? 'Отменить' : '+ Добавить' }}</button></div>
+    <div class="heading"><div><h1>{{ titles[section] }}</h1></div><div class="heading-actions"><button v-if="section==='tickets' && canClean && !(adding && cleaning)" class="secondary" @click="startCleaning">Чистка ПК</button><button v-if="canCreate" @click="adding=!adding; if(!adding) form.category='Диагностика'">{{ adding ? 'Отменить' : '+ Добавить' }}</button></div></div>
     <section class="stats"><article v-for="(label,key) in {clubs:'Клубов',equipment:'Устройств',tickets:'Открытых заявок',critical:'Критических'}" :key="key"><span>{{ label }}</span><strong>{{ stats[key] }}</strong></article></section>
-    <form v-if="adding" class="panel form-grid" @submit.prevent="save">
+    <CleaningQuickForm v-if="adding && cleaning" v-model:club-id="form.club_id" :clubs="clubs" :computers="ticketComputers" @other="form.category='Диагностика'" @done="adding=false; form.reset()" />
+    <form v-else-if="adding" class="panel form-grid" @submit.prevent="save">
       <template v-if="section==='clubs'"><label>Название<input v-model="form.name" required /></label><label>Адрес<input v-model="form.address" required /></label><label>Часовой пояс<input v-model="form.timezone" required /></label><label>Часы поддержки<input v-model="form.support_hours" required /></label><label>Контакты<input v-model="form.contacts" /></label><label>Лицензия iCafeCloud (необязательно)<input v-model="form.icafe_license" type="number" min="1" /></label><label>API-токен iCafeCloud<input v-model="form.icafe_token" type="password" autocomplete="new-password" /></label><label>Валюта<select v-model="form.icafe_currency"><option>UZS</option><option>USD</option><option>RUB</option><option>KZT</option><option>EUR</option></select></label><p>Передавайте API-токен только через HTTPS или SSH-туннель.</p></template>
       <template v-else><label>Клуб<select v-model="form.club_id" required><option v-for="club in clubs" :value="club.id" :key="club.id">{{ club.name }}</option></select></label>
         <template v-if="section==='equipment'"><label>Название<input v-model="form.name" required /></label><label>Номер места<input v-model="form.workstation_number" /></label><label>Зона<input v-model="form.zone" /></label><label>Тип<select v-model="form.type"><option value="pc">ПК</option><option value="server">Сервер</option><option value="switch">Коммутатор</option><option value="router">Маршрутизатор</option><option value="ups">UPS</option><option value="peripheral">Периферия</option></select></label><label>Первый срок осмотра<input type="date" v-model="form.next_inspection_date" required /></label></template>
-        <template v-else><label>Оборудование клуба<select v-model="form.equipment_id"><option value="">Общая заявка — без привязки к оборудованию</option><option v-for="pc in computers" :key="pc.id" :value="pc.id">{{pc.name}}{{pc.type === 'server' ? ' · Сервер' : ''}}{{pc.workstation_number ? ' · место '+pc.workstation_number : ''}}{{pc.zone ? ' · '+pc.zone : ''}}</option></select></label><p v-if="!computers.length">В выбранном клубе пока нет ПК или серверов. Добавьте или импортируйте оборудование, либо создайте общую заявку.</p><label>Категория<input v-model="form.category" list="ticket-categories" required /><datalist id="ticket-categories"><option>Диагностика</option><option>Чистка ПК</option><option>Ремонт</option></datalist></label><button type="button" class="secondary" @click="form.category='Чистка ПК'; if(!form.description) form.description='Плановая чистка ПК'">Заявка на чистку ПК</button><label>Описание<textarea v-model="form.description" required /></label><label>Приоритет<select v-model="form.priority"><option value="low">Низкий</option><option value="normal">Обычный</option><option value="high">Высокий</option><option value="critical">Критический — весь клуб или группа ПК</option></select></label></template>
+        <template v-else><label>Категория<select v-model="form.category" required><option v-for="c in categories" :key="c" :value="c">{{ c }}</option></select></label><label>Оборудование клуба<select v-model="form.equipment_id"><option value="">Общая заявка — без привязки к оборудованию</option><option v-for="pc in computers" :key="pc.id" :value="pc.id">{{pc.name}}{{pc.type === 'server' ? ' · Сервер' : ''}}{{pc.workstation_number ? ' · место '+pc.workstation_number : ''}}{{pc.zone ? ' · '+pc.zone : ''}}</option></select></label><p v-if="!computers.length">В выбранном клубе пока нет ПК или серверов. Добавьте или импортируйте оборудование, либо создайте общую заявку.</p><label>Описание<textarea v-model="form.description" required /></label><label>Приоритет<select v-model="form.priority"><option value="low">Низкий</option><option value="normal">Обычный</option><option value="high">Высокий</option><option value="critical">Критический — весь клуб или группа ПК</option></select></label></template>
       </template>
       <div class="error" role="alert" v-for="(error,key) in form.errors" :key="key">{{ error }}</div><button :disabled="form.processing">{{ form.processing?'Сохраняем…':'Сохранить' }}</button>
     </form>
@@ -53,3 +59,7 @@ function save() { form.post('/'+props.section, {onSuccess:()=>{adding.value=fals
     </section>
   </Shell>
 </template>
+
+<style scoped>
+.heading-actions{display:flex;gap:10px;flex-wrap:wrap}
+</style>

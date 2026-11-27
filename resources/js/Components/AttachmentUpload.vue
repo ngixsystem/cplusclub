@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import {ref,onBeforeUnmount} from 'vue';
 import {useForm} from '@inertiajs/vue3';
+import {compressPhoto} from './photos';
 const p=defineProps<{type:string;id:number;stage?:'before'|'after'}>();
 type Item={key:number;file:File;url:string;status:string;error:string};
 const items=ref<Item[]>([]),busy=ref(false),dragging=ref(false),message=ref('');let sequence=0;
 const form=useForm({type:p.type,id:p.id,stage:p.stage??null,file:null as File|null});
-function add(files:File[]){
+async function add(files:File[]){
   if(busy.value)return;message.value='';
-  for(const file of files){
+  for(const original of files){
+    const file=original.type.startsWith('image/')?await compressPhoto(original):original;
     if(items.value.length>=10){message.value='Не более 10 файлов за раз.';break;}
     if(!['image/jpeg','image/png','image/webp',...(p.stage?[]:['application/pdf'])].includes(file.type)||file.size>10*1024*1024){message.value='Допустимы JPG, PNG, WebP'+(p.stage?'':' или PDF')+' до 10 МБ каждый.';continue;}
     items.value.push({key:++sequence,file,url:file.type.startsWith('image/')?URL.createObjectURL(file):'',status:'Ожидает',error:''});

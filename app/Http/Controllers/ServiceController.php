@@ -147,6 +147,29 @@ class ServiceController extends Controller
         return redirect('/tickets/'.$ticket->id)->with('success', 'Заявка создана.');
     }
 
+    /** Cleaning done on the spot: engineer picks the PC, attaches before/after photos and closes the ticket in one step. */
+    public function cleaning(Request $request)
+    {
+        abort_if(! $request->user()->active || $request->user()->role === 'representative', 403);
+        $data = $request->validate([
+            'club_id' => 'required|integer|exists:clubs,id', 'equipment_id' => 'required|integer|min:1',
+            'work_result' => 'required|string|max:10000', 'verification_result' => 'required|string|max:10000',
+            'comment' => 'nullable|string|max:2000',
+            'before' => 'required|array|min:1|max:10', 'before.*' => 'image|mimes:jpg,jpeg,png,webp|max:10240',
+            'after' => 'required|array|min:1|max:10', 'after.*' => 'image|mimes:jpg,jpeg,png,webp|max:10240',
+        ], [
+            'equipment_id.required' => 'Выберите ПК, который почистили.',
+            'before.required' => 'Приложите хотя бы одно фото до чистки.', 'after.required' => 'Приложите хотя бы одно фото после чистки.',
+            'before.*.image' => 'Фото до чистки: только JPG, PNG или WebP.', 'after.*.image' => 'Фото после чистки: только JPG, PNG или WebP.',
+            'before.*.max' => 'Фото до чистки больше 10 МБ.', 'after.*.max' => 'Фото после чистки больше 10 МБ.',
+        ]);
+        Gate::authorize('view', Club::findOrFail($data['club_id']));
+        abort_unless(Equipment::whereKey($data['equipment_id'])->where('club_id', $data['club_id'])->exists(), 422);
+        $ticket = app(\App\Domain\Tickets\QuickCleaning::class)->execute($request->user(), (int) $data['club_id'], (int) $data['equipment_id'],
+            $data['work_result'], $data['verification_result'], $request->file('before'), $request->file('after'), $data['comment'] ?? null);
+        return redirect('/tickets/'.$ticket->id)->with('success', 'Чистка записана, заявка закрыта.');
+    }
+
     public function show(Ticket $ticket)
     {
         Gate::authorize('view', $ticket);

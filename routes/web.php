@@ -131,5 +131,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/equipment', [ServiceController::class, 'equipment']);
     Route::get('/tickets/stats', [ServiceController::class, 'ticketStats'])->middleware('throttle:live');
     Route::post('/tickets', [ServiceController::class, 'ticket']);
+    Route::post('/tickets/cleaning', [ServiceController::class, 'cleaning'])->middleware('throttle:30,1');
     Route::get('/{section}', [ServiceController::class, 'index'])->whereIn('section', ['clubs','equipment','tickets']);
 });
