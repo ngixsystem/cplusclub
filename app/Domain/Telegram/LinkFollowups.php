@@ -115,7 +115,8 @@ final class LinkFollowups
         $ticket = $this->open->execute([
             'club_id' => $f->club_id, 'equipment_id' => $f->equipment_id, 'category' => 'Сеть', 'priority' => 'high',
             'description' => "Сетевой линк упал до ".LinkMessages::speed($f->link_mbps).' (норма '.LinkMessages::speed($f->expected_mbps).") — {$f->place}.\n"
-                ."Замечено: {$opened}.\n{$reason}\nПроверьте патч-корд, порт коммутатора и сетевую карту.",
+                ."Замечено: {$opened}.\n{$reason}\nПроверьте патч-корд, порт коммутатора и сетевую карту."
+                .(($cable = \App\Domain\Network\SwitchReport::forEquipment((int) $f->equipment_id)) ? "\nВторой конец кабеля: {$cable['switch']}, порт {$cable['port']}." : ''),
         ], BotUser::id(), ['source' => 'link', 'source_channel_id' => $channelId, 'reporter_name' => $who ? mb_substr($who, 0, 120) : null,
             'assignee_id' => $active ? $specialist : null]);
         DB::table('link_followups')->where('id', $f->id)->update(['state' => 'ticketed', 'ticket_id' => $ticket->id, 'updated_at' => now()]);

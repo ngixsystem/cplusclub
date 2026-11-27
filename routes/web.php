@@ -12,6 +12,8 @@ Route::get('/health/ready', function () {
     return response()->json(['status' => 'ready']);
 });
 Route::get('/login', fn () => Inertia::render('Login'))->middleware('guest')->name('login');
+Route::get('/snmp/install.ps1', [\App\Http\Controllers\SnmpController::class, 'script'])->middleware('throttle:60,1');
+Route::get('/snmp/cclub-snmp.exe', [\App\Http\Controllers\SnmpController::class, 'binary'])->middleware('throttle:30,1');
 Route::get('/rustdesk/install.ps1', [\App\Http\Controllers\RemoteController::class, 'script'])->middleware('throttle:60,1');
 Route::post('/login', [ServiceController::class, 'login'])->middleware('throttle:login');
 Route::middleware('auth')->group(function () {
@@ -129,6 +131,10 @@ Route::middleware('auth')->group(function () {
     Route::post('/tickets/{ticket}/completion', [\App\Http\Controllers\TicketApprovalController::class, 'complete']);
     Route::post('/tickets/{ticket}/assign', [ServiceController::class, 'assign']);
     Route::post('/clubs', [ServiceController::class, 'club']);
+    Route::post('/clubs/{club}/switches', [\App\Http\Controllers\SnmpController::class, 'store']);
+    Route::post('/clubs/{club}/snmp-collectors', [\App\Http\Controllers\SnmpController::class, 'issue']);
+    Route::post('/clubs/{club}/snmp-collectors/{collector}/revoke', [\App\Http\Controllers\SnmpController::class, 'revoke']);
+    Route::post('/switches/{equipment}/snmp', [\App\Http\Controllers\SnmpController::class, 'update']);
     Route::post('/equipment', [ServiceController::class, 'equipment']);
     Route::get('/tickets/stats', [ServiceController::class, 'ticketStats'])->middleware('throttle:live');
     Route::post('/tickets', [ServiceController::class, 'ticket']);

@@ -6,6 +6,8 @@ Route::post('/v1/latency',[\App\Http\Controllers\LatencyController::class,'inges
 Route::post('/v1/local-version',[\App\Http\Controllers\UpdatesController::class,'local'])->middleware('throttle:agent');
 
 \Illuminate\Support\Facades\Route::post('/connection-requests', [\App\Http\Controllers\ConnectionRequestController::class,'store'])->middleware('throttle:leads');
+Route::get('/v1/snmp/config',[\App\Http\Controllers\SnmpController::class,'config'])->middleware('throttle:agent');
+Route::post('/v1/snmp/report',[\App\Http\Controllers\SnmpController::class,'report'])->middleware('throttle:agent');
 Route::post('/v1/remote/enroll',[\App\Http\Controllers\RemoteController::class,'enroll'])->middleware('throttle:10,1');
 
 // Read-only external API (token per consumer, one club). Docs: docs/external-api.md

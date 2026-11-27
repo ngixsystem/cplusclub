@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { useForm } from '@inertiajs/vue3';
-const props = defineProps<{ ticketId: number; version: number; pc: string | null; linkState: string | null }>();
+import { Link, useForm } from '@inertiajs/vue3';
+const props = defineProps<{ ticketId: number; version: number; pc: string | null; linkState: string | null; cable?: { switch_id: number; switch: string; zone: string | null; port: number; up: boolean; speed_mbps: number | null } | null }>();
 const form = useForm({ version: props.version, pc_side: false, switch_side: false, comment: '' });
 const ready = computed(() => form.pc_side || form.switch_side);
 function submit() { form.version = props.version; form.post('/tickets/' + props.ticketId + '/link-fix', { preserveScroll: true }); }
@@ -15,6 +15,12 @@ function submit() { form.version = props.version; form.post('/tickets/' + props.
       <p v-if="linkState === 'active'" class="state warn">Сейчас мониторинг всё ещё видит 100 Мбит/с — после обжима ПК стоит перезагрузить.</p>
       <p v-else-if="linkState" class="state ok">Мониторинг: скорость уже в норме.</p>
     </div>
+    <div v-if="cable" class="cable">
+      <span class="cable-label">Второй конец кабеля</span>
+      <strong><Link :href="'/equipment/' + cable.switch_id">{{ cable.switch }}</Link> · порт {{ cable.port }}</strong>
+      <span class="muted">{{ cable.zone ? cable.zone + ' · ' : '' }}{{ !cable.up ? 'порт выключен' : cable.speed_mbps === null ? 'порт включён' : 'сейчас ' + (cable.speed_mbps >= 1000 ? cable.speed_mbps / 1000 + ' Гбит/с' : cable.speed_mbps + ' Мбит/с') }}</span>
+    </div>
+    <p v-else class="muted small">Порт коммутатора неизвестен — добавьте коммутаторы клуба по SNMP на странице клуба.</p>
     <div class="lf-checks">
       <label class="lf-check" :class="{ on: form.pc_side }"><input v-model="form.pc_side" type="checkbox" /><span class="box" aria-hidden="true"></span>Обжат со стороны ПК</label>
       <label class="lf-check" :class="{ on: form.switch_side }"><input v-model="form.switch_side" type="checkbox" /><span class="box" aria-hidden="true"></span>Обжат со стороны сетевого коммутатора</label>
@@ -40,6 +46,7 @@ function submit() { form.version = props.version; form.post('/tickets/' + props.
 .lf-check.on .box { background: var(--text); border-color: var(--text) }
 .lf-check.on .box::after { content: ''; width: 6px; height: 11px; border: solid var(--bg, #fff); border-width: 0 2px 2px 0; transform: translateY(-1px) rotate(45deg) }
 .lf-foot { display: flex; align-items: center; gap: 14px; flex-wrap: wrap }
-.muted { color: var(--muted) }
+.muted { color: var(--muted) } .small { font-size: 14px; margin: 0 }
+.cable { display: grid; gap: 2px; padding: 14px 16px; border-radius: 12px; background: var(--hover) } .cable-label { font-size: 13px; color: var(--muted) } .cable strong { font-size: 18px } .cable a { color: inherit }
 @media (max-width: 700px) { .lf-checks { grid-template-columns: 1fr } }
 </style>

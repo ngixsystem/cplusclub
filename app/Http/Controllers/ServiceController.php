@@ -195,6 +195,7 @@ class ServiceController extends Controller
             'canEdit' => Gate::allows('update', $ticket),
             'linkFix' => $ticket->source === 'link' && in_array($ticket->status, \App\Domain\Tickets\QuickLinkFix::OPEN, true) && Gate::allows('update', $ticket)
                 && ! DB::table('ticket_proposals')->where('ticket_id', $ticket->id)->exists(),
+            'cable' => $ticket->source === 'link' && $ticket->equipment_id ? \App\Domain\Network\SwitchReport::forEquipment($ticket->equipment_id) : null,
             'linkState' => $ticket->equipment_id ? DB::table('alerts')->where('equipment_id', $ticket->equipment_id)->where('metric', 'link_speed')->value('state') : null,
             'canAttach' => Gate::allows('attach', $ticket),
             'canDecide' => Gate::allows('decide', $ticket),
